@@ -528,7 +528,12 @@ function buildRentRow(doc, scored, allCities, signal) {
   return wrap;
 }
 
-function buildAdvisoryRow(doc, scored, advisoriesByIso3, advisoriesOffline) {
+export function buildAdvisoryRow(
+  doc,
+  scored,
+  advisoriesByIso3,
+  advisoriesOffline,
+) {
   const wrap = el(doc, 'div', 'ci-notscored-row');
   wrap.append(text(doc, 'span', 'ci-notscored-label', 'Advisory'));
   if (scored.city.iso3 === 'USA') {
@@ -550,12 +555,29 @@ function buildAdvisoryRow(doc, scored, advisoriesByIso3, advisoriesOffline) {
   }
   const record = advisoriesByIso3?.[scored.city.iso3];
   if (!record) return null;
-  const link = el(doc, 'a', 'ci-notscored-value');
-  link.href = record.url || '#';
-  link.target = '_blank';
-  link.rel = 'noopener';
-  link.textContent = `${record.title.replace(': ', ' · ')} · updated ${record.updated.slice(0, 10)} · state.gov`;
-  wrap.append(link);
+  const labelText = `${record.title.replace(': ', ' · ')} · updated ${record.updated.slice(0, 10)} · state.gov`;
+  // Defense in depth: only link out over a verified http(s) URL. A record
+  // with a malformed/unexpected url (e.g. javascript:) renders as plain text.
+  let safeUrl = null;
+  if (record.url) {
+    try {
+      const parsed = new URL(record.url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:')
+        safeUrl = record.url;
+    } catch {
+      /* not a valid absolute URL: fall through to plain text */
+    }
+  }
+  if (safeUrl) {
+    const link = el(doc, 'a', 'ci-notscored-value');
+    link.href = safeUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = labelText;
+    wrap.append(link);
+  } else {
+    wrap.append(text(doc, 'div', 'ci-notscored-value', labelText));
+  }
   return wrap;
 }
 

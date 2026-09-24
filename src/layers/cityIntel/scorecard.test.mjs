@@ -17,7 +17,28 @@ import {
   bestInRow,
   compareRowsModel,
   europeanAqiCategory,
+  buildAdvisoryRow,
 } from './scorecard.js';
+
+function fakeDoc() {
+  class FakeEl {
+    constructor(tag) {
+      this.tagName = tag;
+      this.children = [];
+      this._text = '';
+    }
+    append(...cs) {
+      this.children.push(...cs);
+    }
+    set textContent(v) {
+      this._text = v;
+    }
+    get textContent() {
+      return this._text;
+    }
+  }
+  return { createElement: (tag) => new FakeEl(tag) };
+}
 
 const okMetric = (overrides = {}) => ({
   key: 'lifeExpectancy',
@@ -285,6 +306,49 @@ test('europeanAqiCategory: Open-Meteo European AQI index -> its category label',
   assert.equal(europeanAqiCategory(100), 'Very Poor');
   assert.equal(europeanAqiCategory(150), 'Extremely Poor');
   assert.equal(europeanAqiCategory(null), null);
+});
+
+test('buildAdvisoryRow: only links out over a verified http(s) URL, else renders plain text', () => {
+  const doc = fakeDoc();
+  const scored = { city: { iso3: 'PRT' } };
+  const record = {
+    title: 'Exercise Normal Precautions',
+    updated: '2025-01-15T00:00:00Z',
+    url: 'https://travel.state.gov/x',
+  };
+
+  const safe = buildAdvisoryRow(doc, scored, { PRT: record }, false);
+  const link = safe.children[1];
+  assert.equal(link.tagName, 'a');
+  assert.equal(link.href, 'https://travel.state.gov/x');
+  assert.match(link.textContent, /Exercise Normal Precautions/);
+
+  const badProtocol = buildAdvisoryRow(
+    doc,
+    scored,
+    { PRT: { ...record, url: 'javascript:alert(1)' } },
+    false,
+  );
+  const plain = badProtocol.children[1];
+  assert.equal(plain.tagName, 'div');
+  assert.equal(plain.href, undefined);
+  assert.match(plain.textContent, /Exercise Normal Precautions/);
+
+  const missingUrl = buildAdvisoryRow(
+    doc,
+    scored,
+    { PRT: { ...record, url: '' } },
+    false,
+  );
+  assert.equal(missingUrl.children[1].tagName, 'div');
+
+  const malformedUrl = buildAdvisoryRow(
+    doc,
+    scored,
+    { PRT: { ...record, url: 'not a url' } },
+    false,
+  );
+  assert.equal(malformedUrl.children[1].tagName, 'div');
 });
 
 test('compareRowsModel: composite/pillar/metric rows with best-in-row marks, advisory/rent last', () => {

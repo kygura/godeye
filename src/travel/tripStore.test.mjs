@@ -131,6 +131,55 @@ test('setNodes replaces a trip nodes in one commit, sorting plan trips by start'
   assert.equal(s.setNodes('does-not-exist', []), false);
 });
 
+test('load sanitizes malformed shapes: bad trips and bad nodes are dropped, no throw', () => {
+  const storage = fakeStorage();
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      version: 1,
+      activeTripId: 'trip-1',
+      shortlist: [],
+      trips: [
+        null,
+        'not-a-trip',
+        { id: 42, name: 'numeric id', nodes: [] },
+        {
+          id: 'trip-1',
+          name: 'Mixed bag',
+          extra: 'kept',
+          nodes: 'not-an-array',
+        },
+        {
+          id: 'trip-2',
+          name: 'Mixed nodes',
+          nodes: [
+            tokyo,
+            null,
+            { name: 'no coords' },
+            { name: 'bad coords', lat: 'x', lng: 1 },
+            { ...lima, id: 'stay-x', start: 2 },
+          ],
+        },
+      ],
+    }),
+  );
+  const s = createTripStore({ storage });
+  assert.equal(s.getState().trips.length, 2);
+  const trip1 = s.getState().trips.find((t) => t.id === 'trip-1');
+  assert.equal(trip1.extra, 'kept');
+  assert.deepEqual(trip1.nodes, []);
+  const trip2 = s.getState().trips.find((t) => t.id === 'trip-2');
+  assert.equal(trip2.nodes.length, 2);
+  assert.equal(trip2.nodes[0].name, 'Tokyo');
+  assert.equal(trip2.nodes[1].id, 'stay-x');
+
+  // Downstream mutators must not throw against the sanitized shape.
+  assert.doesNotThrow(() => s.addNode(lima, 'trip-1'));
+  assert.doesNotThrow(() => s.reorder(0, 1, 'trip-2'));
+  assert.doesNotThrow(() => s.removeNodeAt(0, 'trip-2'));
+  assert.doesNotThrow(() => s.setNodes('trip-1', [tokyo]));
+});
+
 test('plan trip nodes are kept ordered by start regardless of insertion order', () => {
   const s = createTripStore({ storage: fakeStorage() });
   const plan = s.ensurePlanTrip();

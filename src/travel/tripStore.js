@@ -14,6 +14,31 @@ const EMPTY = () => ({
   shortlist: [],
 });
 
+/** A node needs a finite lat/lng to be usable; everything else passes through. */
+function sanitizeNode(node) {
+  return node &&
+    typeof node === 'object' &&
+    Number.isFinite(node.lat) &&
+    Number.isFinite(node.lng)
+    ? node
+    : null;
+}
+
+/**
+ * Drop a trip that isn't an object with a string id, and drop any node
+ * within it that doesn't have a finite lat/lng. Guards against a valid-JSON
+ * blob (e.g. hand-edited or from an older/newer version) that would
+ * otherwise crash addNode/reorder/removeNodeAt/setNodes downstream.
+ */
+function sanitizeTrip(trip) {
+  if (!trip || typeof trip !== 'object' || typeof trip.id !== 'string')
+    return null;
+  const nodes = Array.isArray(trip.nodes)
+    ? trip.nodes.map(sanitizeNode).filter(Boolean)
+    : [];
+  return { ...trip, nodes };
+}
+
 export function createTripStore({ storage = globalThis.localStorage } = {}) {
   let state = load();
   const listeners = new Set();
@@ -27,7 +52,10 @@ export function createTripStore({ storage = globalThis.localStorage } = {}) {
         Array.isArray(parsed.trips) &&
         Array.isArray(parsed.shortlist)
       )
-        return parsed;
+        return {
+          ...parsed,
+          trips: parsed.trips.map(sanitizeTrip).filter(Boolean),
+        };
     } catch {
       /* corrupt or blocked storage: start empty */
     }
