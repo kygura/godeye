@@ -1,8 +1,9 @@
 # City Intel data pack
 
 Bundled reference data for the City Intel cockpit (docs/cockpit/SPEC.md §3).
-Built by `node scripts/build-city-intel.mjs`, which pins its upstream commit
-SHAs / access dates and records sha256 hashes in `source.json`.
+Built by `node scripts/build-city-intel.mjs`, which pins Natural Earth and
+OurAirports to a commit SHA (immutable raw URLs), and records sha256 hashes
++ access dates for the live World Bank and NASA POWER APIs, in `source.json`.
 
 | File | Contents |
 |---|---|
@@ -30,4 +31,5 @@ fails after retries.
 - World Bank WDI/WGI indicators and country list — CC BY 4.0, attribution "World Bank".
 - Seasonality — NASA POWER monthly climatology (2001-2020, MERRA-2), public data. "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program."
 
-See `source.json` for exact URLs, pinned commits/access dates and sha256 hashes.
+See `source.json` for exact URLs, pinned commits (Natural Earth, OurAirports),
+access dates (World Bank, NASA POWER — live APIs, not pinnable), and sha256 hashes.

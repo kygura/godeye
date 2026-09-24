@@ -3,13 +3,14 @@
  * Build src/data/local_data/city_intel/{cities,countries,seasonality,source}.json
  * for the City Intel pack (docs/cockpit/SPEC.md §3.1-3.2, §3.5 Seasonality v2).
  *
- * Sources (network at build time, pinned + hashed in source.json):
- *   - Natural Earth 10m populated places simple (public domain)
- *   - Natural Earth 110m admin-0 countries + tiny-countries (public domain)
- *   - OurAirports airports.csv (public domain)
- *   - World Bank WDI/WGI API v2 (CC BY 4.0, keyless)
- *   - NASA POWER monthly climatology API (public; acknowledgement requested),
- *     one call per unique (lat,lon), cached under .gev-cache/.
+ * Sources (network at build time, hashed in source.json):
+ *   - Natural Earth 10m populated places simple (public domain, pinned commit)
+ *   - Natural Earth 110m admin-0 countries + tiny-countries (public domain, pinned commit)
+ *   - OurAirports airports.csv (public domain, pinned commit)
+ *   - World Bank WDI/WGI API v2 (CC BY 4.0, keyless; live, not pinned — access-dated)
+ *   - NASA POWER monthly climatology API (public; acknowledgement requested;
+ *     live, not pinned — access-dated), one call per unique (lat,lon),
+ *     cached under .gev-cache/.
  *
  * Usage: node scripts/build-city-intel.mjs
  */
@@ -41,6 +42,13 @@ const DAYS_IN_MONTH = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 const NE_REPO = 'nvkelso/natural-earth-vector';
 const OURAIRPORTS_REPO = 'davidmegginson/ourairports-data';
+// Pinned commits (raw URLs by commit are immutable): NE 10m populated
+// places / 110m admin-0 + tiny-countries, and OurAirports airports.csv.
+// Run with --update-pins to fetch each repo's latest HEAD sha instead, then
+// paste the printed values in here.
+const NE_SHA = 'ca96624a56bd078437bca8184e78163e5039ad19';
+const OURAIRPORTS_SHA = '44d4715eca5a7b01b88f0be00ed62dcca309b633';
+const UPDATE_PINS = process.argv.includes('--update-pins');
 
 // NE ADM0_A3 codes that are not the ISO3 this pack needs (verified against the
 // World Bank country list — see docs/cockpit research + build console output).
@@ -194,6 +202,49 @@ function sha256(buf) {
   return createHash('sha256').update(buf).digest('hex');
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const round2 = (v) => Math.round(v * 100) / 100;
+
+const FETCH_TIMEOUT_MS = 20000;
+const FETCH_MAX_RETRIES = 3;
+
+/**
+ * fetch() with a timeout and retry/backoff, shared by cachedFetch and
+ * fetchPowerClimatology so both back off the same way against transient
+ * upstream/CDN hiccups (429, 5xx, timeouts, network errors). `validate`
+ * receives the ok response and may parse + throw to retry a
+ * malformed/incomplete body too; it defaults to returning the response.
+ */
+async function fetchWithRetry(
+  url,
+  {
+    headers,
+    maxRetries = FETCH_MAX_RETRIES,
+    timeoutMs = FETCH_TIMEOUT_MS,
+    validate = (res) => res,
+  } = {},
+) {
+  let lastError = 'unknown error';
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // eslint-disable-next-line no-await-in-loop
+      return await validate(res);
+    } catch (err) {
+      lastError = err.message;
+      if (attempt === maxRetries) throw new Error(lastError);
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(500 * 2 ** attempt);
+    }
+  }
+  throw new Error(lastError);
+}
+
 /** Fetch (or reuse a cached copy of) a URL, recording its provenance. */
 async function cachedFetch(url, cacheKey, { json = false } = {}) {
   mkdirSync(CACHE_DIR, { recursive: true });
@@ -204,17 +255,13 @@ async function cachedFetch(url, cacheKey, { json = false } = {}) {
     console.log(`cache hit: ${cacheKey}`);
   } catch {
     console.log(`fetching ${url}`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    const res = await fetchWithRetry(url);
     text = await res.text();
     writeFileSync(cachePath, text);
   }
   const hash = sha256(Buffer.from(text, 'utf8'));
   return { text, sha256: hash, data: json ? JSON.parse(text) : undefined };
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const round2 = (v) => Math.round(v * 100) / 100;
 
 /**
  * Fetch (or reuse a cached copy of) NASA POWER's monthly climatology for one
@@ -234,32 +281,23 @@ async function fetchPowerClimatology(lat, lon) {
   const url =
     `https://power.larc.nasa.gov/api/temporal/climatology/point` +
     `?parameters=T2M,PRECTOTCORR&community=RE&longitude=${lon}&latitude=${lat}&format=JSON`;
-  let lastError = 'unknown error';
-  for (let attempt = 0; attempt <= POWER_MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, {
-        headers: { 'user-agent': POWER_USER_AGENT },
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timer));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      // eslint-disable-next-line no-await-in-loop
-      const json = await res.json();
-      if (!json?.properties?.parameter?.T2M?.JAN) {
-        throw new Error('response missing T2M data');
-      }
-      writeFileSync(cachePath, JSON.stringify(json));
-      return { data: json };
-    } catch (err) {
-      lastError = err.message;
-      if (attempt === POWER_MAX_RETRIES) return { error: lastError };
-      // eslint-disable-next-line no-await-in-loop
-      await sleep(500 * 2 ** attempt);
-    }
+  try {
+    const json = await fetchWithRetry(url, {
+      headers: { 'user-agent': POWER_USER_AGENT },
+      maxRetries: POWER_MAX_RETRIES,
+      validate: async (res) => {
+        const body = await res.json();
+        if (!body?.properties?.parameter?.T2M?.JAN) {
+          throw new Error('response missing T2M data');
+        }
+        return body;
+      },
+    });
+    writeFileSync(cachePath, JSON.stringify(json));
+    return { data: json };
+  } catch (err) {
+    return { error: err.message };
   }
-  return { error: lastError };
 }
 
 async function ghLatestCommitSha(repo) {
@@ -341,7 +379,7 @@ async function main() {
   const anomalies = [];
 
   // --- Natural Earth (populated places + admin-0 + tiny-countries) ---
-  const neSha = await ghLatestCommitSha(NE_REPO);
+  const neSha = UPDATE_PINS ? await ghLatestCommitSha(NE_REPO) : NE_SHA;
   const rawBase = `https://raw.githubusercontent.com/${NE_REPO}/${neSha}/geojson`;
   const [places, admin0, tiny] = await Promise.all([
     cachedFetch(
@@ -362,7 +400,15 @@ async function main() {
   ]);
 
   // --- OurAirports ---
-  const airportsSha = await ghLatestCommitSha(OURAIRPORTS_REPO);
+  const airportsSha = UPDATE_PINS
+    ? await ghLatestCommitSha(OURAIRPORTS_REPO)
+    : OURAIRPORTS_SHA;
+  if (UPDATE_PINS)
+    console.log(
+      `--update-pins: latest HEAD shas (paste into NE_SHA / OURAIRPORTS_SHA)\n` +
+        `  NE_SHA = '${neSha}'\n` +
+        `  OURAIRPORTS_SHA = '${airportsSha}'`,
+    );
   const airportsRaw = await cachedFetch(
     `https://raw.githubusercontent.com/${OURAIRPORTS_REPO}/${airportsSha}/airports.csv`,
     'ourairports.csv',
@@ -757,8 +803,9 @@ async function main() {
     `# City Intel data pack
 
 Bundled reference data for the City Intel cockpit (docs/cockpit/SPEC.md §3).
-Built by \`node scripts/build-city-intel.mjs\`, which pins its upstream commit
-SHAs / access dates and records sha256 hashes in \`source.json\`.
+Built by \`node scripts/build-city-intel.mjs\`, which pins Natural Earth and
+OurAirports to a commit SHA (immutable raw URLs), and records sha256 hashes
++ access dates for the live World Bank and NASA POWER APIs, in \`source.json\`.
 
 | File | Contents |
 |---|---|
@@ -786,7 +833,8 @@ fails after retries.
 - World Bank WDI/WGI indicators and country list — CC BY 4.0, attribution "World Bank".
 - Seasonality — NASA POWER monthly climatology (2001-2020, MERRA-2), public data. "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program."
 
-See \`source.json\` for exact URLs, pinned commits/access dates and sha256 hashes.
+See \`source.json\` for exact URLs, pinned commits (Natural Earth, OurAirports),
+access dates (World Bank, NASA POWER — live APIs, not pinnable), and sha256 hashes.
 `,
   );
 
