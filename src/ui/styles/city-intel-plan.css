@@ -1,0 +1,305 @@
+/* ── City Intel · Lifestyle Plan (PLAN view) ──────────────────────────────
+   docs/cockpit/DESIGN.md §11, coordinator heatmap addendum. Tokens only from
+   city-intel.css (--ci-score-0..4, --ci-neutral, --ci-adv-*) plus GEV's
+   existing --glass-*, --accent, --text-*, --font-* tokens: no new colours. */
+
+.ci-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Profile block ── */
+.ci-home-row,
+.ci-spend-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+.ci-spend-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ci-spend-row .ci-section-label {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+.ci-spend-prefix,
+.ci-spend-suffix {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+#ci-spend {
+  max-width: 100px;
+}
+.ci-link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Seasonality heatmap (rows = plan cities, cols = months) ── */
+.ci-heat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ci-heat-months {
+  display: grid;
+  grid-template-columns: 72px repeat(12, 1fr);
+  gap: 1px;
+  margin-bottom: 2px;
+  padding-left: 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  text-align: center;
+}
+.ci-heat-months > span:first-child {
+  grid-column: 1 / 2;
+}
+.ci-heat-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 4px;
+}
+.ci-heat-row-label {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ci-heat-cells {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1px;
+}
+.ci-heat-cell {
+  height: 14px;
+  border-radius: 1px;
+  background: var(--ci-neutral);
+}
+.ci-heat-cell[data-bin='0'] {
+  background: var(--ci-score-0);
+}
+.ci-heat-cell[data-bin='1'] {
+  background: var(--ci-score-1);
+}
+.ci-heat-cell[data-bin='2'] {
+  background: var(--ci-score-2);
+}
+.ci-heat-cell[data-bin='3'] {
+  background: var(--ci-score-3);
+}
+.ci-heat-cell[data-bin='4'] {
+  background: var(--ci-score-4);
+}
+.ci-heat-cell[data-bin='missing'] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--ci-neutral) 0 2px,
+    transparent 2px 4px
+  );
+  background-color: transparent;
+}
+/* Chosen: the months that city is actually booked for. */
+.ci-heat-cell[data-chosen='true'] {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+/* Gap columns: months the whole plan leaves open. */
+.ci-heat-cell[data-gap='true'] {
+  border-top: 1px dashed var(--glass-border);
+  border-bottom: 1px dashed var(--glass-border);
+}
+
+/* ── Stays ── */
+.ci-stays {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ci-gap {
+  padding: 2px 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-align: center;
+  border-top: 1px dashed var(--glass-border);
+  border-bottom: 1px dashed var(--glass-border);
+}
+.ci-stay {
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.ci-stay-selected {
+  background: var(--accent-dim);
+  border-left: 2px solid var(--accent);
+}
+.ci-stay-head {
+  display: grid;
+  grid-template-columns: 22px 1fr 24px;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.ci-stay-title {
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ci-stay-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  outline-offset: -3px;
+}
+.ci-stay-remove:hover {
+  color: var(--ci-adv-4);
+}
+.ci-stay-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.ci-stay-when output {
+  overflow: hidden;
+  flex: 1 1 auto;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ci-stay-when select {
+  flex: 0 0 auto;
+  max-width: 84px;
+}
+.ci-stay-metric {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+.ci-stay-metric-label {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ci-stay-metric-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.ci-stay-override {
+  display: flex;
+  grid-column: 2 / 3;
+  align-items: center;
+  gap: 4px;
+  margin-left: 62px;
+}
+.ci-stay-override input {
+  width: 84px;
+  height: 22px;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.ci-stay-error {
+  margin: 2px 0 0 62px;
+  color: var(--ci-adv-4);
+  font-family: var(--font-sans);
+  font-size: 10px;
+}
+
+/* ── Rollup ── */
+.ci-rollup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ci-rollup-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 6px;
+}
+.ci-rollup-label {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ci-rollup-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── Reduced motion (DESIGN §9): heatmap/bars never transition ── */
+@media (prefers-reduced-motion: reduce) {
+  .ci-heat-cell,
+  .ci-stay {
+    transition: none;
+  }
+}
+
+/* ── Responsive (DESIGN §11.8): 12x1 timeline stays, selects sit 50/50,
+   rollup label column narrows to 84px ── */
+@media (max-width: 720px) {
+  .ci-stay-when select {
+    flex: 1 1 50%;
+    max-width: none;
+  }
+  .ci-rollup-row {
+    grid-template-columns: 84px 1fr;
+  }
+}
+
+/* ── Cyber re-skin: radii only, ramp/advisory colours are data ── */
+:root[data-ui-theme='cyber'] .ci-heat-cell,
+:root[data-ui-theme='cyber'] .ci-stay {
+  border-radius: 1px;
+}

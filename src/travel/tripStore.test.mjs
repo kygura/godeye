@@ -104,6 +104,33 @@ test('ensurePlanTrip creates the plan trip once, without stealing activeTripId, 
   assert.equal(s.getPlanTrip(), plan);
 });
 
+test('setNodes replaces a trip nodes in one commit, sorting plan trips by start', () => {
+  const storage = fakeStorage();
+  const s = createTripStore({ storage });
+  const plan = s.ensurePlanTrip();
+  let seen = 0;
+  s.subscribe(() => seen++);
+  const ok = s.setNodes(plan.id, [
+    { id: 'b', cityId: 'lima-peru', start: 6, len: 2, extra: 'x' },
+    { id: 'a', cityId: 'tokyo-japan', start: 1, len: 3 },
+  ]);
+  assert.equal(ok, true);
+  assert.equal(seen, 1);
+  assert.deepEqual(
+    s.getPlanTrip().nodes.map((n) => n.id),
+    ['a', 'b'],
+  );
+  assert.equal(s.getPlanTrip().nodes[1].extra, 'x');
+
+  const ordinary = s.createTrip();
+  assert.ok(s.setNodes(ordinary.id, [tokyo, lima]));
+  assert.deepEqual(
+    s.getActiveTrip().nodes.map((n) => n.name),
+    ['Tokyo', 'Lima'],
+  );
+  assert.equal(s.setNodes('does-not-exist', []), false);
+});
+
 test('plan trip nodes are kept ordered by start regardless of insertion order', () => {
   const s = createTripStore({ storage: fakeStorage() });
   const plan = s.ensurePlanTrip();

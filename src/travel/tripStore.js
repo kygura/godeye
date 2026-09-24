@@ -151,6 +151,23 @@ export function createTripStore({ storage = globalThis.localStorage } = {}) {
       commit();
       return true;
     },
+    /**
+     * Replace a trip's nodes wholesale, one commit. Extra fields on each
+     * node (e.g. a Lifestyle Plan stay's `start`/`len`) pass through as
+     * given; `kind: 'plan'` trips are kept ordered by `start`.
+     * @param {string} tripId
+     * @param {object[]} nodes
+     * @returns {boolean} false when the trip does not exist
+     */
+    setNodes(tripId, nodes) {
+      const t = trip(tripId);
+      if (!t) return false;
+      const next = [...(nodes || [])];
+      t.nodes =
+        t.kind === 'plan' ? next.sort((a, b) => a.start - b.start) : next;
+      commit();
+      return true;
+    },
     toggleShortlist(cityId) {
       const i = state.shortlist.indexOf(cityId);
       if (i >= 0) state.shortlist.splice(i, 1);

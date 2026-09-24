@@ -4,6 +4,7 @@ import {
   estimateFlightHours,
   haversineKm,
 } from '../../travel/geo.js';
+import { spanLabel } from '../cityIntel/plan.js';
 
 /** Connecting hubs for legs beyond nonstop range. */
 export const FLIGHT_HUBS = Object.freeze([
@@ -35,7 +36,37 @@ export function tripLegs(trip, hubs = FLIGHT_HUBS) {
       hours: estimateFlightHours(path.distanceKm),
     });
   }
+  // A Lifestyle Plan (DESIGN §10) only closes its loop back to the first
+  // stay once every month is spoken for; the store never holds overlaps,
+  // so a len sum of 12 is exactly "fully covered".
+  if (
+    trip?.kind === 'plan' &&
+    nodes.length > 1 &&
+    nodes.reduce((sum, n) => sum + (n.len || 0), 0) === 12
+  ) {
+    const last = nodes[nodes.length - 1];
+    const first = nodes[0];
+    const path = flightPath([last.lng, last.lat], [first.lng, first.lat], hubs);
+    legs.push({
+      from: last,
+      to: first,
+      ...path,
+      hours: estimateFlightHours(path.distanceKm),
+    });
+  }
   return legs;
+}
+
+/**
+ * Pure: the label drawn at a trip stop. Plan trips (DESIGN §10) show the
+ * stay's month span ("NOV–FEB LIS") instead of a running index ("1 LIS").
+ */
+export function nodeLabelText(trip, node, index) {
+  if (trip?.kind === 'plan') {
+    const span = spanLabel(node).split(' · ')[0];
+    return `${span} ${node.iata || node.name}`;
+  }
+  return `${index + 1} ${node.iata || node.name}`;
 }
 
 /** Pure row chips for the Trips row. */
@@ -121,7 +152,7 @@ export function createTripsLayer({ store, camera = null } = {}) {
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         label: {
-          text: `${i + 1} ${n.iata || n.name}`,
+          text: nodeLabelText(trip, n, i),
           font: '12px JetBrains Mono, monospace',
           fillColor: Cesium.Color.WHITE,
           outlineColor: Cesium.Color.BLACK,
@@ -229,7 +260,11 @@ export function createTripsLayer({ store, camera = null } = {}) {
       if (params.fly) fly();
       if (params.clear) {
         const trip = store.getActiveTrip();
-        if (trip) store.removeTrip(trip.id);
+        if (!trip) return;
+        // The Lifestyle Plan is the single kind:'plan' trip (DESIGN §10):
+        // CLEAR empties its stays, it never deletes the plan itself.
+        if (trip.kind === 'plan') store.clearTrip(trip.id);
+        else store.removeTrip(trip.id);
       }
     },
     getParams() {

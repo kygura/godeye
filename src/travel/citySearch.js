@@ -12,17 +12,23 @@ function rank(c) {
   return s + Math.min(99, Math.floor((c.pop || 0) / 200000));
 }
 
+/** Case- and diacritic-folded compare key ("Medellín" / "medellin" match). */
+const norm = (s) =>
+  String(s || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
 /**
  * @param {Array} cities
  * @param {string} query
  * @param {number} limit
  */
 export function searchCities(cities, query, limit = 40) {
-  const q = String(query || '')
-    .trim()
-    .toLowerCase();
+  const q = norm(query);
   if (!q) return [];
-  const inCountry = (c) => c.country.toLowerCase().startsWith(q);
+  const inCountry = (c) => norm(c.country).startsWith(q);
   if (q.length >= 4 && cities.some(inCountry)) {
     return cities
       .filter(inCountry)
@@ -32,12 +38,12 @@ export function searchCities(cities, query, limit = 40) {
   }
   const scored = [];
   for (const c of cities) {
-    const name = c.name.toLowerCase();
+    const name = norm(c.name);
     let s = -1;
-    if (name === q || c.airport?.iata?.toLowerCase() === q) s = 3000;
+    if (name === q || norm(c.airport?.iata) === q) s = 3000;
     else if (name.startsWith(q)) s = 2000;
     else if (name.includes(q)) s = 1000;
-    else if (c.country.toLowerCase().includes(q)) s = 500;
+    else if (norm(c.country).includes(q)) s = 500;
     if (s >= 0) scored.push({ c, s: s + rank(c) });
   }
   return scored
