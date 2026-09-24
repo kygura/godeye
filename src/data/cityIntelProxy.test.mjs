@@ -104,6 +104,27 @@ test('parseAdvisories rejects a non-array payload', () => {
   assert.throws(() => parseAdvisories({}));
 });
 
+test('parseAdvisories drops unsafe Link protocols (javascript:/data:), keeps http(s)', () => {
+  const record = (link) =>
+    advisory({
+      Title: 'Greece - Level 2: Exercise Increased Caution',
+      Category: ['GR'],
+      Link: link,
+    });
+  assert.equal(
+    parseAdvisories([record('javascript:alert(1)')]).byIso3.GRC.url,
+    '',
+  );
+  assert.equal(
+    parseAdvisories([record('data:text/html,<script>1</script>')]).byIso3.GRC
+      .url,
+    '',
+  );
+  const safe =
+    'https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/greece-travel-advisory.html';
+  assert.equal(parseAdvisories([record(safe)]).byIso3.GRC.url, safe);
+});
+
 test('visa CSV: numeric max-stay, -1 sentinel and lowercased strings; invalid rows skipped', () => {
   const csv = [
     'Passport,Destination,Requirement',
@@ -148,6 +169,24 @@ test('ZORI CSV: quoted comma-bearing names, hyphen-split principal, per-metro la
   assert.equal(dfw.month, '2024-03');
 });
 
+test('ZORI CSV: columns validated by header name, order-independent; missing header throws', () => {
+  const reordered = [
+    'StateName,RegionType,RegionName,SizeRank,RegionID,2024-01-31',
+    'NY,msa,"New York, NY",1,1,2010',
+  ].join('\n');
+  const { metros } = parseZoriCsv(reordered);
+  assert.equal(metros.length, 1);
+  assert.equal(metros[0].regionId, '1');
+  assert.equal(metros[0].state, 'NY');
+  assert.equal(metros[0].zori, 2010);
+
+  const missingHeader = [
+    'RegionID,SizeRank,RegionName,RegionType,2024-01-31', // no StateName
+    '1,1,"New York, NY",msa,2010',
+  ].join('\n');
+  assert.throws(() => parseZoriCsv(missingHeader));
+});
+
 test('air quality: parses current reading and units, echoes back the requested (rounded) coordinates', () => {
   const payload = {
     current: { time: '2026-09-24T11:00', pm2_5: 11.5, european_aqi: 40 },
@@ -189,7 +228,7 @@ function install(options = {}) {
       },
     },
   });
-  const request = (url = '/advisories', method = 'GET') => {
+  const makeRes = () => {
     const res = new EventEmitter();
     res.writeHead = (code, headers) => {
       res.statusCode = code;
@@ -198,10 +237,23 @@ function install(options = {}) {
     res.end = (body) => {
       res.body = body;
     };
+    return res;
+  };
+  const request = (url = '/advisories', method = 'GET') => {
+    const res = makeRes();
     return handler({ url, method }, res).then(() => res);
+  };
+  // Like `request`, but returns immediately with the raw `res` (an
+  // EventEmitter) alongside the still-pending completion promise, so a test
+  // can simulate the client going away mid-flight via `res.emit('close')`.
+  const requestRaw = (url = '/advisories', method = 'GET') => {
+    const res = makeRes();
+    const done = handler({ url, method }, res).then(() => res);
+    return { res, done };
   };
   return {
     request,
+    requestRaw,
     cleanup: () => rmSync(cacheDir, { recursive: true, force: true }),
   };
 }
@@ -331,6 +383,96 @@ test('method and route rejection: POST is 405, unknown sub-route is 404', async 
     assert.equal(posted.statusCode, 405);
     assert.equal(body(posted).error, 'method-not-allowed');
     assert.equal((await request('/nope')).statusCode, 404);
+  } finally {
+    cleanup();
+  }
+});
+
+test('single-flight: a disconnecting client does not abort the shared refresh for a concurrent rider', async () => {
+  const calls = [];
+  let resolveAdvisories;
+  const gate = new Promise((resolve) => {
+    resolveAdvisories = resolve;
+  });
+  const fetchImpl = async (url) => {
+    calls.push(String(url));
+    await gate;
+    return Response.json(ADVISORY_FIXTURE);
+  };
+  // No disk cache, so both requests reach the single-flight check on the
+  // same tick instead of racing on a real fs read.
+  const { requestRaw, cleanup } = install({ fetchImpl, cacheDir: null });
+  try {
+    const first = requestRaw('/advisories');
+    const second = requestRaw('/advisories');
+    // Let both requests reach the shared inflight/race point before either
+    // upstream call or client disconnect happens.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1, 'single-flight: one upstream call started');
+
+    first.res.emit('close'); // first client goes away mid-refresh
+    resolveAdvisories(); // shared upstream call now completes
+
+    const secondRes = body(await second.done);
+    assert.equal(secondRes.ok, true);
+    assert.equal(secondRes.data.byIso3.DEU.level, 2);
+    assert.equal(
+      calls.length,
+      1,
+      "first client's disconnect must not trigger a second upstream call",
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test('failure cooldown: stops hammering upstream after a failed refresh, doubles on repeats, resets on success', async () => {
+  let clock = 1_000_000;
+  const calls = [];
+  let impl = stubFetch(calls);
+  const { request, cleanup } = install({
+    fetchImpl: (...args) => impl(...args),
+    now: () => clock,
+  });
+  try {
+    const first = body(await request('/advisories'));
+    assert.equal(first.stale, false);
+    assert.equal(calls.length, 1);
+
+    // TTL elapses, upstream starts failing.
+    clock += 6 * 3600_000 + 1;
+    impl = async (url) => {
+      calls.push(String(url));
+      throw new Error('simulated upstream failure');
+    };
+    const failed1 = body(await request('/advisories'));
+    assert.equal(failed1.stale, true);
+    assert.equal(calls.length, 2, 'first failed refresh attempt');
+
+    // Still within the 60s base cooldown: no new upstream call at all.
+    clock += 30_000;
+    const cooling = body(await request('/advisories'));
+    assert.equal(cooling.stale, true);
+    assert.equal(calls.length, 2, 'cooldown skips upstream entirely');
+
+    // Past 60s: retries, fails again, cooldown doubles to ~120s.
+    clock += 31_000;
+    const failed2 = body(await request('/advisories'));
+    assert.equal(failed2.stale, true);
+    assert.equal(calls.length, 3);
+
+    // 61s after the second failure: still within the doubled cooldown.
+    clock += 61_000;
+    const stillCooling = body(await request('/advisories'));
+    assert.equal(stillCooling.stale, true);
+    assert.equal(calls.length, 3, 'doubled cooldown still active');
+
+    // Past 120s: retries and this time succeeds -> cooldown resets.
+    clock += 60_000;
+    impl = stubFetch(calls);
+    const recovered = body(await request('/advisories'));
+    assert.equal(recovered.stale, false);
+    assert.equal(calls.length, 4);
   } finally {
     cleanup();
   }

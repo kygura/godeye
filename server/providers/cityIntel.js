@@ -248,6 +248,18 @@ const FIPS_TO_ISO3 = Object.freeze({
 const SLUG_ISO3_RE = /destination\.([a-zA-Z]{3})\.html$/;
 const LEVEL_RE = /Level\s+(\d+)\s*:\s*([^-]+)/i;
 
+/** Keep a Link only if it parses as an http(s) URL; drops javascript:/data:
+ * and anything else that isn't safe to hand back to a client as a link. */
+function safeHttpUrl(link) {
+  if (typeof link !== 'string') return '';
+  try {
+    const { protocol } = new URL(link);
+    return protocol === 'https:' || protocol === 'http:' ? link : '';
+  } catch {
+    return '';
+  }
+}
+
 /** Resolve one advisory record's ISO3, or null when it can't be determined. */
 function advisoryIso3(record) {
   const link = typeof record?.Link === 'string' ? record.Link : '';
@@ -290,7 +302,7 @@ export function parseAdvisories(payload) {
       level,
       title: `Level ${level}: ${levelMatch[2].trim()}`,
       updated,
-      url: typeof record.Link === 'string' ? record.Link : '',
+      url: safeHttpUrl(record.Link),
     };
   }
   return { byIso3 };
@@ -363,15 +375,23 @@ export function parseZoriCsv(text) {
   const rows = parseCsv(text);
   if (rows.length < 2) throw invalid('empty zori csv');
   const [header, ...body] = rows;
+  const cols = header.map((h) => h.trim().toLowerCase());
+  const regionIdIdx = cols.indexOf('regionid');
+  const sizeRankIdx = cols.indexOf('sizerank');
+  const nameIdx = cols.indexOf('regionname');
+  const typeIdx = cols.indexOf('regiontype');
+  const stateIdx = cols.indexOf('statename');
+  if ([regionIdIdx, sizeRankIdx, nameIdx, typeIdx, stateIdx].some((i) => i < 0))
+    throw invalid('unexpected zori csv header');
   const monthCols = [];
-  for (let i = 5; i < header.length; i++) {
-    if (MONTH_COL_RE.test(header[i])) monthCols.push(i);
+  for (let i = 0; i < header.length; i++) {
+    if (MONTH_COL_RE.test(header[i].trim())) monthCols.push(i);
   }
   if (!monthCols.length) throw invalid('no zori month columns');
-  const latestMonth = header[monthCols.at(-1)].slice(0, 7);
+  const latestMonth = header[monthCols.at(-1)].trim().slice(0, 7);
   const metros = [];
   for (const row of body) {
-    if (row[3] === 'country' || !row[2]) continue;
+    if (row[typeIdx] === 'country' || !row[nameIdx]) continue;
     let zori = null;
     let month = null;
     for (let i = monthCols.length - 1; i >= 0; i--) {
@@ -380,20 +400,20 @@ export function parseZoriCsv(text) {
       const v = Number(raw);
       if (Number.isFinite(v)) {
         zori = Math.round(v);
-        month = header[monthCols[i]].slice(0, 7);
+        month = header[monthCols[i]].trim().slice(0, 7);
         break;
       }
     }
     if (zori === null) continue;
-    const name = row[2];
+    const name = row[nameIdx];
     const beforeComma = name.split(',')[0].trim();
     const principal = beforeComma.split('-')[0].trim();
-    const sizeRank = Number(row[1]);
+    const sizeRank = Number(row[sizeRankIdx]);
     metros.push({
-      regionId: row[0],
+      regionId: row[regionIdIdx],
       name,
       principal,
-      state: row[4] || null,
+      state: row[stateIdx] || null,
       sizeRank: Number.isFinite(sizeRank) ? sizeRank : null,
       zori,
       month,
@@ -442,15 +462,75 @@ export function parseAirResponse(payload, lat, lon) {
 // Cache plumbing: mem + single-flight + disk, serve-stale on upstream failure
 // ---------------------------------------------------------------------------
 
+const COOLDOWN_BASE_MS = 60_000;
+const COOLDOWN_MAX_MS = 15 * 60_000;
+
+/**
+ * Failure cooldown: once a shared refresh fails, callers skip hitting
+ * upstream again until the cooldown lapses (serving stale/502 instead), so a
+ * failing or rate-limiting upstream isn't hammered by every request that
+ * arrives after the TTL expires. The window doubles on each consecutive
+ * failure (capped) and resets on the next success.
+ */
+function makeFailureCooldown(now) {
+  let failedAt = null;
+  let streak = 0;
+  return {
+    active() {
+      if (failedAt === null) return false;
+      const windowMs = Math.min(
+        COOLDOWN_BASE_MS * 2 ** Math.max(0, streak - 1),
+        COOLDOWN_MAX_MS,
+      );
+      return now() - failedAt < windowMs;
+    },
+    recordFailure() {
+      streak += 1;
+      failedAt = now();
+    },
+    recordSuccess() {
+      streak = 0;
+      failedAt = null;
+    },
+  };
+}
+
+const CLIENT_GONE = Symbol('client-gone');
+
+/**
+ * Race one rider's own liveness (its socket close or per-request timeout)
+ * against a shared single-flight promise, without ever aborting that shared
+ * promise. This is what keeps one client disconnecting from taking the
+ * upstream refresh down for every other concurrent rider still waiting on it.
+ */
+function raceClientAbort(sharedPromise, clientSignal) {
+  if (!clientSignal) return sharedPromise;
+  if (clientSignal.aborted) return Promise.resolve(CLIENT_GONE);
+  return new Promise((resolve) => {
+    const onAbort = () => resolve(CLIENT_GONE);
+    clientSignal.addEventListener('abort', onAbort, { once: true });
+    sharedPromise.then((value) => {
+      clientSignal.removeEventListener('abort', onAbort);
+      resolve(value);
+    });
+  });
+}
+
 /**
  * One cached resource (advisories / visa / rent): memory + optional disk
  * cache, single-flight refresh, serve-stale when refresh fails.
+ *
+ * The shared refresh gets its own timeout-only AbortSignal, independent of
+ * any particular client -- it is never tied to (and never aborted by) the
+ * request that happens to start it. Each caller instead races its own
+ * `clientSignal` (that request's close/timeout) against the shared promise.
  */
 function makeResourceCache({ file, ttlMs, cacheDir, now }) {
   const diskPath = cacheDir ? path.join(cacheDir, file) : null;
   let mem = null; // {at, data}
   let diskChecked = false;
   let inflight = null;
+  const cooldown = makeFailureCooldown(now);
 
   async function readDiskOnce() {
     if (diskChecked || !diskPath) return;
@@ -477,16 +557,26 @@ function makeResourceCache({ file, ttlMs, cacheDir, now }) {
     }
   }
 
-  /** @returns {Promise<{data: *, fetchedAt: number, stale: boolean}|null>} null = nothing usable at all */
-  async function get(refresh) {
+  /**
+   * @param {(signal: AbortSignal) => Promise<*>} refresh upstream fetch, given
+   *   the shared refresh's own timeout-only signal (not any client's)
+   * @param {AbortSignal} [clientSignal] this caller's own close/timeout
+   * @returns {Promise<{data: *, fetchedAt: number, stale: boolean}|null>} null = nothing usable at all
+   */
+  async function get(refresh, clientSignal) {
     await readDiskOnce();
     if (mem && now() - mem.at < ttlMs)
       return { data: mem.data, fetchedAt: mem.at, stale: false };
     if (!inflight) {
-      inflight = refresh()
+      if (cooldown.active())
+        return mem ? { data: mem.data, fetchedAt: mem.at, stale: true } : null;
+      const refreshController = new AbortController();
+      const timer = setTimeout(() => refreshController.abort(), TIMEOUT_MS);
+      inflight = refresh(refreshController.signal)
         .then(async (data) => {
           const entry = { at: now(), data };
           mem = entry;
+          cooldown.recordSuccess();
           await writeDisk(entry);
           return entry;
         })
@@ -495,40 +585,55 @@ function makeResourceCache({ file, ttlMs, cacheDir, now }) {
             `[city-intel] ${file} refresh failed:`,
             err?.message || err,
           );
+          cooldown.recordFailure();
           return null;
         })
         .finally(() => {
+          clearTimeout(timer);
           inflight = null;
         });
     }
-    const fresh = await inflight;
-    if (fresh) return { data: fresh.data, fetchedAt: fresh.at, stale: false };
-    if (mem) return { data: mem.data, fetchedAt: mem.at, stale: true };
-    return null;
+    const fresh = await raceClientAbort(inflight, clientSignal);
+    if (fresh === CLIENT_GONE || !fresh)
+      return mem ? { data: mem.data, fetchedAt: mem.at, stale: true } : null;
+    return { data: fresh.data, fetchedAt: fresh.at, stale: false };
   }
 
   return { get };
 }
 
-/** Bounded per-key cache for the air-quality route (no disk cache — 1 h TTL). */
+/** Bounded per-key cache for the air-quality route (no disk cache — 1 h TTL).
+ * Same single-flight-isolation and failure-cooldown shape as
+ * makeResourceCache, above, but keyed and capped in memory only. */
 function makeKeyedCache({ ttlMs, maxEntries, now }) {
   const mem = new Map(); // key -> {at, data}
   const inflight = new Map(); // key -> Promise
+  const cooldown = makeFailureCooldown(now);
 
-  async function get(key, refresh) {
+  /**
+   * @param {string} key
+   * @param {(signal: AbortSignal) => Promise<*>} refresh
+   * @param {AbortSignal} [clientSignal]
+   */
+  async function get(key, refresh, clientSignal) {
     const cached = mem.get(key);
     if (cached && now() - cached.at < ttlMs)
       return { data: cached.data, stale: false };
     if (!inflight.has(key)) {
+      if (cooldown.active())
+        return cached ? { data: cached.data, stale: true } : null;
+      const refreshController = new AbortController();
+      const timer = setTimeout(() => refreshController.abort(), TIMEOUT_MS);
       inflight.set(
         key,
-        refresh()
+        refresh(refreshController.signal)
           .then((data) => {
             const entry = { at: now(), data };
             if (!mem.has(key) && mem.size >= maxEntries) {
               mem.delete(mem.keys().next().value); // evict oldest
             }
             mem.set(key, entry);
+            cooldown.recordSuccess();
             return entry;
           })
           .catch((err) => {
@@ -536,17 +641,19 @@ function makeKeyedCache({ ttlMs, maxEntries, now }) {
               '[city-intel] air refresh failed:',
               err?.message || err,
             );
+            cooldown.recordFailure();
             return null;
           })
           .finally(() => {
+            clearTimeout(timer);
             inflight.delete(key);
           }),
       );
     }
-    const fresh = await inflight.get(key);
-    if (fresh) return { data: fresh.data, stale: false };
-    if (cached) return { data: cached.data, stale: true };
-    return null;
+    const fresh = await raceClientAbort(inflight.get(key), clientSignal);
+    if (fresh === CLIENT_GONE || !fresh)
+      return cached ? { data: cached.data, stale: true } : null;
+    return { data: fresh.data, stale: false };
   }
 
   return { get };
@@ -694,8 +801,9 @@ export function cityIntelProxy({
         const subPath = parsedUrl.pathname;
 
         if (subPath === '/advisories') {
-          const result = await advisoriesCache.get(() =>
-            refreshAdvisories(controller.signal),
+          const result = await advisoriesCache.get(
+            refreshAdvisories,
+            controller.signal,
           );
           if (!result)
             return sendJson(502, upstreamUnavailable(SOURCES.advisories));
@@ -716,9 +824,7 @@ export function cityIntelProxy({
             .toUpperCase();
           if (!isValidPassport(passport))
             return sendJson(400, { ok: false, error: 'invalid-passport' });
-          const result = await visaCache.get(() =>
-            refreshVisa(controller.signal),
-          );
+          const result = await visaCache.get(refreshVisa, controller.signal);
           if (!result) return sendJson(502, upstreamUnavailable(SOURCES.visa));
           const sliced = sliceVisa(result.data.byPassport, passport);
           if (!sliced)
@@ -735,9 +841,7 @@ export function cityIntelProxy({
         }
 
         if (subPath === '/rent') {
-          const result = await rentCache.get(() =>
-            refreshRent(controller.signal),
-          );
+          const result = await rentCache.get(refreshRent, controller.signal);
           if (!result) return sendJson(502, upstreamUnavailable(SOURCES.rent));
           return sendJson(
             200,
@@ -753,8 +857,10 @@ export function cityIntelProxy({
           if (!isValidLat(lat) || !isValidLon(lon))
             return sendJson(400, { ok: false, error: 'invalid-coordinates' });
           const key = `${lat},${lon}`;
-          const result = await airCache.get(key, () =>
-            refreshAir(lat, lon, controller.signal),
+          const result = await airCache.get(
+            key,
+            (signal) => refreshAir(lat, lon, signal),
+            controller.signal,
           );
           if (!result) return sendJson(502, upstreamUnavailable(SOURCES.air));
           return sendJson(
