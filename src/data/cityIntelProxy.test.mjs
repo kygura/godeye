@@ -8,7 +8,6 @@ import {
   cityIntelProxy,
   parseAdvisories,
   parseVisaCsv,
-  sliceVisa,
   isValidPassport,
   parseZoriCsv,
   parseAirResponse,
@@ -135,11 +134,14 @@ test('visa CSV: numeric max-stay, -1 sentinel and lowercased strings; invalid ro
     'XY,USA,10', // invalid passport (2 chars) -> skipped
   ].join('\n');
   const byPassport = parseVisaCsv(csv);
-  assert.deepEqual(sliceVisa(byPassport, 'PRT'), {
-    byDest: { ALB: 90, AND: 'visa free', USA: 'eta', ZZZ: -1 },
+  assert.deepEqual(byPassport.PRT, {
+    ALB: 90,
+    AND: 'visa free',
+    USA: 'eta',
+    ZZZ: -1,
   });
-  assert.equal(sliceVisa(byPassport, 'XY'), null);
-  assert.equal(sliceVisa(byPassport, 'ZZZ'), null, 'unknown passport');
+  assert.equal(byPassport.XY, undefined, 'invalid passport row skipped');
+  assert.equal(byPassport.ZZZ, undefined, 'unknown passport');
   assert.equal(isValidPassport('PRT'), true);
   assert.equal(isValidPassport('prt'), false);
   assert.equal(isValidPassport('PR'), false);

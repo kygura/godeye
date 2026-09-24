@@ -48,7 +48,12 @@ const PACK_FILES = Object.freeze({
   }),
 });
 
-const loadPack = createRetryableLoader(async () => {
+/**
+ * Load the City Intel bundled pack (lazy, cached, retryable): the city
+ * roster, the per-country indicator set, and the seasonality seed.
+ * @returns {Promise<{cities: object[], countries: object, seasonality: object}>}
+ */
+export const loadCityIntelPack = createRetryableLoader(async () => {
   const [cities, countries, seasonality] = await Promise.all(
     Object.values(PACK_FILES).map((file) =>
       loadBundledJson(file.url, file.importJson),
@@ -56,15 +61,6 @@ const loadPack = createRetryableLoader(async () => {
   );
   return { cities: cities.cities, countries, seasonality };
 });
-
-/**
- * Load the City Intel bundled pack (lazy, cached, retryable): the city
- * roster, the per-country indicator set, and the seasonality seed.
- * @returns {Promise<{cities: object[], countries: object, seasonality: object}>}
- */
-export function loadCityIntelPack() {
-  return loadPack();
-}
 
 // ---------------------------------------------------------------------------
 // Live client: `/api/city-intel/*` (server/providers/cityIntel.js)
@@ -99,29 +95,24 @@ async function getJson(path, { signal } = {}) {
 
 /**
  * US State Dept travel advisories, keyed by ISO3.
- * @param {{signal?: AbortSignal}} [options]
  */
-export function fetchAdvisories({ signal } = {}) {
-  return getJson('/advisories', { signal });
+export function fetchAdvisories() {
+  return getJson('/advisories');
 }
 
 /**
  * Visa access from one passport to every destination.
  * @param {string} passport ISO3 passport code.
- * @param {{signal?: AbortSignal}} [options]
  */
-export function fetchVisa(passport, { signal } = {}) {
-  return getJson(`/visa?passport=${encodeURIComponent(passport)}`, {
-    signal,
-  });
+export function fetchVisa(passport) {
+  return getJson(`/visa?passport=${encodeURIComponent(passport)}`);
 }
 
 /**
  * Latest Zillow ZORI metro rent index (US only).
- * @param {{signal?: AbortSignal}} [options]
  */
-export function fetchRent({ signal } = {}) {
-  return getJson('/rent', { signal });
+export function fetchRent() {
+  return getJson('/rent');
 }
 
 /**

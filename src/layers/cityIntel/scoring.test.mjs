@@ -388,7 +388,6 @@ test('ranking groups by country, flat mode and filters', () => {
       .sort();
   assert.deepEqual(ids({ continent: 'Asia' }), ['b1', 'c1']);
   assert.deepEqual(ids({ minPop: 4e6 }), ['a-big', 'a-tie', 'c1']);
-  assert.deepEqual(ids({ minPillars: 5 }), []);
   const advisories = { CCC: { level: 4 }, BBB: { level: 2 } };
   assert.deepEqual(ids({ hideAdvisoryLevelAtLeast: 3, advisories }), [
     'a-big',

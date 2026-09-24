@@ -1,4 +1,5 @@
 import { regionalDistanceM, weatherCodeLabel } from '../data/regionalModel.js';
+import { pointInRing } from '../data/naturalEarthRegions.js';
 
 export const STATUS_ORDER = Object.freeze([
   'low',
@@ -74,20 +75,6 @@ export function inNhcCoverage(dest) {
   return dest.lat >= 0 && dest.lat <= 65 && dest.lon >= -180 && dest.lon <= 5;
 }
 
-function insideRing(point, ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i];
-    const [xj, yj] = ring[j];
-    if (
-      yi > point.lat !== yj > point.lat &&
-      point.lon < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi
-    )
-      inside = !inside;
-  }
-  return inside;
-}
-
 /** Nearest approach of a storm's position, forecast points or cone to `dest`. */
 export function stormDistanceKm(storm, dest) {
   const points = [
@@ -103,7 +90,7 @@ export function stormDistanceKm(storm, dest) {
         ? storm.cone.coordinates
         : [];
   for (const rings of polygons) {
-    if (insideRing(dest, rings[0])) return 0;
+    if (pointInRing(rings[0], dest.lat, dest.lon)) return 0;
     for (const [lon, lat] of rings[0]) points.push({ lat, lon });
   }
   return Math.min(Infinity, ...points.map((p) => distanceKm(dest, p)));

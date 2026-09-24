@@ -66,22 +66,27 @@ export function firstFreeMonth(stays) {
 }
 
 /**
- * Split the year into `n` stays of even length, remainder to the earliest.
- * e.g. 5 -> [3, 3, 2, 2, 2].
- * @param {number} n 1..12
+ * Split `total` months (default: the whole year) into `n` stays of even
+ * length, remainder to the earliest, starting at month `start` (default
+ * January) and wrapping past December. e.g. evenSplit(5) -> [3, 3, 2, 2, 2].
+ * @param {number} n 1..total
+ * @param {number} [total=12] months to split, 1..12
+ * @param {number} [start=1] starting month, 1..12
  * @returns {Array<{start: number, len: number}>} in order, no cityId
  */
-export function evenSplit(n) {
-  if (!Number.isInteger(n) || n < 1 || n > 12)
-    throw new RangeError('evenSplit needs an integer stay count from 1 to 12');
-  const base = Math.floor(12 / n);
-  const remainder = 12 % n;
+export function evenSplit(n, total = 12, start = 1) {
+  if (!Number.isInteger(n) || n < 1 || n > total)
+    throw new RangeError(
+      `evenSplit needs an integer stay count from 1 to ${total}`,
+    );
+  const base = Math.floor(total / n);
+  const remainder = total % n;
   const stays = [];
-  let start = 1;
+  let s = start;
   for (let i = 0; i < n; i++) {
     const len = base + (i < remainder ? 1 : 0);
-    stays.push({ start, len });
-    start += len;
+    stays.push({ start: ((s - 1) % 12) + 1, len });
+    s += len;
   }
   return stays;
 }
@@ -178,70 +183,35 @@ function stayCost(stay, iso3, ctx) {
     homeMetric.v !== 0
       ? stayMetric.v / homeMetric.v
       : null;
-  const ratioYears = {
-    stay: stayMetric?.y ?? null,
-    home: homeMetric?.y ?? null,
-  };
+  // Without a home city, the stay's own price-level year is not reported
+  // either — a lone ratioYears.stay with no home to compare against would
+  // be a half-answer no basis actually gives.
+  const ratioYears = profile.homeCityId
+    ? { stay: stayMetric?.y ?? null, home: homeMetric?.y ?? null }
+    : { stay: null, home: null };
 
-  if (!profile.homeCityId) {
-    return override !== null
-      ? {
-          ratio: null,
-          ratioYears: { stay: null, home: null },
-          estimateUsd: null,
-          override,
-          basis: 'override',
-          label: COST_LABELS.override,
-          rentInfo,
-        }
-      : {
-          ratio: null,
-          ratioYears: { stay: null, home: null },
-          estimateUsd: null,
-          override: null,
-          basis: 'no-home',
-          label: COST_LABELS['no-home'],
-          rentInfo,
-        };
-  }
-  if (override !== null)
-    return {
-      ratio,
-      ratioYears,
-      estimateUsd: null,
-      override,
-      basis: 'override',
-      label: COST_LABELS.override,
-      rentInfo,
-    };
-  if (ratio === null)
-    return {
-      ratio: null,
-      ratioYears,
-      estimateUsd: null,
-      override: null,
-      basis: 'unavailable',
-      label: COST_LABELS.unavailable,
-      rentInfo,
-    };
-  if (!Number.isFinite(profile.monthlySpendUsd))
-    return {
-      ratio,
-      ratioYears,
-      estimateUsd: null,
-      override: null,
-      basis: 'ratio-only',
-      label: COST_LABELS['ratio-only'],
-      rentInfo,
-    };
-  const estimateUsd = Math.round((profile.monthlySpendUsd * ratio) / 10) * 10;
+  const basis =
+    override !== null
+      ? 'override'
+      : !profile.homeCityId
+        ? 'no-home'
+        : ratio === null
+          ? 'unavailable'
+          : !Number.isFinite(profile.monthlySpendUsd)
+            ? 'ratio-only'
+            : 'estimate';
+  const estimateUsd =
+    basis === 'estimate'
+      ? Math.round((profile.monthlySpendUsd * ratio) / 10) * 10
+      : null;
+
   return {
     ratio,
     ratioYears,
     estimateUsd,
-    override: null,
-    basis: 'estimate',
-    label: COST_LABELS.estimate,
+    override,
+    basis,
+    label: COST_LABELS[basis],
     rentInfo,
   };
 }
@@ -269,47 +239,26 @@ function stayComfort(stay, seasonality) {
  */
 function stayVisa(stay, iso3, visa) {
   const stayDays = stay.len * 30;
-  if (!visa)
-    return {
-      status: 'no-passport',
-      allowanceDays: null,
-      stayDays,
-      requirement: null,
-    };
-  if (visa.offline)
-    return {
-      status: 'offline',
-      allowanceDays: null,
-      stayDays,
-      requirement: null,
-    };
+  const base = { allowanceDays: null, stayDays, requirement: null };
+
+  if (!visa) return { ...base, status: 'no-passport' };
+  if (visa.offline) return { ...base, status: 'offline' };
+
   const raw = iso3 ? visa.byDest?.[iso3] : undefined;
-  if (raw === undefined)
-    return {
-      status: 'unknown',
-      allowanceDays: null,
-      stayDays,
-      requirement: null,
-    };
+  if (raw === undefined) return { ...base, status: 'unknown' };
+
   const num =
     typeof raw === 'string' && /^\s*-?\d+\s*$/.test(raw) ? Number(raw) : raw;
   if (typeof num === 'number' && Number.isFinite(num)) {
-    if (num === -1)
-      return { status: 'ok', allowanceDays: null, stayDays, requirement: null };
+    if (num === -1) return { ...base, status: 'ok' };
     if (num >= 0)
       return {
-        status: num < stayDays ? 'exceeds' : 'ok',
+        ...base,
         allowanceDays: num,
-        stayDays,
-        requirement: null,
+        status: num < stayDays ? 'exceeds' : 'ok',
       };
   }
-  return {
-    status: 'unknown',
-    allowanceDays: null,
-    stayDays,
-    requirement: String(raw),
-  };
+  return { ...base, requirement: String(raw), status: 'unknown' };
 }
 
 /**
@@ -413,18 +362,17 @@ export function rollup(stays, metrics, citiesById) {
       ? [city.lon, city.lat]
       : null;
   };
+  // Once the year is fully covered, one extra leg closes the loop back to
+  // the first stay; append it here so a single pass over consecutive pairs
+  // covers both the open and the closed itinerary.
+  const legs =
+    complete && ordered.length > 1 ? [...ordered, ordered[0]] : ordered;
   let moves = 0;
   let km = 0;
-  for (let i = 1; i < ordered.length; i++) {
+  for (let i = 1; i < legs.length; i++) {
     moves++;
-    const a = coordsOf(ordered[i - 1]);
-    const b = coordsOf(ordered[i]);
-    if (a && b) km += haversineKm(a, b);
-  }
-  if (complete && ordered.length > 1) {
-    moves++;
-    const a = coordsOf(ordered[ordered.length - 1]);
-    const b = coordsOf(ordered[0]);
+    const a = coordsOf(legs[i - 1]);
+    const b = coordsOf(legs[i]);
     if (a && b) km += haversineKm(a, b);
   }
 

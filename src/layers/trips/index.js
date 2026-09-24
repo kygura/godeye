@@ -1,9 +1,5 @@
 import * as Cesium from 'cesium';
-import {
-  flightPath,
-  estimateFlightHours,
-  haversineKm,
-} from '../../travel/geo.js';
+import { flightPath, estimateFlightHours } from '../../travel/geo.js';
 import { spanLabel } from '../cityIntel/plan.js';
 
 /** Connecting hubs for legs beyond nonstop range. */
@@ -24,32 +20,23 @@ export const FLIGHT_HUBS = Object.freeze([
 /** Pure: legs of a trip with distance, estimate and drawn segments. */
 export function tripLegs(trip, hubs = FLIGHT_HUBS) {
   const nodes = trip?.nodes || [];
-  const legs = [];
-  for (let i = 1; i < nodes.length; i++) {
-    const a = [nodes[i - 1].lng, nodes[i - 1].lat];
-    const b = [nodes[i].lng, nodes[i].lat];
-    const path = flightPath(a, b, hubs);
-    legs.push({
-      from: nodes[i - 1],
-      to: nodes[i],
-      ...path,
-      hours: estimateFlightHours(path.distanceKm),
-    });
-  }
   // A Lifestyle Plan (DESIGN §10) only closes its loop back to the first
   // stay once every month is spoken for; the store never holds overlaps,
-  // so a len sum of 12 is exactly "fully covered".
-  if (
+  // so a len sum of 12 is exactly "fully covered". Appending the first stop
+  // once here lets a single pass over consecutive pairs cover both the
+  // open and the closed itinerary.
+  const complete =
     trip?.kind === 'plan' &&
-    nodes.length > 1 &&
-    nodes.reduce((sum, n) => sum + (n.len || 0), 0) === 12
-  ) {
-    const last = nodes[nodes.length - 1];
-    const first = nodes[0];
-    const path = flightPath([last.lng, last.lat], [first.lng, first.lat], hubs);
+    nodes.reduce((sum, n) => sum + (n.len || 0), 0) === 12;
+  const stops = complete && nodes.length > 1 ? [...nodes, nodes[0]] : nodes;
+  const legs = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = [stops[i - 1].lng, stops[i - 1].lat];
+    const b = [stops[i].lng, stops[i].lat];
+    const path = flightPath(a, b, hubs);
     legs.push({
-      from: last,
-      to: first,
+      from: stops[i - 1],
+      to: stops[i],
       ...path,
       hours: estimateFlightHours(path.distanceKm),
     });
@@ -273,7 +260,5 @@ export function createTripsLayer({ store, camera = null } = {}) {
     attachShellServices(services) {
       _seams = services || null;
     },
-    /** Straight-line preview length, for the panel readout. */
-    distanceKm: (a, b) => haversineKm(a, b),
   };
 }

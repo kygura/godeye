@@ -19,6 +19,8 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { comfortScore, MONTH_ABBR } from '../src/travel/seasonality.js';
+import { haversineKm as haversineKmLonLat } from '../src/travel/geo.js';
+import { parseCsv as parseCsvRows } from '../server/providers/cityIntel.js';
 
 const ROOT = process.cwd();
 const CACHE_DIR = path.join(ROOT, '.gev-cache/city-intel-build');
@@ -143,55 +145,13 @@ function slugify(s) {
 
 /** Great-circle distance in km between two [lat, lon] points. */
 function haversineKm([lat1, lon1], [lat2, lon2]) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  // geo.js takes [lon, lat] pairs — flip both points here at the one call site.
+  return haversineKmLonLat([lon1, lat1], [lon2, lat2]);
 }
 
-/** Minimal RFC-4180 CSV parser (quoted fields, embedded commas/quotes). */
+/** Header-mapped CSV rows, on top of the shared RFC-4180 tokenizer. */
 function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let field = '';
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        field += c;
-      }
-    } else if (c === '"') {
-      inQuotes = true;
-    } else if (c === ',') {
-      row.push(field);
-      field = '';
-    } else if (c === '\n' || c === '\r') {
-      if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field);
-      field = '';
-      if (row.length > 1 || row[0] !== '') rows.push(row);
-      row = [];
-    } else {
-      field += c;
-    }
-  }
-  if (field !== '' || row.length) {
-    row.push(field);
-    rows.push(row);
-  }
+  const rows = parseCsvRows(text);
   const header = rows.shift();
   return rows.map((r) =>
     Object.fromEntries(header.map((h, i) => [h, r[i] ?? ''])),

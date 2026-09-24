@@ -1,26 +1,7 @@
 /** Pure comfort-index helpers. Scores are 0-100 per month, 0 = January. */
-export const MONTH_ABBR = [
-  'JAN',
-  'FEB',
-  'MAR',
-  'APR',
-  'MAY',
-  'JUN',
-  'JUL',
-  'AUG',
-  'SEP',
-  'OCT',
-  'NOV',
-  'DEC',
-];
-export const COMFORT_LABELS = [
-  'HARSH',
-  'THIN',
-  'MILD',
-  'FAIR',
-  'GOOD',
-  'PRIME',
-];
+export const MONTH_ABBR =
+  'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split(' ');
+export const COMFORT_LABELS = 'HARSH THIN MILD FAIR GOOD PRIME'.split(' ');
 
 /** Temperature comfort band 18-26 °C, rain penalty 0-35 over 30-250 mm. */
 export function comfortScore(tempC, precipMm) {
@@ -92,12 +73,6 @@ export function bestWindow(months) {
     peakMonth,
     isWrap: endMonth < best.start,
   };
-}
-
-export function isMonthInWindow(win, month) {
-  if (!win) return false;
-  const { startMonth: s, endMonth: e } = win;
-  return s <= e ? month >= s && month <= e : month >= s || month <= e;
 }
 
 /** "MAY–SEP", "MAY", or "—". */

@@ -348,16 +348,6 @@ export function parseVisaCsv(text) {
   return byPassport;
 }
 
-/**
- * @param {Record<string, Record<string, number|string>>} byPassport
- * @param {string} passport ISO3, already validated
- * @returns {{byDest: Record<string, number|string>}|null} null when unknown
- */
-export function sliceVisa(byPassport, passport) {
-  const byDest = byPassport?.[passport];
-  return byDest ? { byDest } : null;
-}
-
 // ---------------------------------------------------------------------------
 // Rent: Zillow ZORI metro CSV
 // ---------------------------------------------------------------------------
@@ -517,28 +507,37 @@ function raceClientAbort(sharedPromise, clientSignal) {
 }
 
 /**
- * One cached resource (advisories / visa / rent): memory + optional disk
- * cache, single-flight refresh, serve-stale when refresh fails.
+ * One keyed cache (advisories / visa / rent / air): memory + optional disk
+ * cache (fixed key only — a resource route uses one), single-flight refresh
+ * per key, serve-stale when refresh fails, bounded entry count.
  *
  * The shared refresh gets its own timeout-only AbortSignal, independent of
  * any particular client -- it is never tied to (and never aborted by) the
  * request that happens to start it. Each caller instead races its own
  * `clientSignal` (that request's close/timeout) against the shared promise.
+ * @param {{ttlMs: number, maxEntries?: number, diskFile?: string, cacheDir?: string, now: () => number, label?: string}} opts
  */
-function makeResourceCache({ file, ttlMs, cacheDir, now }) {
-  const diskPath = cacheDir ? path.join(cacheDir, file) : null;
-  let mem = null; // {at, data}
-  let diskChecked = false;
-  let inflight = null;
+function makeCache({
+  ttlMs,
+  maxEntries = Infinity,
+  diskFile,
+  cacheDir,
+  now,
+  label = diskFile,
+}) {
+  const diskPath = diskFile && cacheDir ? path.join(cacheDir, diskFile) : null;
+  const mem = new Map(); // key -> {at, data}
+  const inflight = new Map(); // key -> Promise
   const cooldown = makeFailureCooldown(now);
+  let diskChecked = false;
 
-  async function readDiskOnce() {
+  async function readDiskOnce(key) {
     if (diskChecked || !diskPath) return;
     diskChecked = true;
     try {
       const parsed = JSON.parse(await fsp.readFile(diskPath, 'utf8'));
       if (Number.isFinite(parsed?.at) && parsed?.data !== undefined)
-        mem = parsed;
+        mem.set(key, parsed);
     } catch {
       /* no disk cache yet */
     }
@@ -551,94 +550,47 @@ function makeResourceCache({ file, ttlMs, cacheDir, now }) {
       await fsp.writeFile(diskPath, JSON.stringify(entry), 'utf8');
     } catch (err) {
       console.warn(
-        `[city-intel] cache write failed (${file}):`,
+        `[city-intel] cache write failed (${diskFile}):`,
         err?.message || err,
       );
     }
   }
 
   /**
+   * @param {string} key
    * @param {(signal: AbortSignal) => Promise<*>} refresh upstream fetch, given
    *   the shared refresh's own timeout-only signal (not any client's)
    * @param {AbortSignal} [clientSignal] this caller's own close/timeout
    * @returns {Promise<{data: *, fetchedAt: number, stale: boolean}|null>} null = nothing usable at all
    */
-  async function get(refresh, clientSignal) {
-    await readDiskOnce();
-    if (mem && now() - mem.at < ttlMs)
-      return { data: mem.data, fetchedAt: mem.at, stale: false };
-    if (!inflight) {
-      if (cooldown.active())
-        return mem ? { data: mem.data, fetchedAt: mem.at, stale: true } : null;
-      const refreshController = new AbortController();
-      const timer = setTimeout(() => refreshController.abort(), TIMEOUT_MS);
-      inflight = refresh(refreshController.signal)
-        .then(async (data) => {
-          const entry = { at: now(), data };
-          mem = entry;
-          cooldown.recordSuccess();
-          await writeDisk(entry);
-          return entry;
-        })
-        .catch((err) => {
-          console.warn(
-            `[city-intel] ${file} refresh failed:`,
-            err?.message || err,
-          );
-          cooldown.recordFailure();
-          return null;
-        })
-        .finally(() => {
-          clearTimeout(timer);
-          inflight = null;
-        });
-    }
-    const fresh = await raceClientAbort(inflight, clientSignal);
-    if (fresh === CLIENT_GONE || !fresh)
-      return mem ? { data: mem.data, fetchedAt: mem.at, stale: true } : null;
-    return { data: fresh.data, fetchedAt: fresh.at, stale: false };
-  }
-
-  return { get };
-}
-
-/** Bounded per-key cache for the air-quality route (no disk cache — 1 h TTL).
- * Same single-flight-isolation and failure-cooldown shape as
- * makeResourceCache, above, but keyed and capped in memory only. */
-function makeKeyedCache({ ttlMs, maxEntries, now }) {
-  const mem = new Map(); // key -> {at, data}
-  const inflight = new Map(); // key -> Promise
-  const cooldown = makeFailureCooldown(now);
-
-  /**
-   * @param {string} key
-   * @param {(signal: AbortSignal) => Promise<*>} refresh
-   * @param {AbortSignal} [clientSignal]
-   */
   async function get(key, refresh, clientSignal) {
+    await readDiskOnce(key);
     const cached = mem.get(key);
     if (cached && now() - cached.at < ttlMs)
-      return { data: cached.data, stale: false };
+      return { data: cached.data, fetchedAt: cached.at, stale: false };
     if (!inflight.has(key)) {
       if (cooldown.active())
-        return cached ? { data: cached.data, stale: true } : null;
+        return cached
+          ? { data: cached.data, fetchedAt: cached.at, stale: true }
+          : null;
       const refreshController = new AbortController();
       const timer = setTimeout(() => refreshController.abort(), TIMEOUT_MS);
       inflight.set(
         key,
         refresh(refreshController.signal)
-          .then((data) => {
+          .then(async (data) => {
             const entry = { at: now(), data };
             if (!mem.has(key) && mem.size >= maxEntries) {
               mem.delete(mem.keys().next().value); // evict oldest
             }
             mem.set(key, entry);
             cooldown.recordSuccess();
+            await writeDisk(entry);
             return entry;
           })
           .catch((err) => {
             console.warn(
-              '[city-intel] air refresh failed:',
+              `[city-intel] ${label} refresh failed:`,
               err?.message || err,
             );
             cooldown.recordFailure();
@@ -652,8 +604,10 @@ function makeKeyedCache({ ttlMs, maxEntries, now }) {
     }
     const fresh = await raceClientAbort(inflight.get(key), clientSignal);
     if (fresh === CLIENT_GONE || !fresh)
-      return cached ? { data: cached.data, stale: true } : null;
-    return { data: fresh.data, stale: false };
+      return cached
+        ? { data: cached.data, fetchedAt: cached.at, stale: true }
+        : null;
+    return { data: fresh.data, fetchedAt: fresh.at, stale: false };
   }
 
   return { get };
@@ -676,25 +630,31 @@ export function cityIntelProxy({
   cacheDir = path.join(process.cwd(), '.gev-cache'),
   now = () => Date.now(),
 } = {}) {
-  const advisoriesCache = makeResourceCache({
-    file: 'city-intel-advisories.json',
+  const RESOURCE_KEY = 'default';
+  const advisoriesCache = makeCache({
+    diskFile: 'city-intel-advisories.json',
     ttlMs: 6 * 3600_000,
     cacheDir,
     now,
   });
-  const visaCache = makeResourceCache({
-    file: 'city-intel-visa.json',
+  const visaCache = makeCache({
+    diskFile: 'city-intel-visa.json',
     ttlMs: 7 * 86_400_000,
     cacheDir,
     now,
   });
-  const rentCache = makeResourceCache({
-    file: 'city-intel-rent.json',
+  const rentCache = makeCache({
+    diskFile: 'city-intel-rent.json',
     ttlMs: 7 * 86_400_000,
     cacheDir,
     now,
   });
-  const airCache = makeKeyedCache({ ttlMs: 3600_000, maxEntries: 500, now });
+  const airCache = makeCache({
+    ttlMs: 3600_000,
+    maxEntries: 500,
+    now,
+    label: 'air',
+  });
 
   const baseHeaders = Object.freeze({
     'User-Agent': USER_AGENT,
@@ -802,6 +762,7 @@ export function cityIntelProxy({
 
         if (subPath === '/advisories') {
           const result = await advisoriesCache.get(
+            RESOURCE_KEY,
             refreshAdvisories,
             controller.signal,
           );
@@ -824,16 +785,16 @@ export function cityIntelProxy({
             .toUpperCase();
           if (!isValidPassport(passport))
             return sendJson(400, { ok: false, error: 'invalid-passport' });
-          const result = await visaCache.get(refreshVisa, controller.signal);
+          const result = await visaCache.get(
+            RESOURCE_KEY,
+            refreshVisa,
+            controller.signal,
+          );
           if (!result) return sendJson(502, upstreamUnavailable(SOURCES.visa));
-          const sliced = sliceVisa(result.data.byPassport, passport);
-          if (!sliced)
+          const byDest = result.data.byPassport?.[passport];
+          if (!byDest)
             return sendJson(404, { ok: false, error: 'unknown-passport' });
-          const data = {
-            passport,
-            year: result.data.year,
-            byDest: sliced.byDest,
-          };
+          const data = { passport, year: result.data.year, byDest };
           return sendJson(
             200,
             envelope(data, result.fetchedAt, result.stale, SOURCES.visa),
@@ -841,7 +802,11 @@ export function cityIntelProxy({
         }
 
         if (subPath === '/rent') {
-          const result = await rentCache.get(refreshRent, controller.signal);
+          const result = await rentCache.get(
+            RESOURCE_KEY,
+            refreshRent,
+            controller.signal,
+          );
           if (!result) return sendJson(502, upstreamUnavailable(SOURCES.rent));
           return sendJson(
             200,

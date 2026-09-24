@@ -4,7 +4,6 @@ import {
   comfortScore,
   comfortBin,
   bestWindow,
-  isMonthInWindow,
   formatBestSpan,
 } from './seasonality.js';
 
@@ -25,8 +24,6 @@ test('best window wraps over the year seam', () => {
     peakMonth: 1,
     isWrap: true,
   });
-  assert.ok(isMonthInWindow(w, 0));
-  assert.ok(!isMonthInWindow(w, 5));
   assert.equal(formatBestSpan(w), 'NOV–FEB');
   assert.equal(bestWindow(null), null);
 });

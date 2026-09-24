@@ -378,7 +378,6 @@ export function createCityIntelIndex({ cities, countries } = {}) {
    * @property {boolean} [groupByCountry=true] groups ordered by their best city
    * @property {string} [continent] exact match on the country record's continent
    * @property {number} [minPop]
-   * @property {number} [minPillars] minimum available pillars (data coverage filter)
    * @property {number} [hideAdvisoryLevelAtLeast] hide countries at or above this level
    * @property {Record<string, {level: number}>} [advisories] ISO3-keyed; absent = hide nothing
    * @property {boolean} [includeIneligible=false] ineligible cities sort after eligible ones
@@ -394,7 +393,6 @@ export function createCityIntelIndex({ cities, countries } = {}) {
       groupByCountry = true,
       continent,
       minPop,
-      minPillars,
       hideAdvisoryLevelAtLeast,
       advisories,
       includeIneligible = false,
@@ -409,7 +407,6 @@ export function createCityIntelIndex({ cities, countries } = {}) {
           (includeIneligible || s.eligible) &&
           (!continent || records[s.city.iso3]?.continent === continent) &&
           (!(minPop > 0) || s.city.pop >= minPop) &&
-          (!(minPillars > 0) || s.coverage.pillarsAvailable >= minPillars) &&
           !(advisories?.[s.city.iso3]?.level >= hideLevel),
       )
       .sort(compareScored);
