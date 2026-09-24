@@ -11,8 +11,8 @@
  * Schema (see `scripts/build-city-intel.mjs` / docs/cockpit/SPEC.md §3.2):
  *   cities.json: { version, generatedAt, count, cities: [{ id, name, iso3,
  *     country, admin1, lat, lon, pop, capital, airport: {iata, km, type} | null }] }
- *   seasonality.json: { version, window, source, license,
- *     cities: { [cityId]: { matchedKm, months: [{score,tempC,precipMm}×12] } } }
+ *   seasonality.json: { version, source, license,
+ *     cities: { [cityId]: { months: [{score,tempC,precipMm}×12] } } }
  *
  * @module travel/cities
  */

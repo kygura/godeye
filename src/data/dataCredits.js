@@ -272,9 +272,9 @@ export const DATA_CREDITS = [
       '<a href="https://www.worldbank.org" target="_blank" rel="noopener">World Bank</a> ' +
       'WDI/WGI indicators ' +
       '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · ' +
-      'seasonality derived from ' +
-      '<a href="https://open-meteo.com/en/licence" target="_blank" rel="noopener">Open-Meteo</a> ' +
-      '(CC BY 4.0)',
+      'seasonality from ' +
+      '<a href="https://power.larc.nasa.gov/" target="_blank" rel="noopener">NASA POWER</a> ' +
+      '(public; climatology 2001–2020)',
   },
   {
     key: 'city-intel-advisories',
