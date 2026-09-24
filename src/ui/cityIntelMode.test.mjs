@@ -156,7 +156,7 @@ test('enter() while already active is a no-op (no double snapshot)', async () =>
 test('exit(): restores the pre-entry snapshot exactly and reverses the choreography', async () => {
   const { mode, els, calls, toasts } = fixture();
   await mode.enter();
-  mode.exit();
+  await mode.exit();
 
   assert.equal(mode.isActive(), false);
   assert.equal(calls.restore.length, 2);
@@ -224,9 +224,86 @@ test('exit(): never moves the camera', async () => {
   await mode.enter();
   cameraCalls.flyTo.length = 0;
   cameraCalls.cancelFlight = 0;
-  mode.exit();
+  await mode.exit();
   assert.equal(cameraCalls.flyTo.length, 0);
   assert.equal(cameraCalls.cancelFlight, 0);
+});
+
+test('enter(): a failed layer restore rolls back DOM/layers and rejects; a retry then succeeds', async () => {
+  const { mode, els, calls, toasts, dataManager } = fixture();
+  const realRestore = dataManager.restoreEnabledLayerIds;
+  let failNext = true;
+  dataManager.restoreEnabledLayerIds = (ids, options) => {
+    if (failNext) {
+      failNext = false;
+      return Promise.reject(new Error('layer restore failed'));
+    }
+    return realRestore(ids, options);
+  };
+
+  await assert.rejects(() => mode.enter(), /layer restore failed/);
+  assert.equal(mode.isActive(), false, 'rolled back to inactive');
+  assert.equal(els.body.classList.contains('city-intel-mode'), false);
+  assert.equal(els.panel.classList.contains('collapsed'), true);
+  assert.equal(els.toggle.getAttribute('aria-pressed'), 'false');
+  assert.equal(els.exitBtn.hidden, true);
+  assert.deepEqual(toasts, [
+    'ATLAS on. Other layers paused until you exit.',
+    'ATLAS could not start. Layers restored.',
+  ]);
+  // The rollback itself did a real restore back to the pre-enter snapshot.
+  assert.equal(calls.restore.length, 1);
+  assert.deepEqual(calls.restore[0].ids.sort(), ['flights', 'vessels'].sort());
+
+  // Retry: active isn't stuck, so entering again just works.
+  await mode.enter();
+  assert.equal(mode.isActive(), true);
+  assert.equal(calls.restore.length, 2);
+  assert.deepEqual(calls.restore[1].ids, [...MODE_LAYER_IDS]);
+});
+
+test('exit() during a pending enter() supersedes it: no fly-out, layers land back at the original snapshot', async () => {
+  const { mode, dataManager, cameraCalls } = fixture({
+    cameraHeightM: 500_000, // low enough that enter() would fly out if not superseded
+  });
+
+  const enterPromise = mode.enter(); // runs synchronously up to its first await
+  await mode.exit(); // supersedes it and restores the original layers itself
+  await enterPromise; // let the superseded continuation observe the epoch bump
+
+  assert.equal(mode.isActive(), false);
+  assert.equal(
+    cameraCalls.flyTo.length,
+    0,
+    'the superseded enter() must never fly the camera out',
+  );
+  assert.deepEqual(
+    [...dataManager.getEnabledLayerIds()].sort(),
+    ['flights', 'vessels'].sort(),
+  );
+});
+
+test('exit(): a failed layer restore logs a warning and shows an honest toast, not the success one', async () => {
+  const { mode, toasts, dataManager } = fixture();
+  await mode.enter();
+  dataManager.restoreEnabledLayerIds = () =>
+    Promise.reject(new Error('restore boom'));
+
+  const warnCalls = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warnCalls.push(args);
+  try {
+    await mode.exit();
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.equal(mode.isActive(), false);
+  assert.equal(warnCalls.length, 1);
+  assert.equal(
+    toasts.at(-1),
+    'ATLAS off, but layers may not have fully restored.',
+  );
 });
 
 test('the toggle pill and the panel EXIT button drive enter/exit', async () => {
