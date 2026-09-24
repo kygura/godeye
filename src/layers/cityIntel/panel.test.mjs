@@ -384,6 +384,45 @@ test('switching to PLAN activates the plan trip and remembers/restores the prior
   assert.deepEqual(calls, ['plan-1', 'trip-old']);
 });
 
+test('leaving PLAN calls setActive(null) when the remembered previous trip no longer exists', () => {
+  const fakeDoc = {
+    getElementById: (id) =>
+      id === 'city-intel-panel' ? { dataset: {} } : null,
+  };
+  const calls = [];
+  let trips = [{ id: 'trip-old' }, { id: 'plan-1' }];
+  const store = {
+    getActiveTrip: () => ({ id: 'trip-old' }),
+    setActive: (id) => calls.push(id),
+    getState: () => ({ trips }),
+  };
+  const fakePlanView = {
+    show() {},
+    hide() {},
+    render() {},
+    addStay: () => ({ ok: false }),
+    getStays: () => [],
+    getSummary: () => ({ stays: [], rollup: null }),
+    replacePlan: () => ({ ok: true, stays: [] }),
+    markVoice: () => {},
+    get planTripId() {
+      return 'plan-1';
+    },
+  };
+  const panel = createCityIntelPanel({
+    layer: {},
+    doc: fakeDoc,
+    store,
+    planView: fakePlanView,
+  });
+  panel.setPrefs({ mode: 'plan' });
+  assert.deepEqual(calls, ['plan-1']);
+  // The remembered trip is removed while still in PLAN mode (e.g. deleted).
+  trips = [{ id: 'plan-1' }];
+  panel.setPrefs({ mode: 'rank' });
+  assert.deepEqual(calls, ['plan-1', null]);
+});
+
 test("api.plan matches the plan_lifestyle voice contract and markVoice('plan') forwards to planView", () => {
   const fakeDoc = {
     getElementById: (id) => (id === 'city-intel-panel' ? {} : null),

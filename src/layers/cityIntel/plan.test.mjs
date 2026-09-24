@@ -497,6 +497,24 @@ test('rollup: a full 12/12 year closes the loop and reports a complete annual co
   assert.equal(r.annualCost.label, undefined);
 });
 
+test('rollup: 12/12 months covered but one stay has an unavailable cost basis -> partial annual cost', () => {
+  const stays = [
+    { id: 's1', cityId: 'unknown-xxx', start: 1, len: 5 }, // JAN-MAY, no price level on record
+    { id: 's2', cityId: 'lisbon-prt', start: 6, len: 7 }, // JUN-DEC
+  ];
+  const ctx = baseCtx();
+  const metrics = metricsFor(stays, ctx);
+  assert.equal(metrics.get('s1').cost.basis, 'unavailable');
+  const r = rollup(stays, metrics, citiesById);
+
+  assert.equal(r.monthsCovered, 12);
+  assert.deepEqual(r.gaps, []);
+  assert.equal(r.annualCost.complete, false);
+  assert.equal(r.annualCost.usd, null);
+  assert.equal(r.annualCost.coveredMonths, 7);
+  assert.equal(r.annualCost.label, 'partial, 7/12 months');
+});
+
 test('rollup: a single stay never closes a loop, even covering all 12 months', () => {
   const stays = [{ id: 's1', cityId: 'lisbon-prt', start: 1, len: 12 }];
   const ctx = baseCtx();
