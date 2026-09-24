@@ -1,8 +1,9 @@
 # City Intel ("ATLAS"): interface design brief
 
-Status: v1 design, 2026-09-24. Companion to [SPEC.md](SPEC.md) (scope, data, scoring) and
-[TASKS.md](TASKS.md). This brief settles every visible decision. The implementer builds
-exactly this; where the spec and this brief differ on presentation, this brief wins.
+Status: v1 design, 2026-09-24; addendum §11 (PLAN view, SPEC §3.5) the same day. Companion
+to [SPEC.md](SPEC.md) (scope, data, scoring) and [TASKS.md](TASKS.md). This brief settles
+every visible decision. The implementer builds exactly this; where the spec and this brief
+differ on presentation, this brief wins.
 
 Visual language: GEV's own glass panels, 9px mono uppercase titles, cyan `--accent`, and the
 Cyber re-skin (`:root[data-ui-theme='cyber']`) that swaps the same tokens for slate, off-white
@@ -11,19 +12,19 @@ colour is the score ramp (data, not chrome).
 
 ## 0. Decisions at a glance
 
-| Question          | Decision                                                                                      | Why (one line)                                                               |
-| ----------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| User-facing label | **ATLAS** (code: City Intel, layer id `city-intel`)                                           | Short, globe-native, no clash with the aircraft Cockpit                      |
-| Entry point       | Pill button `#city-intel-toggle` in `#top-center-actions`, icon + "ATLAS", `aria-pressed`     | Same slot the Travel WIP used for its mode; modes live together              |
-| Panel placement   | Right rail (`#right-context-rail`), new `#city-intel-panel` above CONTEXT, rail width (330px) | "Left = act, right = inspect"; ranking/scorecard are inspection              |
-| Compare           | Separate centred overlay `#city-intel-compare`, 720px max                                     | Four raw+percentile columns do not fit 330px                                 |
-| Weights           | Four native range sliders 0–10, step 1, plus a 4-way preset segment                           | Native input, existing `gev-quantitative-slider` skin                        |
-| Ranking default   | Grouped by country, best city first, "+N more" expander; segment toggle to flat               | Country-level data ties cities; grouping is honest                           |
-| Marker size       | Fixed 8px; ineligible 6px hollow                                                              | Ranking already answers "which"; size would add noise                        |
-| Country tint      | **No**                                                                                        | Would double-encode the same national number and hide city-level differences |
-| Legend            | Ramp strip inside the panel, directly under the header                                        | One legend, always next to the controls that change the colours              |
-| Trip surface      | A `TRIP` disclosure block at the bottom of the City Intel panel                               | No new panel; the Trips layer keeps its DATA LAYERS row chips                |
-| Persistence       | `localStorage` key `gev:city-intel:v1` (weights, preset, passport, filters, pins, view mode)  | Spec §5; mirrors `gev:travel:v1`                                             |
+| Question          | Decision                                                                                                                                   | Why (one line)                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| User-facing label | **ATLAS** (code: City Intel, layer id `city-intel`)                                                                                        | Short, globe-native, no clash with the aircraft Cockpit                      |
+| Entry point       | Pill button `#city-intel-toggle` in `#top-center-actions`, icon + "ATLAS", `aria-pressed`                                                  | Same slot the Travel WIP used for its mode; modes live together              |
+| Panel placement   | Right rail (`#right-context-rail`), new `#city-intel-panel` above CONTEXT, rail width (330px)                                              | "Left = act, right = inspect"; ranking/scorecard are inspection              |
+| Compare           | Separate centred overlay `#city-intel-compare`, 720px max                                                                                  | Four raw+percentile columns do not fit 330px                                 |
+| Weights           | Four native range sliders 0–10, step 1, plus a 4-way preset segment                                                                        | Native input, existing `gev-quantitative-slider` skin                        |
+| Ranking default   | Grouped by country, best city first, "+N more" expander; segment toggle to flat                                                            | Country-level data ties cities; grouping is honest                           |
+| Marker size       | Fixed 8px; ineligible 6px hollow                                                                                                           | Ranking already answers "which"; size would add noise                        |
+| Country tint      | **No**                                                                                                                                     | Would double-encode the same national number and hide city-level differences |
+| Legend            | Ramp strip inside the panel, directly under the header                                                                                     | One legend, always next to the controls that change the colours              |
+| Plan surface      | RANK / PLAN segment at the top of the panel body; the PLAN view (§11) replaces the TRIP block                                              | SPEC §3.5: the plan is the product; ad-hoc trips keep the Trips row chips    |
+| Persistence       | `localStorage` key `gev:city-intel:v1` (weights, preset, passport, filters, pins, view mode, mode, homeCityId, monthlySpendUsd, overrides) | Spec §5; mirrors `gev:travel:v1`; the plan's stays live in `tripStore`       |
 
 ## 1. Mode: naming, entry, what changes
 
@@ -87,6 +88,7 @@ Section order, top to bottom (default "ranking" view):
 
 ```
 ┌ ATLAS ────────────────────────── [EXIT] [▼] ┐
+│ [RANK][PLAN]                                │  ← §11 mode segment
 │ Indicative, from public statistics; mostly  │
 │ country-level; not relocation advice. (i)   │  ← link: docs/cockpit/METHODOLOGY.md
 │ SCORE  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ○ no data │  ← §7 legend strip
@@ -111,7 +113,6 @@ Section order, top to bottom (default "ranking" view):
 │ …                                           │
 │ [SHOW 100 MORE]                             │
 │ PINS  Lisbon ✕  Valencia ✕   [COMPARE (2)]  │
-│ ▸ TRIP · 3 stops · 4,120 km                 │  ← §5 disclosure
 └─────────────────────────────────────────────┘
 ```
 
@@ -187,7 +188,8 @@ legend stay above it, so re-weighting while reading a scorecard is possible). To
 │ Lisbon                          74  ▮▮▮▮▮▮▯ │
 │ Portugal · Lisboa · 2.9 M · rank 1 of 412   │
 │ 3 of 4 pillars · 1 city-level metric · L1   │
-│ [PIN] [ADD TO TRIP] [BRIEF ME] [FLY TO]     │
+│ [PIN] [ADD TO PLAN] [BRIEF ME] [FLY TO]     │
+│ In plan: NOV–FEB · 4 mo                     │  ← only when the city is already in the plan
 │ QUALITY OF LIFE ·· 71 · FULL · w5           │
 │  Life expectancy   82.4 yr    P84 ▮▮▮▮▮▮▮▯  │
 │    2023 · World Bank WDI · COUNTRY          │
@@ -219,8 +221,11 @@ Ineligible city: composite shows "—", rank slot reads "not ranked", and a `.ci
 (1px `--glass-border`, `--text-secondary`) states the reason: "Not ranked: Safety unavailable."
 or "Not ranked: only 2 of 4 pillars available."
 
-**Actions.** 2×2 grid of `.scene-btn`: PIN (toggles to PINNED, `aria-pressed`), ADD TO TRIP
-(toggles to IN TRIP ✓, disabled once added), BRIEF ME (§6), FLY TO (camera to city, 600 km).
+**Actions.** 2×2 grid of `.scene-btn`: PIN (toggles to PINNED, `aria-pressed`), ADD TO PLAN
+(§11.6: appends a stay at the first free month; label never changes because a city may appear
+twice; disabled only when the plan is full), BRIEF ME (§6), FLY TO (camera to city, 600 km).
+Under the grid, a `.ci-helper` "In plan: NOV–FEB · 4 mo" lists this city's stays; omitted when
+it has none.
 
 **Pillar block** (`.ci-pillar`): header row = pillar name (mono 9px uppercase, 2px tracking),
 dotted leader, pillar score (mono 12px 600, ramp colour, or "—"), coverage word FULL /
@@ -296,6 +301,10 @@ top-only, `max-height: 70vh`) and city columns show percentiles only (raw value 
 cell `title`).
 
 ## 5. Trips integration
+
+**Superseded by §11.** SPEC §3.5 cut the ATLAS TRIP block: nothing in this section is built,
+`#ci-trip` leaves the template, and ad-hoc trips keep the Trips layer's own DATA LAYERS row
+chips (FLY / CLEAR). Kept for history only.
 
 **Surface.** A native `<details class="ci-trip">` at the bottom of the panel body. Summary
 line: "TRIP · 3 stops · 4,120 km · ~6 h" (mono 9px; "TRIP · no stops" when empty). Open state
@@ -412,7 +421,15 @@ If the map looks blocky by country, that is the data, and the grouped list says 
 | Voice `rank_cities`     | Panel                    | Applies weights and region; preset segment jumps to CUSTOM; ranking re-renders; a `.ci-voice-chip` "VIA VOICE" (mono 8px, `--accent` outline) appears in the panel header for 4 s; `role="status"` announces "Ranking updated by voice: 1 Lisbon, 2 Valencia, 3 Montevideo." If the mode is off, the tool first enters it. |
 | Voice `compare_cities`  | Overlay                  | Replaces the pin set with the resolved cities (max 4), opens the overlay, VIA VOICE chip on the overlay header; unresolved names are listed in a toast "Could not find: Springfeld" and spoken by the tool.                                                                                                                |
 | Voice `show_city_intel` | Scorecard                | Opens the scorecard, flies to the city, VIA VOICE chip on the panel header.                                                                                                                                                                                                                                                |
-| Trip empty              | TRIP block               | Summary "TRIP · no stops"; body shows "Add cities from a scorecard or the compare view." FLY ROUTE and CLEAR disabled.                                                                                                                                                                                                     |
+| Plan empty              | PLAN view                | Profile block and the empty 12-cell timeline ("0/12 months") render; STAYS shows "No stays yet. Open a city in RANK and use ADD TO PLAN." + `.scene-btn` GO TO RANK; rollup hidden (§11.7).                                                                                                                                |
+| Plan full (12/12)       | Scorecard, voice         | ADD TO PLAN disabled, `title="Plan is full (12/12). Remove or shorten a stay in PLAN."`; voice add replies the same sentence.                                                                                                                                                                                              |
+| Home unset              | Stay cost rows, rollup   | Cost row "set home to compare costs" (link-button focuses `#ci-home`); rollup ANNUAL COST "set home and monthly spend".                                                                                                                                                                                                    |
+| Spend unset             | Stay cost rows, rollup   | "×0.62 home · set monthly spend for a dollar estimate"; rollup ANNUAL COST "set monthly spend".                                                                                                                                                                                                                            |
+| Stay overlap            | Stay card, voice         | Start/length options that would overlap are `disabled`; a programmatic or voice overlap is refused whole, `.ci-stay-error` "Overlaps Lisbon (NOV–FEB). Shorten or move one of them." under the controls, announced in `#ci-status`; toast for voice "Lisbon MAR–MAY overlaps Valencia (APR–JUN). Nothing was changed."     |
+| Seasonality missing     | Stay comfort, timeline   | COMFORT "unavailable"; that stay's timeline cells fill `--ci-neutral` (`title="comfort unavailable"`); rollup COMFORT appends "· 4 months without data".                                                                                                                                                                   |
+| Price level missing     | Stay cost row            | "cost data unavailable for this country" (stay or home country lacks `priceLevel`); the $ override input still works and counts as "your figure".                                                                                                                                                                          |
+| Trips layer off in PLAN | PLAN header              | `.ci-helper` "Plan arcs hidden (Trips layer off)." + link-button TURN ON (enables the `trips` layer; the mode enabled it on entry, so this only follows a manual toggle).                                                                                                                                                  |
+| Voice `plan_lifestyle`  | PLAN view                | Enters the mode if off, switches to PLAN, replaces the plan atomically, VIA VOICE chip on the panel header; `#ci-status` "Plan replaced by voice: Lisbon JAN–APR, Valencia MAY–AUG, Montevideo SEP–DEC. 12 of 12 months."; toast "Plan replaced by voice (3 stays)". Unresolved names or an overlap change nothing.        |
 
 Every toast uses GEV's existing `#toast`. Nothing pulses or animates to signal change.
 
@@ -453,14 +470,18 @@ Every toast uses GEV's existing `#toast`. Nothing pulses or animates to signal c
 
 **Files** (per SPEC §4):
 
-| File                               | Owns                                                                                                                                                                                                                                                                                          |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/ui/templates/city-intel.html` | Static shell: `#city-intel-panel` (inside the right rail markup order, before CONTEXT), `#city-intel-compare`, the `#city-intel-toggle` button is added to `scene-chrome.html`'s `#top-center-actions` instead                                                                                |
-| `src/ui/styles/city-intel.css`     | Every `.ci-*` rule, the six ramp/neutral tokens, the three advisory tokens, Cyber overrides (only radii and the `.cyber-panel-body` hookup), responsive additions                                                                                                                             |
-| `src/layers/cityIntel/panel.js`    | Renders ranking, scorecard, compare and trip block into the shell; owns list state (view mode, expanded countries, selected city, page count), pins, weights UI, passport UI and filters UI; exposes pure `renderRow`, `renderScorecard`, `renderCompare`, `bestInRow` helpers for node tests |
-| `src/layers/cityIntel/index.js`    | Cesium markers, labels, hover/selected/pinned styles, pick → `panel.select(cityId)`                                                                                                                                                                                                           |
-| `src/ui/cityIntelMode.js`          | Mode enter/exit: layer snapshot and restore, `body.city-intel-mode`, panel collapse choreography, the toggle's `aria-pressed`, toasts. Add a row to `docs/UI-OWNERSHIP.md`                                                                                                                    |
-| `src/voice/cityIntelActions.js`    | Calls `mode.enter()`, `panel.setWeights()`, `panel.setPins()`, `panel.select()`; adds the VIA VOICE chip via `panel.markVoice(surface)`                                                                                                                                                       |
+| File                               | Owns                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/ui/templates/city-intel.html` | Static shell: `#city-intel-panel` (inside the right rail markup order, before CONTEXT), `#ci-mode-seg`, `#ci-plan-view` (empty mount), `#city-intel-compare`; `#ci-trip` is removed; the `#city-intel-toggle` button is added to `scene-chrome.html`'s `#top-center-actions` instead                                                                                                                                                                     |
+| `src/ui/styles/city-intel.css`     | Every `.ci-*` rule including the `.ci-plan-*` / `.ci-stay*` / `.ci-timeline*` / `.ci-rollup*` block (§11.9, no new tokens), the six ramp/neutral tokens, the three advisory tokens, Cyber overrides (only radii and the `.cyber-panel-body` hookup), responsive additions                                                                                                                                                                                |
+| `src/layers/cityIntel/panel.js`    | Renders ranking, scorecard and compare into the shell; owns the RANK/PLAN segment and `mode`/`homeCityId`/`monthlySpendUsd`/`overrides` persistence, list state (view mode, expanded countries, selected city, page count), pins, weights UI, passport UI and filters UI; mounts `planView` and routes ADD TO PLAN to it; exposes pure `renderRow`, `renderScorecard`, `renderCompare`, `bestInRow` helpers for node tests                               |
+| `src/layers/cityIntel/plan.js`     | Pure (T10, shipped): `monthsOf`, `spanLabel(stay)` → "NOV–FEB · 4 mo", `overlaps(stays, candidate, ignoreId)`, `firstFreeMonth(stays)`, `evenSplit(n)`, `addStay` / `updateStay` / `removeStay` → `{ok, stays, months}` or `{ok:false, error, months}`, `stayMetrics(stay, ctx)`, `rollup(stays, metrics, citiesById)`; every number the PLAN view shows comes from here                                                                                 |
+| `src/layers/cityIntel/planView.js` | DOM for `#ci-plan-view` (§11): profile block, timeline, stay cards, rollup; `createPlanView({ doc, store, getCtx, showToast, flyTo, layer, switchMode })` exposing `show()`, `hide()`, `render()`, `addStay(cityId)`, `replacePlan(stays)`; pure `gapRuns(months)`, `timelineModel`, `costCopy`, `visaCopy` for node tests. A sibling, not more `panel.js`: that file is ~1k lines before the scorecard lands, and the plan has its own edit/focus state |
+| `src/layers/cityIntel/index.js`    | Cesium markers, labels, hover/selected/pinned styles, pick → `panel.select(cityId)`                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/layers/trips/index.js`        | Three guards for `trip.kind === 'plan'`, nothing else: label text `"NOV–FEB LIS"` (span from `MONTH_ABBR` + `n.iata \|\| n.name`) instead of `"1 LIS"`; `tripLegs` appends the last→first leg when `nodes.length > 1` and the `len` sum is 12 (exact: the store never holds overlaps); the CLEAR chip calls `clearTrip`, not `removeTrip`, so the plan trip is never deleted                                                                             |
+| `src/travel/tripStore.js`          | T10 shipped `getPlanTrip()`, `ensurePlanTrip()` (not made active) and a start-ordered `addNode` that passes extra fields (`id`, `start`, `len`) through. Still needed: `setNodes(tripId, nodes)`, one commit, used by every stay edit, removal and voice replace                                                                                                                                                                                         |
+| `src/ui/cityIntelMode.js`          | Mode enter/exit: layer snapshot and restore, `body.city-intel-mode`, panel collapse choreography, the toggle's `aria-pressed`, toasts. Add a row to `docs/UI-OWNERSHIP.md`                                                                                                                                                                                                                                                                               |
+| `src/voice/cityIntelActions.js`    | Calls `mode.enter()`, `panel.setWeights()`, `panel.setPins()`, `panel.select()`; adds the VIA VOICE chip via `panel.markVoice(surface)`                                                                                                                                                                                                                                                                                                                  |
 
 **Class prefix:** `ci-` for everything City Intel owns. Reuse without prefix: `.panel-header`,
 `.panel-title`, `.panel-divider`, `.panel-collapse-btn`, `.panel-glow`, `.cyber-panel-body`,
@@ -496,3 +517,214 @@ Level 1 uses `--text-secondary`; unavailable uses `--text-dim` and "—". The th
 values reuse GEV's existing degraded-state literals so amber, orange and red already mean
 what the eye expects. All user-facing strings are given verbatim in the section that owns
 them; there is no separate copy table to drift.
+
+## 11. Lifestyle Plan (PLAN view)
+
+Implements SPEC §3.5. The plan is the single `kind:'plan'` trip in `tripStore` (T10). This
+section owns only what the user sees; every number comes from `plan.js` (§10) and the view
+never computes one. Same tokens, same `ci-` prefix, no new colours: comfort is tinted through
+the score ramp exactly as the scorecard climate strip already is (`--heat-b0..b5` exist only
+as a comment in `seasonality.js`, so nothing is defined for them), the comfort word comes from
+`COMFORT_LABELS[comfortBin(score)]`, errors reuse `--ci-adv-4`, warnings `--ci-adv-3`.
+
+### 11.1 Entry, persistence, globe
+
+- **Segment.** `#ci-mode-seg` (`.pp-mode-seg` radiogroup, buttons RANK / PLAN, `role="radio"`,
+  arrow keys via `stepRadioIndex`, `aria-label="Panel view"`) is the first visible child of
+  `.cyber-panel-body`, after `#ci-status` and above the not-advice note. Not in
+  `.panel-header`: that strip is shared rail chrome (collapse, EXIT) under Cyber's accordion
+  rules. `#city-intel-panel[data-ci-mode="rank|plan"]` mirrors it; legend, weights, passport,
+  filters, ranking and scorecard sections carry `.ci-rank-only` and are `display:none` in PLAN,
+  `#ci-plan-view` is hidden in RANK. The not-advice note shows in both. Escape never switches
+  modes. PLAN does not repeat the sliders: the rail is 330px and weights change rarely once a
+  plan exists; it links back instead (§11.2).
+- **Persistence.** `mode`, `homeCityId`, `monthlySpendUsd` and `overrides` (`{ stayId: usd }`,
+  the exact `ctx` shape `plan.js` takes; pruned when a stay disappears) join
+  `gev:city-intel:v1`; default mode `rank`. Overrides stay out of `tripStore` because it has
+  no node setter and the panel already owns this blob.
+- **Globe.** Entering PLAN calls `store.ensurePlanTrip()`, remembers `activeTripId` and
+  `setActive(plan.id)`, so the Trips layer draws the plan unchanged: dashed arcs in the plan's
+  trip colour, 9px stops, labels. Leaving PLAN (RANK or mode exit) restores the remembered
+  trip when it still exists. Ranking markers keep their composite colours (they are the
+  "where next" context for the next stay) but the top-20 ranking labels are dropped
+  (`labelIds` = pinned + selected) so stay labels win. Selecting a stay card selects its city
+  on the globe (12px white ring, flight ≥ 800 km) like a ranking row. Stay labels
+  ("NOV–FEB LIS") and the closing arc at 12/12 are derived by the Trips layer from the plan's
+  own nodes (§10): the store has no trip-field setter, so nothing is written back.
+- **Trips chips.** FLY flies the plan; CLEAR on the active plan empties its stays (§10 guard).
+  PLAN has no CLEAR of its own: per-stay ✕ and voice replace cover it. ADD TO PLAN from RANK
+  writes to `plan.id` explicitly, so it works while another trip is active.
+
+### 11.2 Layout
+
+```
+│ [RANK][PLAN]                                │
+│ Indicative, built from public statistics…   │
+│ HOME  [Lisbon, Portugal                  ]  │  ← input + datalist
+│       Home: Lisbon · Portugal · PRT         │
+│ MONTHLY SPEND  $ [ 3000 ] / mo              │
+│       All-in monthly spend at home, USD…    │
+│ Fit uses weights BALANCED (5·5·5·5) ·       │
+│ passport PRT · edit in RANK                 │
+│ YEAR   J  F  M  A  M  J  J  A  S  O  N  D   │
+│        ▓▓ ▓▓ ░░ ░░ ▓▓ ▓▓ ▓▓ ▓▓ ░░ ░░ ▓▓ ▓▓  │  ← §11.4, "2" and "1" on first cells
+│        8/12 months · gaps MAR–APR, SEP–OCT  │
+│ STAYS · 2                                   │
+│ ─ gap · MAR–APR · 2 mo ─                    │
+│ 1  Valencia · Spain                     ✕   │
+│    MAY–AUG · 4 mo   [MAY ▾]  [4 mo ▾]       │
+│    FIT      72 ▮▮▮▮▮▮▮▯ · 3/4               │
+│    COST     ×0.71 home · ≈ $2,130/mo est.   │
+│             $ [ your figure ]               │
+│    COMFORT  74 · GOOD                       │
+│    SAFETY   86 · FULL · L1                  │
+│    VISA     ok · 90 days visa-free          │
+│ ─ gap · SEP–OCT · 2 mo ─                    │
+│ 2  Lisbon · Portugal                    ✕   │
+│    NOV–FEB · 4 mo   [NOV ▾]  [4 mo ▾]       │
+│    …                                        │
+│ ROLLUP · YEAR                               │
+│  MONTHS COVERED   8/12 · gaps MAR–APR, SEP–OCT │
+│  FIT · WEIGHTED   73                        │
+│  ANNUAL COST      ≈ $16,500 · partial, 8/12 months │
+│  COMFORT · WEIGHTED 70 · GOOD               │
+│  HIGHEST ADVISORY L1                        │
+│  MOVES            2 · 1,020 km · open       │
+│  Visa flags are per stay. The Schengen…     │
+```
+
+**Profile block** (`.ci-profile`, section label skin):
+
+- **HOME.** `<label for="ci-home">HOME</label>`, `<input id="ci-home" type="search"
+list="ci-home-list" autocomplete="off" placeholder="City to compare costs against">`
+  (`.pp-select` skin), `<datalist id="ci-home-list">` with one option per pack city, value
+  "Lisbon, Portugal" (duplicates get admin1: "Springfield (Illinois), United States"), built
+  lazily on first PLAN show so RANK pays nothing. On `change`: exact option value → city id,
+  else `searchCities(cities, text, 1)[0]`, so browsers that ignore datalist (iOS Safari) still
+  resolve on Enter. Helper `#ci-home-helper`: "Home: Lisbon · Portugal · PRT · price level 0.68
+  (2023)"; unresolved: "No city called “X” in the pack." (home unchanged); empty: "Set home to
+  compare costs." Native datalist over a custom combobox: keyboard and AT semantics for free.
+  No "Set as home" scorecard action: the 2×2 grid is full, and RANK has no text search, so
+  scrolling to your own city is slower than typing it.
+- **MONTHLY SPEND.** `<input id="ci-spend" type="number" min="0" step="50"
+inputmode="numeric">` between a "$" prefix and "/ mo" suffix; helper: "All-in monthly spend
+  at home in USD, rent included. Only used to turn ×home ratios into dollar estimates." Blank
+  = unset. Persists on `change`.
+- **Using line** (`.ci-helper`): "Fit uses weights BALANCED (5·5·5·5) · passport PRT" (or
+  "passport not set") + `.ci-link-btn` "edit in RANK" (switches mode, focuses the active preset
+  radio). `.ci-link-btn` is the one text-button style (accent, underline, no border) also used
+  by "set your passport" in §3; define it once.
+
+### 11.3 Stay cards
+
+`<ol class="ci-stays">` (ordered = ordered by start; T10 sorts) of `<li class="ci-stay">`.
+Anatomy, top to bottom:
+
+| Part    | Content / element                                                                                                                                                                                                 | Style                                                                       |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Head    | index (mono 10px `--text-dim`) · `<button class="ci-stay-title">` "Valencia · Spain" (selects the stay on the globe) · `<button class="ci-stay-remove">` ✕ `aria-label="Remove Valencia (MAY–AUG) from plan"`     | grid `22px 1fr 24px`; selected: `--accent-dim` + 2px `--accent` left border |
+| When    | `<output class="ci-stay-when" for="…-start …-len">` "MAY–AUG · 4 mo" · `<select>` start JAN…DEC `aria-label="Start month, Valencia"` · `<select>` length "1 mo"…"12 mo" `aria-label="Length in months, Valencia"` | outputs mono 10px `--text-primary`; selects `.pp-select`, each ≤ 84px       |
+| Metrics | `.ci-stay-metric` rows below, grid `56px 1fr`: label mono 8px uppercase `--text-dim`, value mono 11px `--text-primary`                                                                                            | same rhythm as `.ci-metric` line 2                                          |
+| Error   | `.ci-stay-error` under the selects, sans 10px `--ci-adv-4`; cleared on the next successful edit of that stay                                                                                                      | see overlap below                                                           |
+
+Native selects, not a month chip strip: keyboard and touch work with zero code, and the
+timeline (§11.4) already gives the visual. Options that would overlap another stay are
+`disabled` (`overlaps(stays, candidate, stay.id)` per option, 24 checks per card), so the
+inline error is only the safety net for programmatic paths; when `updateStay` returns
+`error: 'overlap'` the select snaps back and the error names the stay owning `months[0]`.
+Every edit goes `updateStay` → `store.setNodes(plan.id, stays)` (one commit); the list
+re-sorts and `#ci-status` announces "Valencia moved to JUN–SEP. 8 of 12 months covered."
+Removing announces "Valencia removed. 4 of 12 months covered.", drops its override, and moves
+focus to the next card's title button, else to GO TO RANK. No reorder controls (order is start).
+
+**Gap rows** (`.ci-gap`, mono 9px `--text-dim`, 1px dashed `--glass-border` top/bottom,
+`role="listitem"` inside the same `<ol>`): "— gap · SEP–OCT · 2 mo —". A gap sits between the
+stays it separates; the gap that ends at stay 1's start is drawn above stay 1 (it may wrap
+through DEC). Gaps are static: ADD TO PLAN from a scorecard fills the first one (§11.6).
+
+**Metric rows, exact copy** (value slot; "—" and `--text-secondary` for unavailable):
+
+| Row     | Copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FIT     | "72" in ramp colour + 48×4 bar + " · 3/4" (`title` = coverage text). Ineligible or all weights 0: "—" + "not ranked" / "set a weight in RANK".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| COST    | Keyed by `cost.basis`. `no-home`: "set home to compare costs" (link-button → `#ci-home`). `ratio-only`: "×0.62 home · set monthly spend for a dollar estimate". `estimate`: "×0.62 home · ≈ $1,850/mo est." with `title="Estimate from country price levels (consumption basket, World Bank 2023); expat costs often differ"` where the year is `ratioYears.stay`; append " · home country year 2022" when `ratioYears.home` differs. `override`: "×0.62 home · $2,000/mo · your figure" + ✕ `aria-label="Clear your figure for Lisbon"` (the "×… home · " prefix is omitted when `ratio` is null). `unavailable`: "cost data unavailable for this country". Ratio always two decimals; dollars `en-US` grouping (`plan.js` already rounds to $10). |
+| (input) | `<input type="number" min="0" step="50" inputmode="numeric" placeholder="your figure" aria-label="Your monthly figure for Lisbon, USD">` with "$" prefix; commits on `change`; blank clears. Always present, even when the estimate is unavailable.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| (rent)  | US stays only, `.ci-helper`: "Rent ref. $2,140/mo · ZORI Jul 2026 · Zillow · metro · not added (spend includes housing)". Omitted when offline or non-US.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| COMFORT | "74 · GOOD": number in the ramp bin colour of 74, word from `COMFORT_LABELS`; `title="Mean monthly comfort over MAY–AUG · NASA POWER 2001–2020"`. No seasonality row: "unavailable".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| SAFETY  | "86 · FULL · L1": pillar score in ramp colour, coverage word (UNAVAILABLE in `--text-dim`), advisory badge (`.ci-row-advisory[data-level]`, "—" when offline with the §8 title).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| VISA    | Keyed by `visa.status`. `ok` with `allowanceDays`: "ok · 90 days visa-free"; `ok` without (−1 in the source): "ok · no visa needed"; `exceeds`: "stay exceeds visa-free days (90)" in `--ci-adv-3`; `no-passport`: "set your passport" link-button (switches to RANK, focuses `#ci-passport`); `unknown` with `requirement`: "e-visa · days not known" (the raw requirement, lowercase); `unknown` without: "no visa data for this destination"; `offline`: "unavailable (source offline)".                                                                                                                                                                                                                                                         |
+
+### 11.4 Timeline strip: yes
+
+`.ci-timeline` under the profile block, `role="img"`, `aria-label` = "Year: gap JAN–FEB,
+Lisbon MAR–MAY, gap JUN–OCT, Valencia NOV–DEC. 7 of 12 months covered." Month initials row
+(mono 7px `--text-dim`, `repeat(12, 1fr)`), then 12 cells 14px tall, gap 1px, radius 2px
+(Cyber 1px). Cell fill = ramp bin of the owning stay's comfort in that month (the one place the
+per-month variation shows, which is the payoff of a seasonal plan); stay without seasonality
+→ `--ci-neutral`; gap → track `rgba(255,255,255,.08)` with a 1px dashed `--glass-border`
+inset. The first cell of each stay gets a 2px `--text-primary` left border and the stay index
+in mono 8px `--text-primary` with `text-shadow: 0 0 2px #000`. Cell `title`: "MAY · Valencia
+· comfort 74 GOOD" / "MAR · gap". Caption (`.ci-timeline-caption`, mono 9px
+`--text-secondary`): "8/12 months · gaps MAR–APR, SEP–OCT", "12/12 months · loop closed",
+"0/12 months". Cells never animate.
+
+### 11.5 Rollup
+
+`.ci-rollup`, section label "ROLLUP · YEAR", rows `.ci-rollup-row` grid `96px 1fr` (label mono
+8px uppercase `--text-dim`, value mono 11px `--text-primary`). Hidden while the plan is empty.
+
+| Label              | Value                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MONTHS COVERED     | "8/12 · gaps MAR–APR, SEP–OCT" or "12/12 · no gaps". `rollup.gaps` is a month list; `planView.gapRuns` joins consecutive months into wrap-aware runs (DEC–JAN is one gap)                                                                                                                                                                                                             |
+| FIT · WEIGHTED     | `fitMean` "73" in ramp colour, `title="Month-weighted mean of stay fit under the current weights"`; "—" when null                                                                                                                                                                                                                                                                     |
+| ANNUAL COST        | `annualCost.complete`: "≈ $27,600 / yr est." (+ " · includes your figures" when any stay's `cost.basis` is `override`), `title` = the §11.3 estimate text with the years used as a range ("World Bank 2021–2023"). Otherwise no dollar figure, per SPEC: "partial, 8/12 months priced"; with 0 priced months: "set home and monthly spend" / "set monthly spend" / "no priced months" |
+| COMFORT · WEIGHTED | `comfortMean` "70 · GOOD" (ramp colour + word); append " · 4 months without data" when stays lack seasonality; "—" when null                                                                                                                                                                                                                                                          |
+| HIGHEST ADVISORY   | `maxAdvisory` badge "L2"; "—" with the offline title                                                                                                                                                                                                                                                                                                                                  |
+| MOVES              | "2 · 1,020 km · open (loop closes at 12/12)" or "3 · 6,840 km · loop closed"; one stay: "0 · 0 km". `rollup.km` is straight great-circle between consecutive stays (plus the closing leg at 12/12); the globe's hub-routed arcs can be longer, so the row `title` says "great-circle, direct"                                                                                         |
+
+Under the rows, `.ci-helper`: "Visa flags are per stay. The Schengen 90/180-day rule across
+stays is not checked in v1." The not-advice note is the top `.ci-note`, visible in both views;
+it is not repeated.
+
+### 11.6 Add flow (scorecard ADD TO PLAN)
+
+start = `firstFreeMonth(stays)`; len = the largest of 3, 2, 1 for which `overlaps` is empty
+(three checks; no new helper). A mid-year gap is exactly where the next stay belongs, and
+three months is a quarter and the commonest visa-free allowance. With this rule an
+interactive add can never overlap; `addStay` then `store.setNodes(plan.id, stays)`. Success:
+toast and `#ci-status` "Added Lisbon to plan: MAR–MAY (3 mo). 7 of 12 months covered."; the
+button label stays ADD TO PLAN (a city may appear twice); the §3 "In plan:" helper updates; the
+view does not switch to PLAN (the user is often adding several from RANK; the toast names the
+view). Full plan: button disabled with the §8 title. The compare overlay gains no add button.
+
+### 11.7 Empty state, voice, errors
+
+- **Empty:** see §8 "Plan empty". GO TO RANK switches mode and focuses the first ranking row.
+- **Voice `plan_lifestyle`:** names resolve like `compare_cities`; omitted months →
+  `evenSplit(n)` from JAN in the given order (12 mod n leading cities get the extra month). The
+  whole plan is validated first and then **replaced** atomically: a spoken plan is a whole-year
+  statement, and no undo is the same v1 ceiling as Trips CLEAR. Landing per §8; when months
+  were omitted the spoken reply adds "I split the year evenly: 4/4/4 months." (lengths joined
+  with "/"). Overlap or an unresolved name: nothing changes, toast and reply per §8.
+- **Errors:** overlap, visa offline, seasonality or price level missing, home unresolved: §8
+  and §11.3. Blocked storage is already swallowed by `tripStore` (memory only).
+
+### 11.8 Accessibility and ≤720px
+
+Everything in §9 applies. Additions: the segment is a radiogroup with one Tab stop; each card's
+title, selects, override input and ✕ are sibling controls (never nested in a button); selects
+have `aria-label` and the `<output>` names both; `#ci-status` is the only live region (edit,
+remove, add, home set: "Home set to Lisbon, Portugal.", overlap errors, voice). Colour is never
+the sole carrier: fit, comfort and safety carry numbers and words, timeline cells carry `title`
+and the strip an `aria-label`, disabled options are native. Focus rings inherit, cards use
+`outline-offset: -3px` inside the scroller. ≤720px: the rail is already full width; the
+timeline stays 12×1 (cells ≥ 24px at 320px), the two selects sit side by side at 50% each, the
+`96px` rollup label column becomes `84px`; nothing else changes.
+
+### 11.9 Classes
+
+New: `.ci-mode`, `.ci-rank-only`, `.ci-plan`, `.ci-profile`, `.ci-home-row`, `.ci-spend-row`,
+`.ci-link-btn`, `.ci-timeline{,-months,-cell,-cell-gap,-cell-start,-caption}`, `.ci-stays`,
+`.ci-stay{,-selected,-head,-title,-remove,-when,-metric,-flag,-error}`, `.ci-gap`,
+`.ci-rollup{,-row}`. Reused unchanged: `.pp-mode-seg`, `.pp-select`, `.scene-btn`,
+`.ci-section-label`, `.ci-helper`, `.ci-row-advisory`, `.ci-row-bar`, `.ci-list-empty`.
