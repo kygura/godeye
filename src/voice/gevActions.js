@@ -23,6 +23,11 @@ import {
   isContextRecordActive,
 } from '../data/contextStore.js';
 import { CCTV_FOCUS_RESULT } from '../layers/cctv/index.js';
+import {
+  compareCities,
+  rankCities,
+  showCityIntel,
+} from './cityIntelActions.js';
 import { contextModeWord } from '../contextModePolicy.js';
 import { createAnalystEngine } from '../data/analystEngine.js';
 import { layerFeedState } from '../data/feedState.js';
@@ -335,6 +340,7 @@ export function createGevActionRunner({
   floorServices = defaultFloorServices,
   annotationResolver = defaultAnnotationResolver,
   searchNavigation = searchAndFlyTo,
+  cityIntel = null,
 }) {
   // Voice enable times and analyst follow-up memory belong to this runner.
   const _layerEnabledAt = new Map();
@@ -1158,6 +1164,18 @@ export function createGevActionRunner({
 
     if (name === 'clear_annotations') {
       return clearAnnotations(annotations);
+    }
+
+    if (name === 'rank_cities') {
+      return rankCities(cityIntel, args, runOptions);
+    }
+
+    if (name === 'compare_cities') {
+      return compareCities(cityIntel, args, runOptions);
+    }
+
+    if (name === 'show_city_intel') {
+      return showCityIntel(cityIntel, args, runOptions);
     }
 
     throw new Error(`Unknown GEV tool: ${name}`);

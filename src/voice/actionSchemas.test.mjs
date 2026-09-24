@@ -15,7 +15,7 @@ const stable = (value) =>
         )
       : value;
 
-test('the complete Realtime tool payload pins the additive analyst, satellite, Local ADS-B and Cyber release', () => {
+test('the complete Realtime tool payload pins the additive analyst, satellite, Local ADS-B, Cyber and City Intel release', () => {
   const digest = createHash('sha256')
     .update(
       JSON.stringify(
@@ -27,9 +27,9 @@ test('the complete Realtime tool payload pins the additive analyst, satellite, L
     .digest('hex');
   assert.equal(
     digest,
-    // Re-derived for the additive `local-adsb` set_layer_visibility value and
-    // the Cyber HUD layout; the separate sonar tool is excluded above.
-    '590d537d93e132ac64ac5e211ad5bb9d7d1b1f22e2dd963dda5465fab4510a3b',
+    // Re-derived for the additive City Intel voice tools (rank_cities,
+    // compare_cities, show_city_intel); the separate sonar tool stays excluded.
+    '277e7d6308e83946106e8d91be75233a143482cd47159a022adea01bf98c68a5',
   );
 });
 
@@ -87,7 +87,14 @@ test('metadata cannot add tools, fields, types or enum values', () => {
 
 test('all legacy action arguments are byte-identical after removing the deliberate additions', () => {
   const legacy = structuredClone(GEV_ACTION_SCHEMAS).filter(
-    (tool) => !['next_satellite_pass', 'set_cyber_sonar'].includes(tool.name),
+    (tool) =>
+      ![
+        'next_satellite_pass',
+        'set_cyber_sonar',
+        'rank_cities',
+        'compare_cities',
+        'show_city_intel',
+      ].includes(tool.name),
   );
   const layers = legacy.find((tool) => tool.name === 'analyst_query').parameters
     .properties.layers.items;

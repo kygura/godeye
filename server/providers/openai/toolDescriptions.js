@@ -599,4 +599,54 @@ export const ACTION_DESCRIPTIONS = {
       'Predict the next pass in 24 hours for one satellite in the loaded catalog, identified by exact NORAD ID or name. Ambiguous names return candidates: ask for a choice rather than selecting one. Defaults to geometric passes; visibleOnly requires estimated illumination and a dark observer sky, which does not guarantee naked-eye visibility. Uses camera location unless coordinates are supplied.',
     $position: 1,
   },
+  rank_cities: {
+    description:
+      'Rank cities in the City Intel cockpit (where should I live next) by quality of life, cost, safety and travel ease, and re-render the panel and globe. Enters City Intel mode first if it is off. Map qualitative asks to weights (0-10 each) rather than leaving them unset: "safest affordable" -> {safety:9, cost:8, qol:3, travel:3}; "best quality of life" -> {qol:9, cost:3, safety:5, travel:3}; "easiest to travel from" -> {travel:9, qol:3, cost:3, safety:3}. Omit a weight to leave it unchanged from the panel\'s current value. Returns the top-ranked cities and their coverage; the result always carries a caveat that this is mostly country-level public statistics, not relocation advice.',
+    $position: 1,
+    parameters: {
+      properties: {
+        region: {
+          description: 'Restrict ranking to one continent.',
+          $position: 1,
+        },
+        weights: {
+          description:
+            'Pillar weights 0-10; only the provided keys change, others keep their current panel value.',
+          $position: 2,
+        },
+        limit: {
+          description: 'How many top cities to return. Default 5.',
+          $position: 3,
+        },
+      },
+    },
+  },
+  compare_cities: {
+    description:
+      'Compare 2 to 4 cities side by side in the City Intel cockpit: resolves each name to a city (ambiguous names like "San Jose" or "Springfield" are resolved by population and any country hint, and the pick is reported), pins them, and opens the compare view. Names that cannot be resolved are reported, never silently dropped. Enters City Intel mode first if it is off. The result carries a caveat that scores are mostly country-level public statistics, not relocation advice.',
+    $position: 1,
+    parameters: {
+      properties: {
+        cities: {
+          description:
+            '2 to 4 city names, e.g. ["Lisbon", "Valencia, Spain", "San Jose Costa Rica"]. Include the country when the user says it or it is obvious from context (e.g. "Valencia, Spain") — an ambiguous name with no country given is resolved automatically, but a hint you already have avoids a wrong pick.',
+          $position: 1,
+        },
+      },
+    },
+  },
+  show_city_intel: {
+    description:
+      'Open the scorecard for one city in the City Intel cockpit: resolves the name, flies to it, and returns the composite score, per-pillar scores, and a few headline metrics with their source/year/level. If the city is ineligible for ranking (missing safety or too few pillars), says why. Enters City Intel mode first if it is off. The result carries a caveat that scores are mostly country-level public statistics, not relocation advice.',
+    $position: 1,
+    parameters: {
+      properties: {
+        city: {
+          description:
+            'City name. Include the country when the user says it or it is obvious from context (e.g. "Montevideo" or "Valencia, Spain") to avoid a wrong pick on an ambiguous name.',
+          $position: 1,
+        },
+      },
+    },
+  },
 };

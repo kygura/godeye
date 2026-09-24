@@ -899,6 +899,64 @@ const schemas = [
       },
     },
   },
+  {
+    name: 'rank_cities',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        region: {
+          type: 'string',
+          enum: [
+            'Africa',
+            'Asia',
+            'Europe',
+            'North America',
+            'Oceania',
+            'South America',
+          ],
+        },
+        weights: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            qol: { type: 'integer', minimum: 0, maximum: 10 },
+            cost: { type: 'integer', minimum: 0, maximum: 10 },
+            safety: { type: 'integer', minimum: 0, maximum: 10 },
+            travel: { type: 'integer', minimum: 0, maximum: 10 },
+          },
+        },
+        limit: { type: 'integer', minimum: 1, maximum: 10 },
+      },
+    },
+  },
+  {
+    name: 'compare_cities',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        cities: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 4,
+          items: { type: 'string' },
+        },
+      },
+      required: ['cities'],
+    },
+  },
+  {
+    name: 'show_city_intel',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        city: { type: 'string' },
+      },
+      required: ['city'],
+    },
+  },
 ];
 
 function freeze(value) {
