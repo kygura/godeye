@@ -121,6 +121,35 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
   concurrent children. F2 re-dispatched.
 - T13 dispatched early against a fixed `cityIntel.plan` contract: `ready`, `show`,
   `getStays`, `replaceStays`, `getSummary`. `markVoice` gains `'plan'`.
+- T11 done (sonnet): seasonality v2 from NASA POWER, 2,480 of 2,480 cities.
+  - The builder no longer references the archive. The planner verified this with a clean
+    run under a fake `HOME`: byte-identical pack.
+  - Pack is 1.77 MB, within the 2.2 MB budget.
+- T13 done (sonnet): `plan_lifestyle` plus the `rank_cities` months param (report-only
+  comfort). Pins updated surgically.
+- F2 done (sonnet).
+  - Glass surface, including the Cyber override in `city-intel.css`.
+  - Horizon occlusion via `EllipsoidalOccluder`.
+  - Fly out to globe view on entry, sequenced after layer restore because
+    `SceneDirector.stopScene` cancels flights.
+- Planner screenshot review: the ranking list is below the fold at 1440×900. T6b
+  compacts the layout with inline slider rows and PASSPORT & FILTERS in a collapsed
+  `<details>`. This deviates from DESIGN §2 on purpose.
+- Coordinator sweep adopted:
+  - (a) Meridian seasonality heatmap calendar folded into T12a as the PLAN timeline, with
+    rows per plan city.
+  - (b) Trip-leg cost rollup with Google Flights links: follow-up (heuristic cost risks the
+    honesty rule).
+  - (c) `get_seasonality` is covered by `rank_cities` months and the scorecard;
+    `get_flight_estimate` is declined because it is a heuristic cost.
+  - (d) Reference docs noted.
+  - (3) The 150k cutoff misses nomad towns. Most are not in Natural Earth at all (Tulum,
+    Canggu, Ubud, Hoi An, Kotor, Bansko, Ericeira); some are below the cutoff (Boulder
+    122k, Asheville 143k, Siem Reap 109k). Follow-up: a GeoNames cities15000 (CC BY 4.0)
+    supplement.
+  - Voice/search now folds diacritics (T12a).
+- T6b and T12a run in parallel with disjoint write sets. The `planView` is injected into
+  the panel; T12b (resume T12a) does the integration.
 - Shared registry files are owned by T9 so parallel workers can't collide:
   `format-scope.json`, `package.json`, `DATA_SOURCES.md`, `CHANGELOG.md` and
   `CURRENT-STATE.md`.
@@ -136,15 +165,28 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
 | T4 | Server provider `/api/city-intel/{advisories,visa,rent,air}` | sonnet | SPEC | `server/providers/cityIntel.js`, `src/data/cityIntelProxy.test.mjs`, `server/providers/local.js` | done |
 | T5 | Globe layer `city-intel` (markers by composite, legend hook) plus registration | sonnet | D0, T1, T3 | `src/layers/cityIntel/{index,source}.js`, `src/app/layers/cityIntel.js`, catalog and layerState entries | done |
 | T6a | ATLAS mode plus panel ranking view (weights, presets, passport, filters, list, pins, legend, states, persistence), `cityIntel` handle | sonnet | D0, T2–T5 | `cityIntelMode.js`, `panel.js`, template, `city-intel.css`, `tools.js`, rail CSS lists | running |
-| T6b | Scorecard, compare overlay, trip block, Brief-me handoff, live air/rent/visa display | sonnet | T6a | `panel.js` (+ a scorecard module), template, CSS | blocked |
+| T6b | Scorecard, compare overlay, trip block, Brief-me handoff, live air/rent/visa display | sonnet | T6a | `panel.js` (+ a scorecard module), template, CSS | running |
 | T7 | Voice tools `rank_cities`, `compare_cities`, `show_city_intel` | sonnet | T6a contract | `actionSchemas.js`, `toolDescriptions.js`, `src/voice/cityIntelActions.js`, `gevActions.js` hook | done |
 | T8 | Data credits plus `.env.example` (only if a key appears) | haiku | T1, T4 | `src/data/dataCredits.js`, `DATA_SOURCES.md` (pulled forward from T9) | done |
 | D1 | Design addendum §11 PLAN view (plus §3/§5/§8/§10 edits) | fable | SPEC §3.5 | `DESIGN.md` | done |
 | T10 | Plan pure model (`plan.js`) plus tripStore `kind:'plan'` | sonnet | SPEC §3.5 | `plan.js` and test, `tripStore.js` and test | done |
-| T11 | Seasonality v2 (NASA POWER, all cities), builder archive-free | sonnet | SPEC §3.5 | builder, `seasonality.json`, `source.json`, README, pack test | running |
-| T12 | PLAN view UI plus "Add to plan" | sonnet | D1, T6b, T10, T11; implements `cityIntel.plan` contract plus `tripStore.setNodes` | `panel.js` or `planView.js`, CSS, template | blocked |
-| T13 | Voice `plan_lifestyle` plus `rank_cities` months param | sonnet | T10, T12 contract | voice files | running |
+| T11 | Seasonality v2 (NASA POWER, all cities), builder archive-free | sonnet | SPEC §3.5 | builder, `seasonality.json`, `source.json`, README, pack test | done |
+| T12a/b | PLAN view UI plus "Add to plan" | sonnet | D1, T6b, T10, T11; implements `cityIntel.plan` contract plus `tripStore.setNodes` | `panel.js` or `planView.js`, CSS, template | running (a) |
+| T13 | Voice `plan_lifestyle` plus `rank_cities` months param | sonnet | T10, T12 contract | voice files | done |
 | F1 | Restore upstream formatting of `scene-chrome.html` and `index.html` (keep semantic edits) | haiku | T6a | those 2 files | done |
-| F2 | ATLAS visual fixes: glass surface, horizon occlusion, camera pull-out on entry | sonnet | T6a | `city-intel.css`, `cityIntel/index.js`, `cityIntelMode.js` | running |
+| F2 | ATLAS visual fixes: glass surface, horizon occlusion, camera pull-out on entry | sonnet | T6a | `city-intel.css`, `cityIntel/index.js`, `cityIntelMode.js` | done |
 | T9 | Integration: format-scope adoption, `DATA_SOURCES.md`, `CHANGELOG.md`, `CURRENT-STATE.md`, full format/build/test | haiku→sonnet if failures | T1–T8 | shared files | blocked |
 | V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | blocked |
+
+## Follow-ups (not in v1)
+
+- Add a GeoNames cities15000 (CC BY 4.0) supplement for small lifestyle towns missing
+  from Natural Earth.
+- Trip-leg duration and cost rollup, plus keyless Google Flights deep links. Needs an
+  honest cost source.
+- Schengen 90/180 zone-wide rule.
+- Keyed sources: ACLED, OpenAQ, WAQI. Also UK Police, GDACS, INFORM, Eurostat Urban Audit,
+  UK Land Registry.
+- Keyless Wikipedia/Wikimedia place images for scorecards (Meridian `docs/research-apis.md`).
+- Climate comfort in the composite, now that coverage is 100%. Needs a model review.
+- Numbeo commercial licence: the only route to global city-level rent and crime data.
