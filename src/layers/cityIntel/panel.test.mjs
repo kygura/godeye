@@ -20,6 +20,8 @@ import {
   loadPersisted,
   savePersisted,
   formatPopulation,
+  sanitizeOverrides,
+  refineSummaryText,
   createCityIntelPanel,
 } from './panel.js';
 
@@ -215,6 +217,13 @@ test('serializePersistedState/parsePersistedState round-trip', () => {
     },
     pins: ['lisbon-prt', 'valencia-esp'],
     view: 'flat',
+    // DESIGN §11.1 scaffolding + the layout-compaction `<details>` open state
+    // (planner decision, T6b — not in DESIGN's persisted-key list).
+    mode: 'plan',
+    homeCityId: 'lisbon-prt',
+    monthlySpendUsd: 3000,
+    overrides: { 'stay-1': 2100 },
+    refineOpen: true,
   };
   const parsed = parsePersistedState(serializePersistedState(state));
   assert.deepEqual(parsed, state);
@@ -228,7 +237,37 @@ test('parsePersistedState falls back to defaults on garbage input', () => {
     assert.equal(parsed.passport, null);
     assert.deepEqual(parsed.pins, []);
     assert.equal(parsed.view, 'grouped');
+    assert.equal(parsed.mode, 'rank');
+    assert.equal(parsed.homeCityId, null);
+    assert.equal(parsed.monthlySpendUsd, null);
+    assert.deepEqual(parsed.overrides, {});
+    assert.equal(parsed.refineOpen, false);
   }
+});
+
+test('sanitizeOverrides drops non-string keys and non-finite values', () => {
+  assert.deepEqual(sanitizeOverrides({ 'stay-1': 2100, 'stay-2': NaN }), {
+    'stay-1': 2100,
+  });
+  assert.deepEqual(sanitizeOverrides(null), {});
+  assert.deepEqual(sanitizeOverrides('nope'), {});
+});
+
+test('refineSummaryText: short active-state text, or "none"', () => {
+  assert.equal(
+    refineSummaryText({
+      passport: 'PRT',
+      filters: { continent: 'Europe', minPop: 0, hideAdvisoryLevelAtLeast: 3 },
+    }),
+    'PRT · Europe · hide L3–4',
+  );
+  assert.equal(
+    refineSummaryText({
+      passport: null,
+      filters: { continent: null, minPop: 0, hideAdvisoryLevelAtLeast: null },
+    }),
+    'none',
+  );
 });
 
 test('parsePersistedState clamps weights and re-derives the preset from them', () => {

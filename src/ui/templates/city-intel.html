@@ -38,6 +38,34 @@
         aria-live="polite"
       ></div>
 
+      <div
+        id="ci-mode-seg"
+        class="pp-mode-seg"
+        role="radiogroup"
+        aria-label="Panel view"
+      >
+        <button
+          class="pp-mode-btn active"
+          id="ci-mode-rank"
+          type="button"
+          data-mode="rank"
+          role="radio"
+          aria-checked="true"
+        >
+          RANK
+        </button>
+        <button
+          class="pp-mode-btn"
+          id="ci-mode-plan"
+          type="button"
+          data-mode="plan"
+          role="radio"
+          aria-checked="false"
+        >
+          PLAN
+        </button>
+      </div>
+
       <p class="ci-note">
         Indicative, built from public statistics; mostly country-level; not
         relocation advice.
@@ -47,7 +75,7 @@
       </p>
 
       <section
-        class="ci-legend"
+        class="ci-legend ci-rank-only"
         aria-label="Score colour scale, 0 to 100; hollow grey ring means insufficient data"
       >
         <span class="ci-section-label">SCORE</span>
@@ -83,7 +111,7 @@
         </div>
       </section>
 
-      <section class="ci-weights" aria-label="Score weights">
+      <section class="ci-weights ci-rank-only" aria-label="Score weights">
         <span class="ci-section-label">WEIGHTS</span>
         <div
           id="ci-preset-seg"
@@ -206,58 +234,72 @@
         </div>
       </section>
 
-      <section class="ci-passport" aria-label="Home passport">
-        <span class="ci-section-label">HOME PASSPORT</span>
-        <select id="ci-passport" class="pp-select" aria-label="Home passport">
-          <option value="">Not set</option>
-        </select>
-        <p id="ci-passport-helper" class="ci-helper">
-          Visa access counts toward Travel ease once set.
-        </p>
-      </section>
+      <!-- Layout compaction (T6b planner decision, overrides DESIGN §2 order:
+           HOME PASSPORT + FILTERS collapse into one disclosure so the ranking
+           rows are visible above the fold at 1440x900; see the T6b report. -->
+      <details id="ci-refine" class="ci-refine ci-rank-only">
+        <summary>
+          PASSPORT &amp; FILTERS
+          <span id="ci-refine-active" class="ci-refine-active">none</span>
+        </summary>
 
-      <section class="ci-filters" aria-label="Filters">
-        <span class="ci-section-label">FILTERS</span>
-        <label class="ci-filter-row" for="ci-filter-region">
-          <span>Region</span>
-          <select id="ci-filter-region" class="pp-select" aria-label="Region">
-            <option value="">All regions</option>
-            <option value="Africa">Africa</option>
-            <option value="Asia">Asia</option>
-            <option value="Europe">Europe</option>
-            <option value="North America">North America</option>
-            <option value="Oceania">Oceania</option>
-            <option value="South America">South America</option>
+        <section class="ci-passport" aria-label="Home passport">
+          <span class="ci-section-label">HOME PASSPORT</span>
+          <select id="ci-passport" class="pp-select" aria-label="Home passport">
+            <option value="">Not set</option>
           </select>
-        </label>
-        <label class="ci-filter-row" for="ci-filter-min-pop">
-          <span>Min. population</span>
-          <select
-            id="ci-filter-min-pop"
-            class="pp-select"
-            aria-label="Minimum population"
-          >
-            <option value="0">Any</option>
-            <option value="250000">250k</option>
-            <option value="500000">500k</option>
-            <option value="1000000">1M</option>
-            <option value="5000000">5M</option>
-          </select>
-        </label>
-        <label class="ci-checkbox-row" for="ci-filter-hide-advisory">
-          <input id="ci-filter-hide-advisory" type="checkbox" />
-          <span>Hide Level 3–4 advisories</span>
-        </label>
-        <p id="ci-filter-hide-advisory-helper" class="ci-helper" hidden>
-          Advisories offline
-        </p>
-        <label class="ci-checkbox-row" for="ci-filter-include-ineligible">
-          <input id="ci-filter-include-ineligible" type="checkbox" />
-          <span>Show cities with insufficient data</span>
-        </label>
-      </section>
+          <p id="ci-passport-helper" class="ci-helper">
+            Visa access counts toward Travel ease once set.
+          </p>
+        </section>
 
-      <section id="ci-ranking-view" class="ci-ranking" aria-label="Ranking">
+        <section class="ci-filters" aria-label="Filters">
+          <span class="ci-section-label">FILTERS</span>
+          <label class="ci-filter-row" for="ci-filter-region">
+            <span>Region</span>
+            <select id="ci-filter-region" class="pp-select" aria-label="Region">
+              <option value="">All regions</option>
+              <option value="Africa">Africa</option>
+              <option value="Asia">Asia</option>
+              <option value="Europe">Europe</option>
+              <option value="North America">North America</option>
+              <option value="Oceania">Oceania</option>
+              <option value="South America">South America</option>
+            </select>
+          </label>
+          <label class="ci-filter-row" for="ci-filter-min-pop">
+            <span>Min. population</span>
+            <select
+              id="ci-filter-min-pop"
+              class="pp-select"
+              aria-label="Minimum population"
+            >
+              <option value="0">Any</option>
+              <option value="250000">250k</option>
+              <option value="500000">500k</option>
+              <option value="1000000">1M</option>
+              <option value="5000000">5M</option>
+            </select>
+          </label>
+          <label class="ci-checkbox-row" for="ci-filter-hide-advisory">
+            <input id="ci-filter-hide-advisory" type="checkbox" />
+            <span>Hide Level 3–4 advisories</span>
+          </label>
+          <p id="ci-filter-hide-advisory-helper" class="ci-helper" hidden>
+            Advisories offline
+          </p>
+          <label class="ci-checkbox-row" for="ci-filter-include-ineligible">
+            <input id="ci-filter-include-ineligible" type="checkbox" />
+            <span>Show cities with insufficient data</span>
+          </label>
+        </section>
+      </details>
+
+      <section
+        id="ci-ranking-view"
+        class="ci-ranking ci-rank-only"
+        aria-label="Ranking"
+      >
         <div class="ci-ranking-header">
           <span id="ci-ranking-count">RANKING · 0 cities</span>
           <div
@@ -311,10 +353,11 @@
       </section>
 
       <!-- T6b mount point: the scorecard replaces this ranking view in place. -->
-      <section id="ci-scorecard-view" hidden></section>
+      <section id="ci-scorecard-view" class="ci-rank-only" hidden></section>
 
-      <!-- T6b mount point: trip planner disclosure (Trips layer integration). -->
-      <details id="ci-trip" class="ci-trip" hidden></details>
+      <!-- DESIGN §11.1/§5: the PLAN view (another worker's planView.js)
+           mounts here; #ci-trip is removed, superseded by PLAN. -->
+      <div id="ci-plan-view" class="ci-plan" hidden></div>
     </div>
   </div>
 </div>

@@ -139,12 +139,16 @@ export function createApplicationTools({
   };
   const cityIntelPanel = createCityIntelPanel({
     layer: dataManager.layers.get('city-intel')?.module,
-    // Row click flies the camera but never zooms in below 800 km (DESIGN §2).
+    // Row click flies the camera but never zooms in below 800 km (DESIGN §2);
+    // the scorecard's FLY TO action passes its own 600 km range explicitly.
     flyTo: (lat, lon, range = 800_000) =>
       styleManager.runImmediateLocationNavigation(() =>
         flyToLandmark(viewer, lat, lon, { range, pitch: -45, duration: 2 }),
       ),
     showToast: showCityIntelToast,
+    // BRIEF ME (DESIGN §6): travelMode is constructed above, before the
+    // panel, so its handle is already reachable here.
+    travelMode,
   });
   const cityIntelMode = createCityIntelMode({
     dataManager,
