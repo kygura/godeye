@@ -109,7 +109,19 @@ export function createApplicationTools({
     });
   }
   if (startChrome)
-    defer(startChrome({ loadingScreen, styleManager, dataManager, signal }));
+    defer(
+      startChrome({
+        loadingScreen,
+        styleManager,
+        dataManager,
+        signal,
+        // `cityIntel` is constructed later in this function; a lazy reader
+        // lets startChrome (called now) reach it at use time instead of
+        // reordering ATLAS ahead of everything above it (docs/UI-OWNERSHIP.md
+        // "Readers resolve a replaceable collaborator at use time").
+        readCityIntel: () => cityIntel,
+      }),
+    );
   const travelMode = createTravelMode({
     viewer,
     styleManager,

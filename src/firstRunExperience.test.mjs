@@ -378,10 +378,36 @@ test('the launcher yields on engage and waits when a surface is already up', () 
   assert.doesNotMatch(module, /setInterval|requestAnimationFrame\(function poll/);
 });
 
+test('ATLAS taking the screen closes the launcher outright, never a yield', () => {
+  const module = fs.readFileSync(new URL('./firstRunExperience.js', import.meta.url), 'utf8');
+  // city-intel-mode is deliberately NOT one of the screen-claiming surfaces:
+  // ATLAS does not own the screen, so it gets its own branch ahead of the
+  // yield/reveal pair rather than joining EXCLUSIVE_SURFACE_CLASSES.
+  assert.ok(!EXCLUSIVE_SURFACE_CLASSES.includes('city-intel-mode'));
+  const sync = module.slice(
+    module.indexOf('const syncToExclusiveSurfaces = () => {'),
+    module.indexOf('  const onViewportResize'),
+  );
+  assert.match(sync, /classList\.contains\('city-intel-mode'\)/);
+  assert.match(sync, /if \(revealed\) dismiss\(\);/);
+  // Order matters: the city-intel-mode check must be resolved (and return)
+  // before the yield branch is ever reached for it.
+  assert.ok(
+    sync.indexOf("classList.contains('city-intel-mode')") <
+      sync.indexOf('yieldToExclusiveSurface();'),
+    'ATLAS must be handled before the yield-to-exclusive-surface branch',
+  );
+});
+
 // ── Per-mission behavior ─────────────────────────────────────────────────────
 
-function missionSpy({ contextOk = true, layerResult = () => true, globe = async () => ({ ok: true }) } = {}) {
-  const calls = { contextModes: [], layerIds: [], globeFlights: 0 };
+function missionSpy({
+  contextOk = true,
+  layerResult = () => true,
+  globe = async () => ({ ok: true }),
+  enterAtlas = async () => {},
+} = {}) {
+  const calls = { contextModes: [], layerIds: [], globeFlights: 0, atlasEnters: 0 };
   return {
     calls,
     deps: {
@@ -397,18 +423,22 @@ function missionSpy({ contextOk = true, layerResult = () => true, globe = async 
         calls.globeFlights += 1;
         return globe();
       },
+      enterAtlas: async () => {
+        calls.atlasEnters += 1;
+        return enterAtlas();
+      },
     },
   };
 }
 
-test('the menu is the four owner-ordered missions', () => {
+test('the menu is the five owner-ordered missions', () => {
   // INFRASTRUCTURE was removed after the owner playtested it: enabling all
   // three bundled layers at once put ~5,700 entities on a full-earth view and
   // tanked the frame rate. The layers stay reachable by hand and by voice; what
   // went is the one-click globe-scale dump. Restoring the tile needs the
   // globe-LOD declutter first.
   assert.deepEqual(Object.keys(FIRST_RUN_MISSIONS), [
-    'contacts', 'space-missions', 'environmental', 'explore',
+    'contacts', 'space-missions', 'environmental', 'atlas', 'explore',
   ]);
   assert.equal(FIRST_RUN_MISSIONS.infrastructure, undefined,
     'the infrastructure mission must be gone, not dormant');
@@ -483,9 +513,31 @@ test('a refused layer fails the mission by name, and a stalled flight never does
 test('Explore manually touches nothing at all, and an unknown choice is inert', async () => {
   const spy = missionSpy();
   assert.equal((await runFirstRunChoice('explore', spy.deps)).ok, true);
-  assert.deepEqual(spy.calls, { contextModes: [], layerIds: [], globeFlights: 0 });
+  assert.deepEqual(spy.calls, { contextModes: [], layerIds: [], globeFlights: 0, atlasEnters: 0 });
   assert.equal((await runFirstRunChoice('nope', spy.deps)).ok, false);
-  assert.deepEqual(spy.calls, { contextModes: [], layerIds: [], globeFlights: 0 });
+  assert.deepEqual(spy.calls, { contextModes: [], layerIds: [], globeFlights: 0, atlasEnters: 0 });
+});
+
+test('LIFESTYLE PLANNING enters ATLAS through the shared enterAtlas dependency', async () => {
+  const spy = missionSpy();
+  const outcome = await runFirstRunChoice('atlas', spy.deps);
+  assert.equal(outcome.ok, true);
+  assert.equal(spy.calls.atlasEnters, 1);
+  // ATLAS owns its own layers/camera (cityIntelMode.js); the mission itself
+  // touches none of the other facades.
+  assert.deepEqual(spy.calls.contextModes, []);
+  assert.deepEqual(spy.calls.layerIds, []);
+  assert.equal(spy.calls.globeFlights, 0);
+});
+
+test('a missing or throwing ATLAS handle fails the mission and leaves it open', async () => {
+  const throwing = missionSpy({ enterAtlas: async () => { throw new Error('no handle'); } });
+  assert.equal((await runFirstRunChoice('atlas', throwing.deps)).ok, false);
+
+  // No enterAtlas supplied at all — the handle truly missing — fails the same way.
+  const spy = missionSpy();
+  delete spy.deps.enterAtlas;
+  assert.equal((await runFirstRunChoice('atlas', spy.deps)).ok, false);
 });
 
 test('a failed Context mission reports the layers the facade named', async () => {
@@ -556,7 +608,7 @@ test('markup, startup ordering and accessibility remain pinned', () => {
   const css = readStylesheet(new URL('../style.css', import.meta.url));
 
   assert.match(html, /id="first-run-launcher" role="dialog"[^>]*aria-labelledby="first-run-title"[^>]*hidden/);
-  assert.equal((html.match(/data-first-run-choice=/g) || []).length, 4);
+  assert.equal((html.match(/data-first-run-choice=/g) || []).length, 5);
   assert.match(html, /data-first-run-status[^>]*role="status"[^>]*aria-live="polite"/);
   assert.match(html, /<input type="checkbox" data-first-run-suppress \/>/);
   assert.match(html, /<strong data-first-run-environmental-title>/);
@@ -579,13 +631,13 @@ test('markup, startup ordering and accessibility remain pinned', () => {
 
   // Menu order is the owner's, read straight off the markup.
   const order = [...html.matchAll(/data-first-run-choice="([a-z-]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(order, ['contacts', 'space-missions', 'environmental', 'explore']);
+  assert.deepEqual(order, ['contacts', 'space-missions', 'environmental', 'atlas', 'explore']);
   assert.doesNotMatch(html, /data-first-run-choice="infrastructure"/,
     'the removed tile must leave no markup behind');
 
   assert.match(startup, /styleManager\.initialRestorePromise/);
   assert.ok(startup.indexOf("loadingScreen.classList.add('hidden')") < startup.indexOf("loadingScreen.addEventListener('transitionend', revealFirstRun"));
-  assert.match(startup, /initializeWelcome\?\.\(\{ styleManager, dataManager \}\)/);
+  assert.match(startup, /initializeWelcome\?\.\(\{ styleManager, dataManager, enterAtlas \}\)/);
 
   assert.match(css, /body\.ui-clean-view #first-run-launcher/);
   assert.match(css, /body\.recording-mode #first-run-launcher/);
