@@ -13,10 +13,30 @@
  * persistence layer — this is a temporary, session-scoped mode view, not a
  * panel layout the user's next visit needs to remember.
  *
+ * Entry also grounds the camera (F2 fix — not in DESIGN.md): opening ATLAS
+ * from a close-in view (e.g. mid Travel Mode over a street) left the globe
+ * showing only the handful of markers near that spot, hiding the ranking's
+ * global context. Below `LOW_CAMERA_HEIGHT_M` it flies out to
+ * `flyToGlobeView` (`src/locations.js`, the same "reset to globe" helper
+ * `resetToGlobeView`/the `zoom_to_globe` voice tool use), which keeps the
+ * current sub-camera point centred — same continent, just pulled back.
+ * `announceNavigationAuthority` + `interruptCameraMotion` are the
+ * dependency-free halves of the authority/cancellation dance the heavier
+ * shell-facade routes (`runImmediateLocationNavigation`) compose from; this
+ * mode has neither `viewer` nor `styleManager` injected, only
+ * `dataManager.viewer`, so it reuses those two directly instead of pulling
+ * in the shell. Exit never touches the camera.
+ *
  * @module ui/cityIntelMode
  */
 
+import { flyToGlobeView } from '../locations.js';
+import { interruptCameraMotion } from '../cameraVerbs.js';
+import { announceNavigationAuthority } from '../navigationPolicy.js';
+
 const MODE_CLASS = 'city-intel-mode';
+/** F2: fly out to a global view when entry starts below this height. */
+const LOW_CAMERA_HEIGHT_M = 3_000_000;
 /** DESIGN §1 step 2-3: the only two layers left enabled inside the mode. */
 export const MODE_LAYER_IDS = Object.freeze(['city-intel', 'trips']);
 /** DESIGN §1 step 4: collapsed on entry; #city-intel-panel expands instead. */
@@ -60,6 +80,16 @@ export function createCityIntelMode({
     if (exitBtn) exitBtn.hidden = !active;
   }
 
+  /** F2: pull the camera out to a global view when entry starts too close in. */
+  function flyOutIfLow() {
+    const camera = dataManager.viewer?.camera;
+    const height = camera?.positionCartographic?.height;
+    if (!Number.isFinite(height) || height >= LOW_CAMERA_HEIGHT_M) return;
+    announceNavigationAuthority('city-intel-mode-enter');
+    interruptCameraMotion('city-intel-mode-enter');
+    flyToGlobeView(dataManager.viewer);
+  }
+
   async function enter() {
     if (active) return;
     active = true;
@@ -72,6 +102,12 @@ export function createCityIntelMode({
     await dataManager.restoreEnabledLayerIds(MODE_LAYER_IDS, {
       origin: 'user',
     });
+    // AFTER the restore, never before: SceneDirector.stopScene() answers
+    // every layer-visibility request (src/scenes/director.js, wired through
+    // LayerLifecycle._notifyVisibilityRequest) by unconditionally cancelling
+    // any in-flight camera animation — a flight started before the restore
+    // call above is guaranteed to be killed before it ever renders a frame.
+    flyOutIfLow();
     // The layer's own pack load only starts once it is actually enabled
     // (DataManager lazy-inits on first enable), so the panel's `ready()`
     // — which needs `layer.getIndex()` — can only be kicked off from here,

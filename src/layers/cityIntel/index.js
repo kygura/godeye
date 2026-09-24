@@ -6,6 +6,7 @@ import {
   unregisterPickOwner,
 } from '../../data/pickRegistry.js';
 import { isPointerFree } from '../../data/inputOwnership.js';
+import { horizonOccluder } from '../../data/iconOrientation.js';
 
 /** Standalone default weights (docs/cockpit/DESIGN.md §2). */
 const BALANCED_WEIGHTS = Object.freeze({
@@ -178,7 +179,21 @@ export function createCityIntelLayer() {
     });
   }
 
-  function restyleCity(city, labelIds) {
+  /**
+   * DESIGN §7 asks for `disableDepthTestDistance: Infinity` so a marker is
+   * never buried by nearby terrain/3D tiles — but that alone also draws
+   * every far-side city straight through the globe (bug: hundreds of world
+   * markers visible from street level). Same split GEV already uses for
+   * flights/radio/CCTV/localAdsb (`horizonOccluder`,
+   * `src/data/iconOrientation.js`): keep the depth-test bypass for close-up
+   * legibility, hide anything beyond the horizon by hand via `.show`.
+   * @returns {?Cesium.EllipsoidalOccluder}
+   */
+  function currentOccluder() {
+    return _viewer?.camera?.positionWC ? horizonOccluder(_viewer.camera) : null;
+  }
+
+  function restyleCity(city, labelIds, occluder) {
     const point = _pointsById.get(city.id);
     if (!point) return;
     const style = markerStyle(cityFlags(city), _ramp);
@@ -186,6 +201,7 @@ export function createCityIntelLayer() {
     point.color = toColor(style.color);
     point.outlineColor = toColor(style.outlineColor);
     point.outlineWidth = style.outlineWidth;
+    point.show = !occluder || occluder.isPointVisible(point.position);
 
     const shouldLabel = labelIds.has(city.id);
     const label = _labelsById.get(city.id);
@@ -208,6 +224,7 @@ export function createCityIntelLayer() {
             pixelOffset: new Cesium.Cartesian2(0, -14),
             heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            show: point.show,
           }),
         );
       } catch {
@@ -216,13 +233,16 @@ export function createCityIntelLayer() {
     } else if (!shouldLabel && label) {
       _labels.remove(label);
       _labelsById.delete(city.id);
+    } else if (label) {
+      label.show = point.show;
     }
   }
 
   function restyleAll() {
     if (!_points) return;
     const labelIds = labelIdSet();
-    for (const city of _cities) restyleCity(city, labelIds);
+    const occluder = currentOccluder();
+    for (const city of _cities) restyleCity(city, labelIds, occluder);
   }
 
   function restyleOne(cityId) {
@@ -230,7 +250,22 @@ export function createCityIntelLayer() {
     const city = _pointsById.has(cityId)
       ? _cities.find((c) => c.id === cityId)
       : null;
-    if (city) restyleCity(city, labelIdSet());
+    if (city) restyleCity(city, labelIdSet(), currentOccluder());
+  }
+
+  /** Cheap per-tick pass: only the horizon show/hide, no style recompute. */
+  function updateHorizonVisibility() {
+    if (!_points) return;
+    const occluder = currentOccluder();
+    if (!occluder) return;
+    for (const city of _cities) {
+      const point = _pointsById.get(city.id);
+      if (!point) continue;
+      const visible = occluder.isPointVisible(point.position);
+      point.show = visible;
+      const label = _labelsById.get(city.id);
+      if (label) label.show = visible;
+    }
   }
 
   function buildPoints() {
@@ -316,6 +351,7 @@ export function createCityIntelLayer() {
     const wasClose = _cameraHeightM < CLOSE_CAMERA_HEIGHT_M;
     _cameraHeightM = Number.isFinite(height) ? height : Infinity;
     if (wasClose !== _cameraHeightM < CLOSE_CAMERA_HEIGHT_M) restyleAll();
+    else updateHorizonVisibility();
   }
 
   return {

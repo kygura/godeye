@@ -15,6 +15,42 @@
   --ci-adv-4: #ff8585;
 }
 
+/* ── Panel surface (DESIGN §2): #city-intel-panel shares #global-context-panel's
+   DOM shape (panel-glow + <X>-panel-inner[data-rail-scroller]), and layers.css
+   already gives it the same rail layout/collapse rules — but the actual glass
+   surface lives on .global-context-panel-inner in layers.css, which never
+   mentions this panel. Mirrored here (tokens only) so ATLAS content isn't
+   floating transparent over the imagery. Cyber redefines --glass-bg/
+   --glass-border/--panel-radius wholesale (cyber.css :root), so this already
+   reskins for free; only the notched frame shape needs a cyber override below. */
+#city-intel-panel .panel-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(98, 181, 255, 0.2) 0%,
+    transparent 62%
+  );
+  filter: blur(20px);
+  opacity: 0.24;
+  pointer-events: none;
+}
+.city-intel-panel-inner {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--panel-radius);
+  background: var(--glass-bg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
 /* ── Mode toggle pill (scene-chrome.html), styled like #travel-toggle ── */
 #top-center-actions #city-intel-toggle {
   width: auto;
@@ -397,4 +433,53 @@ body.city-intel-mode #city-intel-toggle {
 :root[data-ui-theme='cyber'] .ci-row-bar-fill,
 :root[data-ui-theme='cyber'] .ci-legend-bin {
   border-radius: 1px;
+}
+
+/* ── Cyber panel frame: cyber.css keys its notched-frame/header treatment off
+   the OTHER right-rail panels' -inner classes (cctv/weather/recent-imagery/
+   scene/radio) and never lists .city-intel-panel-inner, so it falls back to
+   a plain rounded corner. Mirrored here instead of editing cyber.css — same
+   declarations those panels get, --cyber-panel-frame/--cyber-panel-shadow/
+   --cyber-red tokens only. */
+:root[data-ui-theme='cyber'] .city-intel-panel-inner {
+  border-radius: 0;
+  clip-path: var(--cyber-panel-frame);
+  box-shadow: var(--cyber-panel-shadow);
+}
+:root[data-ui-theme='cyber'] .city-intel-panel-inner > .panel-header {
+  min-height: 28px;
+  gap: 9px;
+  padding: 0 2px 7px 8px;
+  border-bottom: 1px solid rgba(206, 222, 226, 0.08);
+}
+:root[data-ui-theme='cyber']
+  .city-intel-panel-inner
+  > .panel-header
+  .panel-title {
+  position: relative;
+}
+:root[data-ui-theme='cyber']
+  .city-intel-panel-inner
+  > .panel-header
+  .panel-title::before {
+  position: absolute;
+  top: 50%;
+  left: -8px;
+  width: 3px;
+  height: 11px;
+  background: var(--cyber-red);
+  clip-path: polygon(0 0, 100% 2px, 100% calc(100% - 2px), 0 100%);
+  content: '';
+  transform: translateY(-50%);
+}
+:root[data-ui-theme='cyber']
+  .city-intel-panel-inner
+  > .panel-header
+  .panel-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(196, 84, 84, 0.62),
+    rgba(206, 222, 226, 0.08)
+  );
 }

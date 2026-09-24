@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as Cesium from 'cesium';
 import { createCityIntelMode, MODE_LAYER_IDS } from './cityIntelMode.js';
+import { GLOBE_VIEW } from '../locations.js';
 
 class Element extends EventTarget {
   constructor() {
@@ -31,7 +33,7 @@ class Element extends EventTarget {
   }
 }
 
-function fixture({ withDom = true } = {}) {
+function fixture({ withDom = true, cameraHeightM = 10_000_000 } = {}) {
   const els = {
     body: new Element(),
     toggle: new Element(),
@@ -56,7 +58,18 @@ function fixture({ withDom = true } = {}) {
 
   const calls = { getEnabledLayerIds: 0, restore: [] };
   let enabled = new Set(['flights', 'vessels']);
+  const cameraCalls = { cancelFlight: 0, flyTo: [] };
+  const camera = {
+    positionCartographic: {
+      longitude: Cesium.Math.toRadians(-97.7431),
+      latitude: Cesium.Math.toRadians(30.2672),
+      height: cameraHeightM,
+    },
+    cancelFlight: () => cameraCalls.cancelFlight++,
+    flyTo: (options) => cameraCalls.flyTo.push(options),
+  };
   const dataManager = {
+    viewer: { camera },
     getEnabledLayerIds: () => {
       calls.getEnabledLayerIds++;
       return new Set(enabled);
@@ -82,7 +95,7 @@ function fixture({ withDom = true } = {}) {
     showToast: (message) => toasts.push(message),
     doc,
   });
-  return { mode, els, calls, toasts, dataManager, panelCalls };
+  return { mode, els, calls, toasts, dataManager, panelCalls, cameraCalls };
 }
 
 test('createCityIntelMode degrades to a no-op without the required DOM', async () => {
@@ -125,7 +138,11 @@ test('enter(): only kicks off panel.ready() once the layer is actually enabled',
   const { mode, calls, panelCalls } = fixture();
   await mode.enter();
   assert.equal(panelCalls.ready, 1);
-  assert.equal(calls.restore.length, 1, 'restore already happened by the time ready() is called');
+  assert.equal(
+    calls.restore.length,
+    1,
+    'restore already happened by the time ready() is called',
+  );
 });
 
 test('enter() while already active is a no-op (no double snapshot)', async () => {
@@ -165,6 +182,51 @@ test('exit() when not active is a no-op', () => {
   mode.exit();
   assert.equal(calls.restore.length, 0);
   assert.deepEqual(toasts, []);
+});
+
+test('enter(): flies out to a global view when the camera starts low (F2)', async () => {
+  const { mode, cameraCalls } = fixture({ cameraHeightM: 500_000 });
+  await mode.enter();
+
+  assert.equal(cameraCalls.cancelFlight, 1);
+  assert.equal(cameraCalls.flyTo.length, 1);
+  const dest = cameraCalls.flyTo[0].destination;
+  const carto = Cesium.Cartographic.fromCartesian(dest);
+  assert.ok(
+    Math.abs(carto.height - GLOBE_VIEW.heightM) < 1,
+    'flies to the shared global-view height',
+  );
+  assert.ok(
+    Math.abs(Cesium.Math.toDegrees(carto.longitude) - -97.7431) < 0.01,
+    'keeps the current sub-camera longitude centred',
+  );
+  assert.ok(
+    Math.abs(Cesium.Math.toDegrees(carto.latitude) - 30.2672) < 0.01,
+    'keeps the current sub-camera latitude centred',
+  );
+});
+
+test('enter(): does not fly when the camera is already high (no fly if already high)', async () => {
+  const { mode, cameraCalls } = fixture({ cameraHeightM: 5_000_000 });
+  await mode.enter();
+  assert.equal(cameraCalls.flyTo.length, 0);
+  assert.equal(cameraCalls.cancelFlight, 0);
+});
+
+test('enter(): height exactly at the 3,000 km threshold does not fly', async () => {
+  const { mode, cameraCalls } = fixture({ cameraHeightM: 3_000_000 });
+  await mode.enter();
+  assert.equal(cameraCalls.flyTo.length, 0);
+});
+
+test('exit(): never moves the camera', async () => {
+  const { mode, cameraCalls } = fixture({ cameraHeightM: 500_000 });
+  await mode.enter();
+  cameraCalls.flyTo.length = 0;
+  cameraCalls.cancelFlight = 0;
+  mode.exit();
+  assert.equal(cameraCalls.flyTo.length, 0);
+  assert.equal(cameraCalls.cancelFlight, 0);
 });
 
 test('the toggle pill and the panel EXIT button drive enter/exit', async () => {
