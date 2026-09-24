@@ -185,6 +185,34 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
     warnings; reliability 2 critical and several warnings.
   - Fix workers A (mode enter/exit), B (proxy) and C (client and build) dispatched.
   - Accepted as-is: horizon-check cost, air-cache FIFO, and upstream `test.only`.
+- Loop 1 fixes committed.
+  - A: ATLAS enter rolls back on failure and guards exit-during-enter; honest exit toast.
+  - B: proxy refresh isolated from client aborts; failure cooldown; ZORI columns read by
+    header; advisory URL scheme check.
+  - C: advisory link scheme check in the client; tripStore load sanitised; two test
+    gaps closed; upstream commits genuinely pinned; build downloads retried.
+- Loop 1 results:
+  - Readability: stale T6a/T6b framing, duplicate re-exports, unnamed fly heights.
+  - Drift: voice rank announce missing, voice plan toast missing, one copy-case
+    mismatch. Also: the Cyber theme's post-process tints marker colours. That is
+    accepted: it is upstream scene-wide behaviour, and the list and legend keep true
+    colours and numbers.
+  - Checker: two FAILs.
+    - The ATLAS pill during Travel Mode doesn't exit Travel first.
+    - The METHODOLOGY link 404s in the production build.
+  - Checker loose ends:
+    - No arcs until PLAN is opened; compare view has no Add to plan.
+    - Voice chip lost on re-render; voice plan cost fields; even-split lengths.
+    - Exit from PLAN leaves the plan as the active trip.
+    - PLAN keeps ranking labels (the likely "S P–" overlap).
+    - Panel visible outside the mode.
+    - Fallback panel has no plan; `setPrefs` doesn't refresh the plan.
+    - Air-quality refetched three times.
+  - Ponytail: about −550 lines possible. Taken: clearly dead code and duplicates.
+    Skipped: the DOM-helper unification, the stay/node rename, extracting compare, and
+    visa-string consolidation (churn beats the gain), plus the server→src import
+    (boundary rule).
+- Loop 2 dispatched: W1 UI, W2 logic/voice/server.
 - Shared registry files are owned by T9 so parallel workers can't collide:
   `format-scope.json`, `package.json`, `DATA_SOURCES.md`, `CHANGELOG.md` and
   `CURRENT-STATE.md`.
@@ -212,7 +240,7 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
 | F2 | ATLAS visual fixes: glass surface, horizon occlusion, camera pull-out on entry | sonnet | T6a | `city-intel.css`, `cityIntel/index.js`, `cityIntelMode.js` | done |
 | T14 | First-run launcher tile LIFESTYLE PLANNING leading to ATLAS; launcher closes when ATLAS is entered | sonnet | T6a | `firstRunExperience.js`, `welcome.html`, `startupChrome.js`, `tools.js` | done |
 | T9 | Integration: format-scope adoption, `DATA_SOURCES.md`, `CHANGELOG.md`, `CURRENT-STATE.md`, full format/build/test | haiku→sonnet if failures | T1–T8 | shared files | done |
-| V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | running (loop 1) |
+| V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | running (loop 2) |
 
 ## Follow-ups (not in v1)
 
