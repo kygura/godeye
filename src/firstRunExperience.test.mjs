@@ -661,7 +661,9 @@ test('the voice TOOL SCHEMA matches the pinned release — the mission mapping i
   // Canonical serialization pins every tool name, description, property and
   // ordering while allowing source formatting. Derived from the unchanged
   // release schema before formatting (the previous source-byte pin passed).
-  const legacyTools = structuredClone(GEV_REALTIME_TOOLS).filter((tool) => tool.name !== 'set_cyber_sonar');
+  // City Intel voice tools (docs/cockpit/SPEC.md §4) are wholly new, like the sonar tool.
+  const additive = new Set(['set_cyber_sonar', 'rank_cities', 'compare_cities', 'show_city_intel']);
+  const legacyTools = structuredClone(GEV_REALTIME_TOOLS).filter((tool) => !additive.has(tool.name));
   const hudLayout = legacyTools.find((tool) => tool.name === 'set_hud').parameters.properties.layout;
   assert.deepEqual(hudLayout.enum, ['tactical', 'operator', 'minimal', 'cyber']);
   // Cyber deliberately adds one layout; first-run missions still change no tools.
