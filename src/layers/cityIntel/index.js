@@ -38,6 +38,11 @@ export function binForScore(score) {
   return /** @type {0|1|2|3|4} */ (Math.min(4, Math.floor(clamped / 20)));
 }
 
+/** CSS colour for a score bin (DESIGN §7 ramp), or the neutral token when unscored. */
+export function scoreColor(bin) {
+  return bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${bin})`;
+}
+
 /**
  * Marker visual state per DESIGN §7. Pure — no Cesium types in or out, so it
  * is testable without a Cesium runtime. Priority when combined:
@@ -82,7 +87,7 @@ export function markerStyle(
  * Which cities get a globe label (DESIGN §7): the caller's current top
  * ranking, every pinned or selected city, and — once the camera is close —
  * every eligible city. Pure.
- * @param {{topRankedIds?: Iterable<string>, pinnedIds?: Iterable<string>, selectedId?: string|null, eligibleIds?: Iterable<string>, cameraHeightM?: number, closeHeightM?: number}} [options]
+ * @param {{topRankedIds?: Iterable<string>, pinnedIds?: Iterable<string>, selectedId?: string|null, eligibleIds?: Iterable<string>, cameraHeightM?: number}} [options]
  * @returns {Set<string>}
  */
 export function selectLabelIds({
@@ -91,12 +96,12 @@ export function selectLabelIds({
   selectedId = null,
   eligibleIds = [],
   cameraHeightM = Infinity,
-  closeHeightM = CLOSE_CAMERA_HEIGHT_M,
 } = {}) {
   const ids = new Set(topRankedIds);
   for (const id of pinnedIds) ids.add(id);
   if (selectedId != null) ids.add(selectedId);
-  if (cameraHeightM < closeHeightM) for (const id of eligibleIds) ids.add(id);
+  if (cameraHeightM < CLOSE_CAMERA_HEIGHT_M)
+    for (const id of eligibleIds) ids.add(id);
   return ids;
 }
 
@@ -139,7 +144,6 @@ export function createCityIntelLayer() {
   let _pinnedIds = new Set();
   let _hoveredId = null;
   let _onPick = null;
-  let _onHover = null;
   let _clickHandler = null;
   let _cameraChangedHandler = null;
   let _cameraHeightM = Infinity;
@@ -335,7 +339,6 @@ export function createCityIntelLayer() {
       _hoveredId = id;
       restyleOne(previous);
       restyleOne(id);
-      _onHover?.(id);
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     registerPickOwner('city-intel', (pickedId) => _pointsById.has(pickedId));
   }
@@ -502,10 +505,6 @@ export function createCityIntelLayer() {
 
     onPick(cb) {
       _onPick = typeof cb === 'function' ? cb : null;
-    },
-
-    onHover(cb) {
-      _onHover = typeof cb === 'function' ? cb : null;
     },
   };
 }

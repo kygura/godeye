@@ -1,8 +1,6 @@
 /**
- * @file ATLAS (City Intel) right-rail panel: ranking view + mode wiring.
- * docs/cockpit/DESIGN.md §2, §7-9. T6a scope only — scorecard, compare and
- * trip content are T6b (see the `// T6b:` markers below and the empty mount
- * points in `src/ui/templates/city-intel.html`).
+ * @file ATLAS (City Intel) right-rail panel: ranking, scorecard, compare and
+ * the RANK/PLAN mode wiring. docs/cockpit/DESIGN.md §2-4, §7-9, §11.
  *
  * Pure helpers (preset/weight math, row view models, pagination, pin cap,
  * persistence, roving-focus index math) are exported for node:test and used
@@ -12,8 +10,8 @@
  */
 import { PILLARS } from './scoring.js';
 import { loadCityIntelPack, fetchAdvisories, fetchVisa } from './source.js';
-import { selectLabelIds } from './index.js';
-import { monthsOf, spanLabel } from './plan.js';
+import { selectLabelIds, binForScore, scoreColor } from './index.js';
+import { spanLabel } from './plan.js';
 import { createPlanView } from './planView.js';
 import {
   formatPopulation,
@@ -26,15 +24,13 @@ import {
 import { createSurfaceKeyboard } from '../../ui/surfaceKeyboard.js';
 import { tripStore as defaultTripStore } from '../../travel/tripStore.js';
 
-// Re-exported for node:test (moved to scorecard.js, T6b: both the ranking
-// row and the scorecard/compare need them).
-export { formatPopulation, advisoryBadgeText };
-
 const STORAGE_KEY = 'gev:city-intel:v1';
 export const PAGE_SIZE = 100;
 export const PIN_MAX = 4;
 /** DESIGN §2: row click flies the camera but never zooms in below this. */
 export const MIN_FLY_HEIGHT_M = 800_000;
+/** The scorecard's own FLY TO / a PLAN stay's fly-to: closer than a row click's MIN_FLY_HEIGHT_M. */
+export const SCORECARD_FLY_HEIGHT_M = 600_000;
 const TOP_LABEL_COUNT = 20;
 
 /** DESIGN §2: the four weighting presets (CUSTOM has no fixed weights). */
@@ -51,23 +47,6 @@ const DEFAULT_FILTERS = Object.freeze({
   hideAdvisoryLevelAtLeast: null,
   includeIneligible: false,
 });
-const DEFAULT_STATE = Object.freeze({
-  weights: DEFAULT_WEIGHTS,
-  preset: 'BALANCED',
-  passport: null,
-  filters: DEFAULT_FILTERS,
-  pins: Object.freeze([]),
-  view: 'grouped',
-  // DESIGN §11.1 (RANK/PLAN scaffolding only; the PLAN view itself is T6b's
-  // planView.js sibling) plus the layout-compaction `<details>` open state
-  // (planner decision, not in DESIGN's persisted-key list — see the T6b report).
-  mode: 'rank',
-  homeCityId: null,
-  monthlySpendUsd: null,
-  overrides: Object.freeze({}),
-  refineOpen: false,
-});
-
 // ---------------------------------------------------------------------------
 // Pure helpers (node:test coverage lives in panel.test.mjs)
 // ---------------------------------------------------------------------------
@@ -220,46 +199,26 @@ export function sanitizeOverrides(raw) {
   return out;
 }
 
-/** Serialize the persisted slice of state (DESIGN §0: `gev:city-intel:v1`). */
-export function serializePersistedState({
-  weights,
-  preset,
-  passport,
-  filters,
-  pins,
-  view,
-  mode,
-  homeCityId,
-  monthlySpendUsd,
-  overrides,
-  refineOpen,
-}) {
-  return JSON.stringify({
-    v: 1,
-    weights,
-    preset,
-    passport,
-    filters,
-    pins,
-    view,
-    mode,
-    homeCityId,
-    monthlySpendUsd,
-    overrides,
-    refineOpen,
-  });
+/**
+ * Serialize the persisted slice of state (DESIGN §0: `gev:city-intel:v1`).
+ * `state` always holds exactly this module's persisted keys (the DOM
+ * factory's `state` object is only ever built/reassigned by
+ * `parsePersistedState`/its own field setters), so a spread is enough.
+ */
+export function serializePersistedState(state) {
+  return JSON.stringify({ v: 1, ...state });
 }
 
 /** Parse persisted JSON, falling back to defaults on anything unexpected. */
 export function parsePersistedState(raw) {
-  if (typeof raw !== 'string' || !raw) return clonePersistedDefaults();
+  if (typeof raw !== 'string' || !raw) return parsePersistedState('{}');
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return clonePersistedDefaults();
+    return parsePersistedState('{}');
   }
-  if (!parsed || typeof parsed !== 'object') return clonePersistedDefaults();
+  if (!parsed || typeof parsed !== 'object') return parsePersistedState('{}');
   const weights = {
     qol: clampWeight(parsed.weights?.qol ?? DEFAULT_WEIGHTS.qol),
     cost: clampWeight(parsed.weights?.cost ?? DEFAULT_WEIGHTS.cost),
@@ -302,28 +261,12 @@ export function parsePersistedState(raw) {
   };
 }
 
-function clonePersistedDefaults() {
-  return {
-    weights: { ...DEFAULT_STATE.weights },
-    preset: DEFAULT_STATE.preset,
-    passport: DEFAULT_STATE.passport,
-    filters: { ...DEFAULT_STATE.filters },
-    pins: [],
-    mode: DEFAULT_STATE.mode,
-    homeCityId: DEFAULT_STATE.homeCityId,
-    monthlySpendUsd: DEFAULT_STATE.monthlySpendUsd,
-    overrides: { ...DEFAULT_STATE.overrides },
-    refineOpen: DEFAULT_STATE.refineOpen,
-    view: DEFAULT_STATE.view,
-  };
-}
-
 /** Load persisted state from a Storage-like object; never throws. */
 export function loadPersisted(storage) {
   try {
     return parsePersistedState(storage?.getItem?.(STORAGE_KEY));
   } catch {
-    return clonePersistedDefaults();
+    return parsePersistedState('{}');
   }
 }
 
@@ -393,6 +336,11 @@ export function createCityIntelPanel({
         overrides: {},
       }),
       setPrefs() {},
+      onModeExit() {},
+      // voice/cityIntelActions.js's plan_lifestyle checks `!cityIntel.plan`
+      // before touching it; explicit null keeps that contract honest instead
+      // of relying on an absent property also being falsy.
+      plan: null,
     };
   }
 
@@ -429,7 +377,15 @@ export function createCityIntelPanel({
     controlsSummaryText: doc.getElementById('ci-controls-summary-text'),
     controlsExpandBtn: doc.getElementById('ci-controls-expand-btn'),
     compareMount: doc.getElementById('city-intel-compare'),
+    methodologyLink: doc.getElementById('ci-methodology-link'),
   };
+  // The built app has no /docs/ (root-relative would 404); resolve it as a
+  // Vite asset URL instead, same pattern as src/data/bundledJson.js.
+  if (els.methodologyLink)
+    els.methodologyLink.href = new URL(
+      '../../../docs/cockpit/METHODOLOGY.md',
+      import.meta.url,
+    ).href;
   const weightInputs = {
     qol: doc.getElementById('ci-weight-qol'),
     cost: doc.getElementById('ci-weight-cost'),
@@ -445,6 +401,7 @@ export function createCityIntelPanel({
 
   let index = null;
   let countries = null; // pack.countries.countries, ISO3 -> record
+  let countryIndicators = null; // pack.countries.indicators, key -> { direction, ... }
   let packCities = [];
   let seasonalityCities = null; // pack.seasonality.cities, cityId -> { months }
   let advisoriesByIso3 = null;
@@ -509,17 +466,22 @@ export function createCityIntelPanel({
     if (els.status) els.status.textContent = message;
   }
 
+  /** Toggle .active/aria-checked on a radiogroup's buttons (preset/view/mode segments). */
+  function syncRadioSeg(seg, selector, datasetKey, value) {
+    for (const btn of seg?.querySelectorAll(selector) || []) {
+      const active = btn.dataset[datasetKey] === value;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+
   function syncWeightsUi() {
     for (const p of PILLARS) {
       if (weightInputs[p]) weightInputs[p].value = String(state.weights[p]);
       if (weightOutputs[p])
         weightOutputs[p].textContent = String(state.weights[p]);
     }
-    for (const btn of els.presetSeg?.querySelectorAll('[data-preset]') || []) {
-      const active = btn.dataset.preset === state.preset;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-checked', String(active));
-    }
+    syncRadioSeg(els.presetSeg, '[data-preset]', 'preset', state.preset);
   }
 
   function syncFiltersUi() {
@@ -532,11 +494,7 @@ export function createCityIntelPanel({
   }
 
   function syncViewUi() {
-    for (const btn of els.viewSeg?.querySelectorAll('[data-view]') || []) {
-      const active = btn.dataset.view === state.view;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-checked', String(active));
-    }
+    syncRadioSeg(els.viewSeg, '[data-view]', 'view', state.view);
   }
 
   function syncPassportHelper() {
@@ -554,11 +512,7 @@ export function createCityIntelPanel({
   }
 
   function syncModeSegUi() {
-    for (const btn of els.modeSeg?.querySelectorAll('[data-mode]') || []) {
-      const active = btn.dataset.mode === state.mode;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-checked', String(active));
-    }
+    syncRadioSeg(els.modeSeg, '[data-mode]', 'mode', state.mode);
   }
 
   // -- Ranking -------------------------------------------------------------
@@ -631,14 +585,27 @@ export function createCityIntelPanel({
     const allEligibleIds = scored.filter((s) => s.eligible).map((s) => s.id);
     const filteredIds = new Set(flat.map((s) => s.id));
     const filteredOutIds = allEligibleIds.filter((id) => !filteredIds.has(id));
-    const topIds = grouped
-      ? grouped.slice(0, TOP_LABEL_COUNT).map((g) => g.cities[0]?.id)
-      : flat.slice(0, TOP_LABEL_COUNT).map((s) => s.id);
+    // DESIGN §11.1: PLAN drops the top-20 ranking labels entirely (only
+    // pinned/selected city-intel labels can remain), so the trips layer's own
+    // per-stay label is never fought for the same marker.
+    const topIds =
+      state.mode === 'plan'
+        ? []
+        : grouped
+          ? grouped.slice(0, TOP_LABEL_COUNT).map((g) => g.cities[0]?.id)
+          : flat.slice(0, TOP_LABEL_COUNT).map((s) => s.id);
     const labelIds = selectLabelIds({
       topRankedIds: topIds.filter(Boolean),
       pinnedIds: state.pins,
       selectedId,
     });
+    if (state.mode === 'plan') {
+      // A pinned/selected city that's also a plan stay would otherwise carry
+      // both labels 2px apart (city-intel pixelOffset -14, trips -16); the
+      // trips label wins for any city already in the plan.
+      for (const stay of planView?.getStays?.() ?? [])
+        labelIds.delete(stay.cityId);
+    }
     layer.setScores(scored, {
       rankedIds: allEligibleIds,
       filteredOutIds,
@@ -706,18 +673,16 @@ export function createCityIntelPanel({
       nameEl.append(countrySpan);
     }
 
-    const bin = binFromComposite(scored.composite);
+    const bin = binForScore(scored.composite);
     const scoreEl = el('span', 'ci-row-score');
     scoreEl.textContent =
       scored.composite == null ? '—' : String(Math.round(scored.composite));
-    scoreEl.style.color =
-      bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${bin})`;
+    scoreEl.style.color = scoreColor(bin);
 
     const barEl = el('span', 'ci-row-bar');
     const fillEl = el('span', 'ci-row-bar-fill');
     fillEl.style.width = `${Math.max(0, Math.min(100, scored.composite ?? 0))}%`;
-    fillEl.style.background =
-      bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${bin})`;
+    fillEl.style.background = scoreColor(bin);
     barEl.append(fillEl);
 
     const coverageEl = el('span', 'ci-row-coverage');
@@ -777,14 +742,6 @@ export function createCityIntelPanel({
 
     button.addEventListener('click', () => select(scored.id));
     return button;
-  }
-
-  function binFromComposite(score) {
-    if (!Number.isFinite(score)) return null;
-    return Math.min(
-      4,
-      Math.max(0, Math.floor(Math.min(100, Math.max(0, score)) / 20)),
-    );
   }
 
   function renderPins() {
@@ -898,7 +855,12 @@ export function createCityIntelPanel({
     });
   }
 
-  /** ADD TO PLAN (DESIGN §3/§11.6): routes to the injected `planView`. */
+  /**
+   * ADD TO PLAN (DESIGN §3/§11.6): routes to the injected `planView`. When
+   * nothing is active yet, makes the plan trip active so the Trips layer
+   * draws its arcs immediately (DESIGN §11.1) instead of only once PLAN is
+   * opened — `addStay` already called `ensurePlanTrip()` by the time this runs.
+   */
   function addToPlan(id, name) {
     if (!planView) return;
     const result = planView.addStay(id);
@@ -907,6 +869,10 @@ export function createCityIntelPanel({
       showToast(
         result?.ok ? `Added ${name} to plan.` : 'Could not add to plan.',
       );
+    if (result?.ok && !store.getActiveTrip?.()) {
+      const planTrip = store.getPlanTrip?.();
+      if (planTrip) store.setActive?.(planTrip.id);
+    }
     renderScorecard();
   }
 
@@ -916,7 +882,7 @@ export function createCityIntelPanel({
     if (!scored) return;
     const stays = planView?.getStays?.() ?? [];
     const cityStays = stays.filter((s) => s.cityId === selectedId);
-    const full = isPlanFull(stays, monthsOf);
+    const full = isPlanFull(stays);
     scorecardView.render(scored, {
       rank: fullRankMap.get(selectedId) ?? null,
       totalCount: fullRankTotal,
@@ -926,14 +892,15 @@ export function createCityIntelPanel({
       advisoriesOffline,
       seasonalityCities,
       allCities: packCities,
+      indicators: countryIndicators,
       pinned: state.pins.includes(selectedId),
       // DESIGN §11: "In plan:" helper uses planView.getStays() + plan.js spanLabel.
       inPlanText: cityStays.length
         ? `In plan: ${cityStays.map(spanLabel).join(', ')}`
         : null,
-      // Design gap (T6b): DESIGN §3 says ADD TO PLAN is "disabled only when the
-      // plan is full", but planView's contract has no `isFull()` — derived here
-      // from plan.js's own month coverage instead of duplicating that logic.
+      // ADD TO PLAN is disabled only when the plan is full (DESIGN §3);
+      // planView has no isFull() of its own, so it's derived here from
+      // plan.js's own month coverage instead of duplicating that logic.
       planDisabled: !planView || full,
       planTitle: !planView
         ? 'Plan view loading'
@@ -949,7 +916,8 @@ export function createCityIntelPanel({
           lat: scored.city.lat,
           lon: scored.city.lon,
         }),
-      onFlyTo: () => flyTo(scored.city.lat, scored.city.lon, 600_000),
+      onFlyTo: () =>
+        flyTo(scored.city.lat, scored.city.lon, SCORECARD_FLY_HEIGHT_M),
       onFocusPassport: () => els.passport?.focus(),
     });
   }
@@ -984,6 +952,9 @@ export function createCityIntelPanel({
       onUnpin: (id) => compareUnpin(id),
       onClearPins: () => clearPins(),
       onClose: () => closeCompare(),
+      // SPEC flow 5 / DESIGN §2: ADD TO PLAN from the compare column, same
+      // path a scorecard's own ADD TO PLAN button uses.
+      onAddToPlan: (id) => addToPlan(id, scoredById.get(id)?.city.name || id),
     });
   }
 
@@ -1002,15 +973,9 @@ export function createCityIntelPanel({
     compareKeyboard?.deactivate({ restoreFocus: true });
   }
 
+  /** Unpinning from compare is always a removal (the id is already pinned to be shown here). */
   function compareUnpin(id) {
-    const name = scoredById.get(id)?.city.name || id;
-    const { pinned } = togglePin(state.pins, id, PIN_MAX);
-    state.pins = pinned;
-    persist();
-    layer.setPinned(state.pins);
-    announce(`${name} unpinned, ${state.pins.length} of ${PIN_MAX}`);
-    renderPins();
-    renderRows();
+    pinRow(id, scoredById.get(id)?.city.name || id);
     if (state.pins.length < 2) closeCompare();
     else renderCompare();
   }
@@ -1043,6 +1008,19 @@ export function createCityIntelPanel({
     });
   }
 
+  /** Arrow-key roving nav shared by the preset/view/mode radiogroup segments. */
+  function bindRadioKeydown(seg, selector) {
+    seg?.addEventListener('keydown', (event) => {
+      const buttons = [...(seg.querySelectorAll(selector) || [])];
+      const current = buttons.findIndex((b) => b === doc.activeElement);
+      const next = stepRadioIndex(current, event.key, buttons.length);
+      if (next === current || current < 0) return;
+      event.preventDefault();
+      buttons[next].focus();
+      buttons[next].click();
+    });
+  }
+
   function bindPresetSeg() {
     els.presetSeg?.addEventListener('click', (event) => {
       const btn = event.target.closest('[data-preset]');
@@ -1057,17 +1035,7 @@ export function createCityIntelPanel({
       rerank();
       announce(`Weighting preset ${state.preset}`);
     });
-    els.presetSeg?.addEventListener('keydown', (event) => {
-      const buttons = [
-        ...(els.presetSeg.querySelectorAll('[data-preset]') || []),
-      ];
-      const current = buttons.findIndex((b) => b === doc.activeElement);
-      const next = stepRadioIndex(current, event.key, buttons.length);
-      if (next === current || current < 0) return;
-      event.preventDefault();
-      buttons[next].focus();
-      buttons[next].click();
-    });
+    bindRadioKeydown(els.presetSeg, '[data-preset]');
   }
 
   function bindViewSeg() {
@@ -1080,15 +1048,7 @@ export function createCityIntelPanel({
       pageCount = PAGE_SIZE;
       rerank();
     });
-    els.viewSeg?.addEventListener('keydown', (event) => {
-      const buttons = [...(els.viewSeg.querySelectorAll('[data-view]') || [])];
-      const current = buttons.findIndex((b) => b === doc.activeElement);
-      const next = stepRadioIndex(current, event.key, buttons.length);
-      if (next === current || current < 0) return;
-      event.preventDefault();
-      buttons[next].focus();
-      buttons[next].click();
-    });
+    bindRadioKeydown(els.viewSeg, '[data-view]');
   }
 
   function bindFilters() {
@@ -1136,7 +1096,9 @@ export function createCityIntelPanel({
 
   async function loadVisaContext(iso3) {
     if (!iso3) return null;
-    const result = await fetchVisa(iso3).catch(() => ({ ok: false }));
+    // getJson (source.js) never rejects: a network/parse failure resolves
+    // { ok: false } already, so there's nothing for a .catch to guard here.
+    const result = await fetchVisa(iso3);
     return result?.ok ? result.data : null;
   }
 
@@ -1210,6 +1172,9 @@ export function createCityIntelPanel({
     } else {
       leavePlanSubmode();
     }
+    // Refresh the globe's labelling for the new mode (DESIGN §11.1: PLAN
+    // drops the top-20 ranking labels; RANK restores them on the way back).
+    renderRows();
   }
 
   function bindModeSeg() {
@@ -1217,15 +1182,7 @@ export function createCityIntelPanel({
       const btn = event.target.closest('[data-mode]');
       if (btn) switchMode(btn.dataset.mode);
     });
-    els.modeSeg?.addEventListener('keydown', (event) => {
-      const buttons = [...(els.modeSeg.querySelectorAll('[data-mode]') || [])];
-      const current = buttons.findIndex((b) => b === doc.activeElement);
-      const next = stepRadioIndex(current, event.key, buttons.length);
-      if (next === current || current < 0) return;
-      event.preventDefault();
-      buttons[next].focus();
-      buttons[next].click();
-    });
+    bindRadioKeydown(els.modeSeg, '[data-mode]');
   }
 
   /** Layout compaction (§5): persist the `<details>` open state. */
@@ -1256,7 +1213,8 @@ export function createCityIntelPanel({
   }
 
   async function loadAdvisories() {
-    const result = await fetchAdvisories().catch(() => ({ ok: false }));
+    // getJson (source.js) never rejects; see loadVisaContext above.
+    const result = await fetchAdvisories();
     advisoriesOffline = !result?.ok;
     advisoriesByIso3 = result?.ok ? result.data?.byIso3 || {} : null;
     if (els.hideAdvisory) els.hideAdvisory.disabled = advisoriesOffline;
@@ -1278,6 +1236,14 @@ export function createCityIntelPanel({
 
   let readyPromise = null;
 
+  function showPackUnavailable() {
+    if (els.list)
+      els.list.replaceChildren(
+        textNode('CITY PACK UNAVAILABLE'),
+        textNode('Reload the page to retry.'),
+      );
+  }
+
   async function init() {
     setDisabled(true);
     if (els.list) els.list.replaceChildren(textNode('LOADING CITY PACK…'));
@@ -1285,23 +1251,16 @@ export function createCityIntelPanel({
     try {
       [pack] = await Promise.all([loadCityIntelPack(), layer.whenReady()]);
     } catch {
-      if (els.list)
-        els.list.replaceChildren(
-          textNode('CITY PACK UNAVAILABLE'),
-          textNode('Reload the page to retry.'),
-        );
+      showPackUnavailable();
       return;
     }
     index = layer.getIndex();
     if (!index) {
-      if (els.list)
-        els.list.replaceChildren(
-          textNode('CITY PACK UNAVAILABLE'),
-          textNode('Reload the page to retry.'),
-        );
+      showPackUnavailable();
       return;
     }
     countries = pack.countries?.countries || {};
+    countryIndicators = pack.countries?.indicators || {};
     packCities = pack.cities || [];
     seasonalityCities = pack.seasonality?.cities || {};
     // T12b: construct the real Lifestyle Plan view now the pack is ready,
@@ -1329,7 +1288,7 @@ export function createCityIntelPanel({
         setPrefs: (partial) => api.setPrefs(partial),
         showToast,
         announce,
-        flyTo: (stay) => flyTo(stay.lat, stay.lng, 600_000),
+        flyTo: (stay) => flyTo(stay.lat, stay.lng, SCORECARD_FLY_HEIGHT_M),
         switchMode,
       });
     }
@@ -1426,6 +1385,13 @@ export function createCityIntelPanel({
         voiceChipTimer = setTimeout(() => {
           els.voiceChip.hidden = true;
         }, 4000);
+        // Drift fix: announce the re-ranked top 3 (voice's only caller of
+        // this surface is rank_cities, right after setWeights/setFilters).
+        const top3 = api.getTopRanked(3);
+        if (top3.length)
+          announce(
+            `Ranking updated by voice: ${top3.map((c) => `${c.rank} ${c.name}`).join(', ')}.`,
+          );
         return;
       }
       if (surface === 'compare') {
@@ -1451,6 +1417,10 @@ export function createCityIntelPanel({
     setPrefs(partial = {}) {
       if (partial.mode === 'rank' || partial.mode === 'plan')
         switchMode(partial.mode);
+      const touchesPlanProfile =
+        'homeCityId' in partial ||
+        'monthlySpendUsd' in partial ||
+        'overrides' in partial;
       if ('homeCityId' in partial)
         state.homeCityId =
           typeof partial.homeCityId === 'string' ? partial.homeCityId : null;
@@ -1462,6 +1432,18 @@ export function createCityIntelPanel({
         state.overrides = sanitizeOverrides(partial.overrides);
       persist();
       if (viewMode === 'scorecard') renderScorecard();
+      // PLAN's cost/comfort rows read the same home/spend/overrides profile;
+      // a code-driven setPrefs (voice, tests) must refresh it too, not just
+      // the scorecard.
+      if (touchesPlanProfile) planView?.render();
+    },
+    /**
+     * cityIntelMode.js calls this on exit() so leaving ATLAS while PLAN is
+     * showing restores whichever trip was active before PLAN took over,
+     * instead of stranding the plan trip as "active" forever.
+     */
+    onModeExit() {
+      if (state.mode === 'plan') leavePlanSubmode();
     },
     // T12b: the `plan_lifestyle` voice tool's contract (src/voice/cityIntelActions.js).
     plan: {

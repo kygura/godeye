@@ -165,6 +165,8 @@ export function createApplicationTools({
   const cityIntelMode = createCityIntelMode({
     dataManager,
     panel: cityIntelPanel,
+    // DESIGN §6.2: the ATLAS pill exits Travel Mode first when it's open.
+    travelMode,
     showToast: showCityIntelToast,
   });
   defer(() => cityIntelMode.exit());

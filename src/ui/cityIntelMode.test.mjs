@@ -33,7 +33,11 @@ class Element extends EventTarget {
   }
 }
 
-function fixture({ withDom = true, cameraHeightM = 10_000_000 } = {}) {
+function fixture({
+  withDom = true,
+  cameraHeightM = 10_000_000,
+  travelMode = null,
+} = {}) {
   const els = {
     body: new Element(),
     toggle: new Element(),
@@ -82,16 +86,20 @@ function fixture({ withDom = true, cameraHeightM = 10_000_000 } = {}) {
   };
 
   const toasts = [];
-  const panelCalls = { ready: 0 };
+  const panelCalls = { ready: 0, onModeExit: 0 };
   const panel = {
     ready: () => {
       panelCalls.ready++;
       return Promise.resolve();
     },
+    onModeExit: () => {
+      panelCalls.onModeExit++;
+    },
   };
   const mode = createCityIntelMode({
     dataManager,
     panel,
+    travelMode,
     showToast: (message) => toasts.push(message),
     doc,
   });
@@ -321,4 +329,45 @@ test('the toggle pill and the panel EXIT button drive enter/exit', async () => {
   await Promise.resolve();
   await Promise.resolve();
   assert.equal(mode.isActive(), true, 'toggle click also re-enters');
+});
+
+test('enter()/exit(): the panel is fully hidden outside the mode, not just collapsed', async () => {
+  const { mode, els } = fixture();
+  assert.equal(els.panel.hidden, false, 'test Element defaults to visible');
+  await mode.enter();
+  assert.equal(els.panel.hidden, false, 'entering unhides the panel');
+  await mode.exit();
+  assert.equal(els.panel.hidden, true, 'exiting hides it again');
+});
+
+test('exit(): calls panel.onModeExit() so PLAN restores the trip active before it', async () => {
+  const { mode, panelCalls } = fixture();
+  await mode.enter();
+  assert.equal(panelCalls.onModeExit, 0);
+  await mode.exit();
+  assert.equal(panelCalls.onModeExit, 1);
+});
+
+test('the toggle pill exits an active Travel Mode first, then toggles ATLAS (DESIGN §6.2)', async () => {
+  const travelCalls = { exit: 0 };
+  let travelActive = true;
+  const travelMode = {
+    isActive: () => travelActive,
+    exit: () => {
+      travelCalls.exit++;
+      travelActive = false;
+      return Promise.resolve();
+    },
+  };
+  const { mode, els } = fixture({ travelMode });
+  els.toggle.click();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(
+    travelCalls.exit,
+    1,
+    'Travel Mode was exited before ATLAS entered',
+  );
+  assert.equal(mode.isActive(), true);
 });

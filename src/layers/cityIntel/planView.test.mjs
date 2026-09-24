@@ -212,30 +212,27 @@ test('costCopy: override shows "your figure", omitting the ratio prefix with no 
 
 test("visaCopy: every status from plan.js's stayVisa", () => {
   assert.equal(
-    visaCopy({ status: 'ok', allowanceDays: 90 }).text,
+    visaCopy({ status: 'ok', allowanceDays: 90 }),
     'ok · 90 days visa-free',
   );
   assert.equal(
-    visaCopy({ status: 'ok', allowanceDays: null }).text,
+    visaCopy({ status: 'ok', allowanceDays: null }),
     'ok · no visa needed',
   );
   assert.equal(
-    visaCopy({ status: 'exceeds', allowanceDays: 90 }).text,
+    visaCopy({ status: 'exceeds', allowanceDays: 90 }),
     'stay exceeds visa-free days (90)',
   );
-  assert.equal(visaCopy({ status: 'no-passport' }).text, 'set your passport');
+  assert.equal(visaCopy({ status: 'no-passport' }), 'set your passport');
   assert.equal(
-    visaCopy({ status: 'unknown', requirement: 'E-Visa' }).text,
+    visaCopy({ status: 'unknown', requirement: 'E-Visa' }),
     'e-visa · days not known',
   );
   assert.equal(
-    visaCopy({ status: 'unknown', requirement: null }).text,
+    visaCopy({ status: 'unknown', requirement: null }),
     'no visa data for this destination',
   );
-  assert.equal(
-    visaCopy({ status: 'offline' }).text,
-    'unavailable (source offline)',
-  );
+  assert.equal(visaCopy({ status: 'offline' }), 'unavailable (source offline)');
 });
 
 // ---------------------------------------------------------------------------
@@ -512,11 +509,10 @@ test('getSummary: returns the documented per-stay and rollup shape', () => {
   assert.equal(summary.rollup.monthsCovered, 12);
 });
 
-test('show/render/markVoice/destroy do not throw for an empty plan or a full single-stay plan', () => {
+test('show/render/markVoice do not throw for an empty plan or a full single-stay plan', () => {
   const empty = makeView(fakeStore([]));
   empty.show();
   empty.markVoice('I split the year evenly: 6/6 months.');
-  empty.destroy();
 
   const full = fakeStore([
     {
@@ -533,5 +529,35 @@ test('show/render/markVoice/destroy do not throw for an empty plan or a full sin
   view.show();
   assert.equal(view.planTripId, 'plan-1');
   view.render();
-  view.destroy();
+});
+
+test('markVoice: toasts the replaced-plan copy and keeps the chip visible across a re-render inside its 4s window', () => {
+  const toasts = [];
+  const container = fakeDoc().createElement('div');
+  const view = createPlanView({
+    doc: fakeDoc(),
+    container,
+    store: fakeStore([
+      { id: 's1', cityId: 'lisbon-prt', name: 'Lisbon', start: 1, len: 6 },
+      { id: 's2', cityId: 'valencia-esp', name: 'Valencia', start: 7, len: 6 },
+    ]),
+    pack: {
+      cities,
+      citiesById: citiesByIdFull,
+      countries: {},
+      seasonality: { cities: {} },
+    },
+    getCtx: () => ({ scoredById: new Map() }),
+    getPrefs: () => ({}),
+    setPrefs: () => {},
+    showToast: (m) => toasts.push(m),
+  });
+  view.show();
+  view.markVoice();
+  assert.deepEqual(toasts, ['Plan replaced by voice (2 stays)']);
+  // A re-render mid-window (e.g. editing a stay) rebuilds the chip node from
+  // scratch; it must still start visible, not hidden, until the window ends.
+  view.render();
+  const chip = container.children.at(-1).children[0];
+  assert.equal(chip.hidden, false);
 });

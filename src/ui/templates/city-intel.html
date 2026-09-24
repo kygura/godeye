@@ -5,6 +5,7 @@
   id="city-intel-panel"
   class="panel-collapsible collapsed"
   data-panel-id="city-intel-panel"
+  hidden
 >
   <div class="panel-glow"></div>
   <div class="city-intel-panel-inner" data-rail-scroller>
@@ -69,7 +70,7 @@
       <p class="ci-note">
         Indicative, built from public statistics; mostly country-level; not
         relocation advice.
-        <a href="/docs/cockpit/METHODOLOGY.md" target="_blank" rel="noopener"
+        <a id="ci-methodology-link" target="_blank" rel="noopener"
           >How scores work</a
         >
       </p>
@@ -305,7 +306,7 @@
             <span>Hide Level 3–4 advisories</span>
           </label>
           <p id="ci-filter-hide-advisory-helper" class="ci-helper" hidden>
-            Advisories offline
+            advisories offline
           </p>
           <label class="ci-checkbox-row" for="ci-filter-include-ineligible">
             <input id="ci-filter-include-ineligible" type="checkbox" />
@@ -371,11 +372,10 @@
         </div>
       </section>
 
-      <!-- T6b mount point: the scorecard replaces this ranking view in place. -->
+      <!-- The scorecard replaces this ranking view in place. -->
       <section id="ci-scorecard-view" class="ci-rank-only" hidden></section>
 
-      <!-- DESIGN §11.1/§5: the PLAN view (another worker's planView.js)
-           mounts here; #ci-trip is removed, superseded by PLAN. -->
+      <!-- DESIGN §11.1/§5: the PLAN view (planView.js) mounts here. -->
       <div id="ci-plan-view" class="ci-plan" hidden></div>
     </div>
   </div>

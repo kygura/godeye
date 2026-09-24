@@ -12,14 +12,12 @@ import {
   hasMoreModels,
   togglePin,
   applyPinSet,
-  advisoryBadgeText,
   nextRovingIndex,
   stepRadioIndex,
   serializePersistedState,
   parsePersistedState,
   loadPersisted,
   savePersisted,
-  formatPopulation,
   sanitizeOverrides,
   refineSummaryText,
   createCityIntelPanel,
@@ -171,15 +169,7 @@ test('applyPinSet caps at max, dedupes, and reports the overflow', () => {
   assert.deepEqual(refused, ['e']);
 });
 
-// -- advisory badge / keyboard math ----------------------------------------
-
-test('advisoryBadgeText formats known levels and falls back to an em dash', () => {
-  assert.equal(advisoryBadgeText(1), 'L1');
-  assert.equal(advisoryBadgeText(4), 'L4');
-  assert.equal(advisoryBadgeText(0), '—');
-  assert.equal(advisoryBadgeText(5), '—');
-  assert.equal(advisoryBadgeText(null), '—');
-});
+// -- keyboard math -----------------------------------------------------------
 
 test('nextRovingIndex: Arrow/Home/End over a roving-tabindex list', () => {
   assert.equal(nextRovingIndex(0, 'ArrowDown', 3), 1);
@@ -327,15 +317,6 @@ test('loadPersisted/savePersisted never throw when storage is unavailable', () =
   assert.equal(loadPersisted(throwingStorage).preset, 'BALANCED');
 });
 
-// -- formatting -------------------------------------------------------------
-
-test('formatPopulation: millions, thousands and small counts', () => {
-  assert.equal(formatPopulation(2_900_000), '2.9 M');
-  assert.equal(formatPopulation(640_000), '640 k');
-  assert.equal(formatPopulation(820), '820');
-  assert.equal(formatPopulation(null), '—');
-});
-
 // -- DOM factory guard clause -------------------------------------------------
 
 test('createCityIntelPanel degrades to an inert API without a layer or a DOM root', () => {
@@ -346,6 +327,10 @@ test('createCityIntelPanel degrades to an inert API without a layer or a DOM roo
   assert.doesNotThrow(() => panel.select('x'));
   assert.doesNotThrow(() => panel.openCompare());
   assert.doesNotThrow(() => panel.markVoice('panel'));
+  assert.doesNotThrow(() => panel.onModeExit());
+  // voice/cityIntelActions.js's plan_lifestyle checks `!cityIntel.plan` before
+  // touching it; this must be explicitly null, not merely absent/undefined.
+  assert.equal(panel.plan, null);
 });
 
 test('switching to PLAN activates the plan trip and remembers/restores the prior active trip', () => {
@@ -466,4 +451,325 @@ test('createCityIntelPanel degrades to an inert API when the panel root is missi
   const fakeDoc = { getElementById: () => null };
   const panel = createCityIntelPanel({ layer: {}, doc: fakeDoc });
   assert.deepEqual(panel.getTopRanked(5), []);
+});
+
+// -- Loop-2 fixes -------------------------------------------------------------
+
+function fakePlanView(overrides = {}) {
+  return {
+    show() {},
+    hide() {},
+    render() {},
+    addStay: () => ({ ok: false }),
+    getStays: () => [],
+    getSummary: () => ({ stays: [], rollup: null }),
+    replacePlan: () => ({ ok: true, stays: [] }),
+    markVoice: () => {},
+    planTripId: null,
+    ...overrides,
+  };
+}
+
+test('setPrefs re-renders planView when home/spend/overrides change, not for unrelated prefs', () => {
+  const fakeDoc = {
+    getElementById: (id) =>
+      id === 'city-intel-panel' ? { dataset: {} } : null,
+  };
+  const renders = [];
+  const store = {
+    getActiveTrip: () => null,
+    setActive() {},
+    getState: () => ({ trips: [] }),
+  };
+  const planView = fakePlanView({ render: () => renders.push('r') });
+  const panel = createCityIntelPanel({
+    layer: {},
+    doc: fakeDoc,
+    store,
+    planView,
+  });
+  panel.setPrefs({ homeCityId: 'lisbon-prt' });
+  panel.setPrefs({ monthlySpendUsd: 2000 });
+  panel.setPrefs({ overrides: { s1: 100 } });
+  assert.equal(renders.length, 3);
+  panel.setPrefs({ mode: 'rank' }); // already rank, and touches no plan profile field
+  assert.equal(renders.length, 3, 'unrelated prefs do not re-render PLAN');
+});
+
+test('onModeExit (called by cityIntelMode.js on ATLAS exit) restores the trip active before PLAN', () => {
+  const fakeDoc = {
+    getElementById: (id) =>
+      id === 'city-intel-panel' ? { dataset: {} } : null,
+  };
+  const calls = [];
+  const store = {
+    getActiveTrip: () => ({ id: 'trip-old' }),
+    setActive: (id) => calls.push(id),
+    getState: () => ({ trips: [{ id: 'trip-old' }, { id: 'plan-1' }] }),
+  };
+  const planView = fakePlanView({ planTripId: 'plan-1' });
+  const panel = createCityIntelPanel({
+    layer: {},
+    doc: fakeDoc,
+    store,
+    planView,
+  });
+  panel.setPrefs({ mode: 'plan' });
+  assert.deepEqual(calls, ['plan-1']);
+  panel.onModeExit();
+  assert.deepEqual(calls, ['plan-1', 'trip-old']);
+  // Idempotent: nothing left to restore on a second call.
+  panel.onModeExit();
+  assert.deepEqual(calls, ['plan-1', 'trip-old']);
+});
+
+function fakeIndexWithTop3() {
+  const scored = [
+    {
+      id: 'lisbon-prt',
+      city: { name: 'Lisbon', country: 'Portugal' },
+      composite: 90,
+      eligible: true,
+      reason: null,
+      coverage: { text: '4 of 4 pillars' },
+    },
+    {
+      id: 'valencia-esp',
+      city: { name: 'Valencia', country: 'Spain' },
+      composite: 80,
+      eligible: true,
+      reason: null,
+      coverage: { text: '4 of 4 pillars' },
+    },
+    {
+      id: 'montevideo-ury',
+      city: { name: 'Montevideo', country: 'Uruguay' },
+      composite: 70,
+      eligible: true,
+      reason: null,
+      coverage: { text: '4 of 4 pillars' },
+    },
+  ];
+  return {
+    score: () => scored,
+    rank: (list) => ({ rows: list }),
+  };
+}
+
+test('markVoice(panel) announces the current top 3 in #ci-status (drift fix)', async () => {
+  const fakeIndex = fakeIndexWithTop3();
+  const els = {
+    'city-intel-panel': { dataset: {} },
+    'ci-status': { textContent: '' },
+    'ci-voice-chip': { hidden: true },
+  };
+  const fakeDoc = { getElementById: (id) => els[id] ?? null };
+  const fakeLayer = {
+    whenReady: () => Promise.resolve(),
+    getIndex: () => fakeIndex,
+    setScores() {},
+    setPinned() {},
+    setSelected() {},
+    onPick() {},
+  };
+  const panel = createCityIntelPanel({
+    layer: fakeLayer,
+    doc: fakeDoc,
+    storage: null,
+  });
+  await panel.ready();
+  panel.markVoice('panel');
+  assert.equal(
+    els['ci-status'].textContent,
+    'Ranking updated by voice: 1 Lisbon, 2 Valencia, 3 Montevideo.',
+  );
+});
+
+class FakeEl {
+  constructor(tag) {
+    this.tagName = tag;
+    this.children = [];
+    this.className = '';
+    this.style = {};
+    this.dataset = {};
+    this.hidden = false;
+    this._attrs = {};
+    this._listeners = {};
+  }
+  append(...cs) {
+    this.children.push(...cs);
+  }
+  appendChild(c) {
+    this.children.push(c);
+    return c;
+  }
+  replaceChildren(...cs) {
+    this.children = cs;
+  }
+  setAttribute(k, v) {
+    this._attrs[k] = v;
+  }
+  getAttribute(k) {
+    return this._attrs[k];
+  }
+  addEventListener(type, fn) {
+    (this._listeners[type] ??= []).push(fn);
+  }
+  removeEventListener() {}
+  click() {
+    for (const fn of this._listeners.click || []) fn({ stopPropagation() {} });
+  }
+  querySelectorAll() {
+    return [];
+  }
+}
+
+function fakeScoredCity(id, name, country, composite) {
+  const emptyPillar = { score: composite, coverage: 'full', metrics: [] };
+  return {
+    id,
+    city: { id, name, country, iso3: 'PRT', lat: 0, lon: 0, pop: 1 },
+    composite,
+    eligible: true,
+    reason: null,
+    coverage: {
+      pillarsAvailable: 4,
+      cityLevelMetrics: 1,
+      text: '4 of 4 pillars',
+    },
+    pillars: {
+      qol: emptyPillar,
+      cost: emptyPillar,
+      safety: emptyPillar,
+      travel: emptyPillar,
+    },
+  };
+}
+
+test('ADD TO PLAN from the compare column activates the plan trip when nothing is active (DESIGN §11.6)', async () => {
+  const cities = [
+    fakeScoredCity('lisbon-prt', 'Lisbon', 'Portugal', 90),
+    fakeScoredCity('valencia-esp', 'Valencia', 'Spain', 80),
+  ];
+  const fakeIndex = { score: () => cities, rank: (list) => ({ rows: list }) };
+  const els = {
+    'city-intel-panel': { dataset: {} },
+    'city-intel-compare': new FakeEl('div'),
+  };
+  const fakeDoc = {
+    getElementById: (id) => els[id] ?? null,
+    createElement: (tag) => new FakeEl(tag),
+    addEventListener() {},
+    removeEventListener() {},
+    activeElement: null,
+  };
+  const fakeLayer = {
+    whenReady: () => Promise.resolve(),
+    getIndex: () => fakeIndex,
+    setScores() {},
+    setPinned() {},
+    setSelected() {},
+    onPick() {},
+  };
+  const activateCalls = [];
+  const store = {
+    getActiveTrip: () => null,
+    getPlanTrip: () => ({ id: 'plan-1' }),
+    setActive: (id) => activateCalls.push(id),
+    getState: () => ({ trips: [] }),
+  };
+  const toasts = [];
+  const addStayCalls = [];
+  const planView = fakePlanView({
+    addStay: (id) => {
+      addStayCalls.push(id);
+      return { ok: true, message: `Added ${id} to plan: JAN (1 mo).` };
+    },
+  });
+  const panel = createCityIntelPanel({
+    layer: fakeLayer,
+    doc: fakeDoc,
+    storage: null,
+    store,
+    planView,
+    showToast: (m) => toasts.push(m),
+  });
+  await panel.ready();
+  panel.setPins(['lisbon-prt', 'valencia-esp']);
+  panel.openCompare();
+
+  const compareRoot = els['city-intel-compare'].children[0];
+  const table = compareRoot.children[1];
+  const headRow = table.children[1].children[0];
+  const [, thLisbon] = headRow.children;
+  const addPlanBtn = thLisbon.children[2];
+  assert.equal(addPlanBtn.textContent, '+ PLAN');
+  addPlanBtn.click();
+
+  assert.deepEqual(addStayCalls, ['lisbon-prt']);
+  assert.deepEqual(
+    activateCalls,
+    ['plan-1'],
+    'nothing was active, so the plan trip is made active',
+  );
+  assert.deepEqual(toasts, ['Added lisbon-prt to plan: JAN (1 mo).']);
+});
+
+test('PLAN drops the top-20 ranking labels and never double-labels a plan stay (DESIGN §11.1)', async () => {
+  const cities = [
+    fakeScoredCity('lisbon-prt', 'Lisbon', 'Portugal', 90),
+    fakeScoredCity('valencia-esp', 'Valencia', 'Spain', 80),
+  ];
+  const fakeIndex = { score: () => cities, rank: (list) => ({ rows: list }) };
+  const setScoresCalls = [];
+  const fakeLayer = {
+    whenReady: () => Promise.resolve(),
+    getIndex: () => fakeIndex,
+    setScores: (scored, opts) => setScoresCalls.push(opts),
+    setPinned() {},
+    setSelected() {},
+    onPick() {},
+  };
+  const els = {
+    'city-intel-panel': { dataset: {} },
+    'ci-list': new FakeEl('div'),
+  };
+  const fakeDoc = {
+    getElementById: (id) => els[id] ?? null,
+    createElement: (tag) => new FakeEl(tag),
+  };
+  const store = {
+    getActiveTrip: () => null,
+    setActive() {},
+    getState: () => ({ trips: [] }),
+  };
+  const planView = fakePlanView({
+    getStays: () => [{ id: 's1', cityId: 'lisbon-prt', start: 1, len: 1 }],
+    planTripId: 'plan-1',
+  });
+  const panel = createCityIntelPanel({
+    layer: fakeLayer,
+    doc: fakeDoc,
+    storage: null,
+    store,
+    planView,
+  });
+  await panel.ready();
+  panel.setPins(['lisbon-prt', 'valencia-esp']);
+
+  const rankLabels = setScoresCalls.at(-1).labelIds;
+  assert.ok(rankLabels.has('lisbon-prt'), 'RANK: pinned cities are labelled');
+  assert.ok(rankLabels.has('valencia-esp'));
+
+  panel.setPrefs({ mode: 'plan' });
+  const planLabels = setScoresCalls.at(-1).labelIds;
+  assert.equal(
+    planLabels.has('lisbon-prt'),
+    false,
+    'lisbon is a plan stay: the trips label wins',
+  );
+  assert.ok(
+    planLabels.has('valencia-esp'),
+    'pinned but not a plan stay: still labelled',
+  );
 });

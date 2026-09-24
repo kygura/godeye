@@ -9,7 +9,8 @@
  * @module layers/cityIntel/scorecard
  */
 import { PILLARS } from './scoring.js';
-import { binForScore } from './index.js';
+import { binForScore, scoreColor } from './index.js';
+import { firstFreeMonth } from './plan.js';
 import {
   bestWindow,
   formatBestSpan,
@@ -54,13 +55,6 @@ export function weightChipText(weight) {
   return Number(weight) > 0 ? `w${weight}` : 'off';
 }
 
-/** 'FULL' | 'PARTIAL' | 'UNAVAILABLE' from a pillar's coverage word. */
-export function pillarCoverageWord(coverage) {
-  if (coverage === 'full') return 'FULL';
-  if (coverage === 'partial') return 'PARTIAL';
-  return 'UNAVAILABLE';
-}
-
 // ponytail: a fixed unit->formatter table instead of a general unit-parsing
 // library; the pack has exactly six indicator units (SPEC §3.2), add a row
 // if a new one ships.
@@ -103,6 +97,14 @@ export function formatVisaDetail(detail) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** The metric's display value, dispatched by key (airport/visa get special formatting). */
+function metricValueText(metric) {
+  if (metric.key === 'airportAccess') return formatAirportDetail(metric.detail);
+  if (metric.key === 'visaAccess')
+    return formatVisaDetail(metric.detail) ?? 'unavailable';
+  return formatIndicatorRaw(metric.raw, metric.unit);
+}
+
 /**
  * One metric row's presentation (DESIGN §3 special-values table + metric row
  * spec). Pure: everything it needs is already on the `ScoredMetric`.
@@ -133,12 +135,7 @@ export function metricRowModel(metric) {
       derivedTitle: null,
     };
   }
-  let valueText;
-  if (metric.key === 'airportAccess')
-    valueText = formatAirportDetail(metric.detail);
-  else if (metric.key === 'visaAccess')
-    valueText = formatVisaDetail(metric.detail) ?? 'unavailable';
-  else valueText = formatIndicatorRaw(metric.raw, metric.unit);
+  const valueText = metricValueText(metric);
   const derivedTitle = metric.derived
     ? (DERIVED_FORMULAS[metric.key] ?? null)
     : null;
@@ -170,7 +167,7 @@ export function pillarBlockModel(key, pillar, weight) {
       ? String(Math.round(pillar.score))
       : '—',
     bin: binForScore(pillar.score),
-    coverageWord: pillarCoverageWord(pillar.coverage),
+    coverageWord: pillar.coverage.toUpperCase(),
     weightChip: weightChipText(weight),
     metrics: pillar.metrics.map((m) => ({ metric: m, row: metricRowModel(m) })),
   };
@@ -210,19 +207,24 @@ export function scorecardHeaderModel(
   };
 }
 
-/** DESIGN §3: metrics whose lower raw value is the better one. Fixed lookup —
- * `ScoredMetric` (scoring.js) doesn't carry the indicator's direction. */
-const LOWER_IS_BETTER = new Set(['pm25', 'priceLevel', 'homicideRate']);
-
-/** `title="Lower raw value is better"` for the metric label, or null. */
-export function directionTitle(metricKey) {
-  return LOWER_IS_BETTER.has(metricKey) ? 'Lower raw value is better' : null;
+/**
+ * `title="Lower raw value is better"` for the metric label, or null. The
+ * direction comes from the pack's own `countries.indicators[key].direction`
+ * (scoring.js) rather than a hardcoded set — city-level metrics (airport/visa)
+ * aren't in that pack and are always "higher is better", so a missing entry
+ * correctly resolves to no title.
+ * @param {string} metricKey
+ * @param {Record<string, {direction?: 'higher'|'lower'}>} [indicators]
+ */
+export function directionTitle(metricKey, indicators) {
+  return indicators?.[metricKey]?.direction === 'lower'
+    ? 'Lower raw value is better'
+    : null;
 }
 
 /** Whether a city's stays cover all 12 months (plan.js has no `isFull`). */
-export function isPlanFull(stays, monthsOf) {
-  const covered = new Set((stays || []).flatMap((s) => monthsOf(s)));
-  return covered.size >= 12;
+export function isPlanFull(stays) {
+  return firstFreeMonth(stays || []) === null;
 }
 
 /**
@@ -266,12 +268,7 @@ function metricCompareCell(metric) {
     return { text: 'set passport', missing: true };
   if (metric.status !== 'ok')
     return { text: '—', missing: true, title: 'unavailable' };
-  const raw =
-    metric.key === 'airportAccess'
-      ? formatAirportDetail(metric.detail)
-      : metric.key === 'visaAccess'
-        ? (formatVisaDetail(metric.detail) ?? 'unavailable')
-        : formatIndicatorRaw(metric.raw, metric.unit);
+  const raw = metricValueText(metric);
   // DESIGN §4: percentile bold, raw value after " · " in --text-secondary,
   // and — at <=720px — percentile only, raw moved to the cell's `title`
   // (split so the responsive CSS can hide just the raw span).
@@ -391,11 +388,39 @@ export function resetRentCacheForTest() {
   rentMapPromise = null;
 }
 
+/** How long a cached air-quality read stays fresh before a reopen refetches it. */
+const AIR_CACHE_MS = 10 * 60 * 1000;
+/** cityId -> { promise, result, fetchedAt } (dedupes concurrent/renders + a 10 min TTL). */
+const airCache = new Map();
+/**
+ * Cached `fetchAir` per city (DESIGN §3 "Air quality now"): a scorecard
+ * re-render (weight change, pin toggle, ADD TO PLAN...) reuses the in-flight
+ * request or a still-fresh result instead of re-hitting the endpoint.
+ */
+export function loadAirQuality(city) {
+  const cached = airCache.get(city.id);
+  if (cached) {
+    if (cached.promise) return cached.promise;
+    if (Date.now() - cached.fetchedAt < AIR_CACHE_MS)
+      return Promise.resolve(cached.result);
+  }
+  const promise = fetchAir(city.lat, city.lon).then((result) => {
+    airCache.set(city.id, { promise: null, result, fetchedAt: Date.now() });
+    return result;
+  });
+  airCache.set(city.id, { promise, result: null, fetchedAt: null });
+  return promise;
+}
+/** Test-only: drop the module-level air cache between node:test cases. */
+export function resetAirCacheForTest() {
+  airCache.clear();
+}
+
 function buildMetricRow(doc, row, ctx) {
   const wrap = el(doc, 'div', 'ci-metric');
   const line1 = el(doc, 'div', 'ci-metric-line1');
   const label = text(doc, 'span', 'ci-metric-label', row.metric.label);
-  const dirTitle = directionTitle(row.metric.key);
+  const dirTitle = directionTitle(row.metric.key, ctx.indicators);
   if (dirTitle) label.title = dirTitle;
   line1.append(label);
   if (row.row.isPassportLink) {
@@ -411,11 +436,8 @@ function buildMetricRow(doc, row, ctx) {
   const bar = el(doc, 'span', 'ci-metric-bar');
   const fill = el(doc, 'span', 'ci-metric-bar-fill');
   fill.style.width = `${row.row.barPct}%`;
-  if (Number.isFinite(row.metric.pct)) {
-    const bin = binForScore(row.metric.pct);
-    fill.style.background =
-      bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${bin})`;
-  }
+  if (Number.isFinite(row.metric.pct))
+    fill.style.background = scoreColor(binForScore(row.metric.pct));
   bar.append(fill);
   line1.append(bar);
   wrap.append(line1);
@@ -444,8 +466,7 @@ function buildPillarBlock(doc, key, pillar, weight, ctx) {
   header.append(text(doc, 'span', 'ci-pillar-name', model.label));
   header.append(el(doc, 'span', 'ci-pillar-leader'));
   const score = text(doc, 'span', 'ci-pillar-score', model.scoreText);
-  score.style.color =
-    model.bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${model.bin})`;
+  score.style.color = scoreColor(model.bin);
   header.append(score);
   header.append(text(doc, 'span', 'ci-pillar-coverage', model.coverageWord));
   header.append(text(doc, 'span', 'ci-pillar-weight', model.weightChip));
@@ -463,8 +484,7 @@ function buildClimateRow(doc, cityRow) {
   const strip = el(doc, 'div', 'ci-climate-strip');
   for (const cell of model.cells) {
     const c = el(doc, 'span', 'ci-climate-cell');
-    c.style.background =
-      cell.bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${cell.bin})`;
+    c.style.background = scoreColor(cell.bin);
     const initial = el(doc, 'span', 'ci-climate-initial');
     initial.textContent = cell.initial;
     c.append(initial);
@@ -492,7 +512,7 @@ function buildAirRow(doc, city, signal) {
   wrap.append(text(doc, 'span', 'ci-notscored-label', 'Air quality now'));
   const value = text(doc, 'div', 'ci-notscored-value', 'checking…');
   wrap.append(value);
-  fetchAir(city.lat, city.lon, { signal }).then((result) => {
+  loadAirQuality(city).then((result) => {
     if (signal.aborted) return;
     if (!result.ok) {
       value.textContent = 'unavailable (source offline)';
@@ -504,10 +524,14 @@ function buildAirRow(doc, city, signal) {
       ? `PM2.5 ${pm25} µg/m³ · EU AQI ${europeanAqiCategory(europeanAqi) ?? '—'}`
       : 'unavailable (source offline)';
     const time = new Date(result.fetchedAt || Date.now());
-    const hhmm = `${String(time.getHours()).padStart(2, '0')}:${String(
-      time.getMinutes(),
-    ).padStart(2, '0')}`;
-    wrap.append(text(doc, 'div', 'ci-notscored-meta', `Open-Meteo · ${hhmm}`));
+    wrap.append(
+      text(
+        doc,
+        'div',
+        'ci-notscored-meta',
+        `Open-Meteo · ${time.toTimeString().slice(0, 5)}`,
+      ),
+    );
   });
   return wrap;
 }
@@ -609,8 +633,7 @@ export function buildScorecard(doc, scored, ctx, signal) {
     'ci-scorecard-composite',
     header.compositeText,
   );
-  composite.style.color =
-    header.bin == null ? 'var(--ci-neutral)' : `var(--ci-score-${header.bin})`;
+  composite.style.color = scoreColor(header.bin);
   headEl.append(composite);
   root.append(headEl);
   root.append(text(doc, 'div', 'ci-helper', header.metaText));
@@ -747,6 +770,14 @@ export function buildCompareTable(doc, pinnedScored, ctx) {
     th.scope = 'col';
     th.append(text(doc, 'span', 'ci-compare-city-name', s.city.name));
     th.append(text(doc, 'span', 'ci-compare-city-country', s.city.country));
+    // SPEC flow 5 / DESIGN §2: add straight from the compare column, no need
+    // to close compare and reselect the city in the scorecard first.
+    const addToPlan = el(doc, 'button', 'ci-link-btn ci-compare-addplan');
+    addToPlan.type = 'button';
+    addToPlan.textContent = '+ PLAN';
+    addToPlan.setAttribute('aria-label', `Add ${s.city.name} to plan`);
+    addToPlan.addEventListener('click', () => ctx.onAddToPlan(s.id));
+    th.append(addToPlan);
     const unpin = el(doc, 'button', 'ci-compare-unpin');
     unpin.type = 'button';
     unpin.textContent = '✕';

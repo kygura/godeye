@@ -183,38 +183,29 @@ export function costCopy(cost) {
 
 /**
  * Exact DESIGN §11.3 VISA row copy from one stay's `stayMetrics(...).visa`.
+ * A plain string — unlike `costCopy`, no branch here ever carries a title.
  * @param {object} visa
- * @returns {{text: string, title: string|null}}
+ * @returns {string}
  */
 export function visaCopy(visa) {
-  if (!visa) return { text: '—', title: null };
+  if (!visa) return '—';
   switch (visa.status) {
     case 'ok':
-      return {
-        text:
-          visa.allowanceDays == null
-            ? 'ok · no visa needed'
-            : `ok · ${visa.allowanceDays} days visa-free`,
-        title: null,
-      };
+      return visa.allowanceDays == null
+        ? 'ok · no visa needed'
+        : `ok · ${visa.allowanceDays} days visa-free`;
     case 'exceeds':
-      return {
-        text: `stay exceeds visa-free days (${visa.allowanceDays})`,
-        title: null,
-      };
+      return `stay exceeds visa-free days (${visa.allowanceDays})`;
     case 'no-passport':
-      return { text: 'set your passport', title: null };
+      return 'set your passport';
     case 'unknown':
-      return {
-        text: visa.requirement
-          ? `${visa.requirement.toLowerCase()} · days not known`
-          : 'no visa data for this destination',
-        title: null,
-      };
+      return visa.requirement
+        ? `${visa.requirement.toLowerCase()} · days not known`
+        : 'no visa data for this destination';
     case 'offline':
-      return { text: 'unavailable (source offline)', title: null };
+      return 'unavailable (source offline)';
     default:
-      return { text: '—', title: null };
+      return '—';
   }
 }
 
@@ -330,6 +321,11 @@ export function createPlanView({
   let planTripId = null;
   let voiceTimer = null;
   let voiceChipEl = null;
+  // Loop-2 fix: the chip's own DOM node is rebuilt on every render() (the
+  // container is cleared each time), so "still within the 4s voice window"
+  // must live here, not on a `hidden` flag of a node that's about to be
+  // discarded — a stay edit mid-window used to snap the chip away early.
+  let voiceMarkedAt = null;
   let dupNamesCache = null;
   /** DESIGN §11.3: the one stay-card error shown, cleared on that stay's next successful edit. */
   let stayError = null;
@@ -568,14 +564,17 @@ export function createPlanView({
   }
 
   function markVoice(splitSentence) {
-    if (voiceChipEl) {
-      voiceChipEl.hidden = false;
-      clearTimeout(voiceTimer);
-      voiceTimer = setTimeout(() => {
-        voiceChipEl.hidden = true;
-      }, 4000);
-    }
+    voiceMarkedAt = Date.now();
+    if (voiceChipEl) voiceChipEl.hidden = false;
+    clearTimeout(voiceTimer);
+    voiceTimer = setTimeout(() => {
+      voiceMarkedAt = null;
+      if (voiceChipEl) voiceChipEl.hidden = true;
+    }, 4000);
     if (splitSentence) announce?.(splitSentence);
+    // DESIGN §8: the only caller of markVoice() is the plan_lifestyle voice
+    // path (replacePlan already committed the new stays by the time this fires).
+    showToast?.(`Plan replaced by voice (${getStays().length} stays)`);
   }
 
   // -- render --------------------------------------------------------------
@@ -843,28 +842,26 @@ export function createPlanView({
   }
 
   function renderVisaRow(m) {
-    const copy = visaCopy(m.visa);
+    const text = visaCopy(m.visa);
     if (m.visa.status === 'no-passport')
       return h(doc, 'div', { class: 'ci-stay-metric' }, [
         h(doc, 'span', { class: 'ci-stay-metric-label', text: 'VISA' }),
         h(doc, 'button', {
           type: 'button',
           class: 'ci-link-btn',
-          text: copy.text,
+          text,
           onclick: () => switchMode?.('rank'),
         }),
       ]);
     return metricRow(
       'VISA',
-      h(doc, 'span', { class: 'ci-stay-metric-value', text: copy.text }),
+      h(doc, 'span', { class: 'ci-stay-metric-value', text }),
     );
   }
 
-  function renderStayCard(stay, stays, metrics, selected) {
+  function renderStayCard(stay, stays, metrics) {
     const m = metrics.get(stay.id);
-    const card = h(doc, 'li', {
-      class: `ci-stay${selected ? ' ci-stay-selected' : ''}`,
-    });
+    const card = h(doc, 'li', { class: 'ci-stay' });
 
     const head = h(doc, 'div', { class: 'ci-stay-head' }, [
       h(doc, 'span', { class: 'ci-stay-index' }),
@@ -960,7 +957,7 @@ export function createPlanView({
     return months;
   }
 
-  function renderStays(root, stays, metrics, selectedId) {
+  function renderStays(root, stays, metrics) {
     const list = h(doc, 'ol', { class: 'ci-stays' });
     const covered = new Set(stays.flatMap(monthsOf));
     for (const stay of stays) {
@@ -973,9 +970,7 @@ export function createPlanView({
             text: `— gap · ${gapRuns(gapMonths)[0]} · ${gapMonths.length} mo —`,
           }),
         );
-      list.appendChild(
-        renderStayCard(stay, stays, metrics, stay.id === selectedId),
-      );
+      list.appendChild(renderStayCard(stay, stays, metrics));
     }
     root.appendChild(list);
   }
@@ -1024,13 +1019,13 @@ export function createPlanView({
     root.appendChild(section);
   }
 
-  function render(homeError, selectedId) {
+  function render(homeError) {
     if (!container) return;
     container.textContent = '';
     const root = h(doc, 'div', { class: 'ci-plan' });
     voiceChipEl = h(doc, 'span', {
       class: 'ci-voice-chip',
-      hidden: true,
+      hidden: !(voiceMarkedAt && Date.now() - voiceMarkedAt < 4000),
       text: 'VIA VOICE',
     });
     root.appendChild(voiceChipEl);
@@ -1048,7 +1043,7 @@ export function createPlanView({
       const metrics = new Map();
       for (const stay of stays) metrics.set(stay.id, stayMetrics(stay, ctx));
       renderHeatmap(root, stays);
-      renderStays(root, stays, metrics, selectedId);
+      renderStays(root, stays, metrics);
       renderRollup(root, stays, ctx, metrics);
     }
     container.appendChild(root);
@@ -1063,12 +1058,6 @@ export function createPlanView({
   function hide() {
     if (container) container.hidden = true;
   }
-  function destroy() {
-    clearTimeout(voiceTimer);
-    voiceTimer = null;
-    voiceChipEl = null;
-    if (container) container.textContent = '';
-  }
 
   return {
     show,
@@ -1079,7 +1068,6 @@ export function createPlanView({
     getStays,
     getSummary,
     markVoice,
-    destroy,
     get planTripId() {
       return planTripId;
     },

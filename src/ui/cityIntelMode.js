@@ -64,12 +64,13 @@ const EXIT_FAIL_TOAST = 'ATLAS off, but layers may not have fully restored.';
  * ATLAS mode controller. Degrades to a no-op when the required DOM (the
  * toggle pill, the panel, the panel's own EXIT button) isn't present, the
  * same defensive shape `createTravelMode` uses.
- * @param {{dataManager: object, panel?: {ready: () => Promise<void>}, showToast?: (message:string)=>void, doc?: Document}} options
+ * @param {{dataManager: object, panel?: {ready: () => Promise<void>, onModeExit?: () => void}, travelMode?: {isActive: () => boolean, exit: () => Promise<void>}|null, showToast?: (message:string)=>void, doc?: Document}} options
  * @returns {{enter: () => Promise<void>, exit: () => Promise<void>, isActive: () => boolean}}
  */
 export function createCityIntelMode({
   dataManager,
   panel = null,
+  travelMode = null,
   showToast = () => {},
   doc = typeof document === 'undefined' ? null : document,
 } = {}) {
@@ -114,6 +115,11 @@ export function createCityIntelMode({
   function revertChrome() {
     body.classList.remove(MODE_CLASS);
     setCollapsed('city-intel-panel', true);
+    // Loop-2 fix: outside the mode the panel was only ever visually collapsed
+    // (still measured by the right rail, still reachable, not wired up) —
+    // `hidden` fully excludes it, matching how the rail already treats other
+    // conditionally-absent panels (recentImagery.js/weatherPanel.js).
+    panelEl.hidden = true;
     active = false;
     syncChrome();
   }
@@ -125,6 +131,7 @@ export function createCityIntelMode({
     const preSnapshot = dataManager.getEnabledLayerIds();
     snapshot = preSnapshot;
     body.classList.add(MODE_CLASS);
+    panelEl.hidden = false;
     setCollapsed('city-intel-panel', false);
     for (const id of COLLAPSE_ON_ENTER) setCollapsed(id, true);
     syncChrome();
@@ -173,6 +180,9 @@ export function createCityIntelMode({
   async function exit() {
     if (!active) return;
     enterEpoch++; // invalidate any enter() still in flight
+    // DESIGN §11.1: leaving ATLAS while PLAN is showing must restore whichever
+    // trip was active before PLAN took over, not strand it as "active".
+    panel?.onModeExit?.();
     const restore = snapshot;
     snapshot = null;
     revertChrome();
@@ -193,7 +203,14 @@ export function createCityIntelMode({
   // module doc); the toggle pill itself has already shown the honest toast
   // by then, so the raw click wiring just needs to not surface an unhandled
   // rejection.
-  const onToggleClick = () => (active ? exit() : enter().catch(() => {}));
+  const enterOrExit = () => (active ? exit() : enter().catch(() => {}));
+  // DESIGN §6.2: the two full-screen modes are mutually exclusive — clicking
+  // ATLAS's pill while Travel Mode is open exits Travel Mode first, then
+  // toggles ATLAS, rather than layering one mode's chrome over the other's.
+  const onToggleClick = () =>
+    travelMode?.isActive?.()
+      ? travelMode.exit().then(enterOrExit, enterOrExit)
+      : enterOrExit();
   const onExitClick = () => exit();
   toggle.addEventListener('click', onToggleClick);
   exitBtn?.addEventListener('click', onExitClick);

@@ -150,10 +150,6 @@
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
 }
-.ci-stay-selected {
-  background: var(--accent-dim);
-  border-left: 2px solid var(--accent);
-}
 .ci-stay-head {
   display: grid;
   grid-template-columns: 22px 1fr 24px;

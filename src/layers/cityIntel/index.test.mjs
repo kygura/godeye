@@ -193,7 +193,6 @@ test('layer contract: init/enable/disable/update/destroy/getStats', async () => 
 
   let picked = null;
   layer.onPick((id) => (picked = id));
-  layer.onHover(() => {});
   assert.equal(picked, null, 'no pick fires without a real pointer event');
 
   layer.disable(viewer);

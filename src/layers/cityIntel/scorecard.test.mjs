@@ -4,7 +4,6 @@ import {
   formatPopulation,
   advisoryBadgeText,
   weightChipText,
-  pillarCoverageWord,
   formatIndicatorRaw,
   formatAirportDetail,
   formatVisaDetail,
@@ -16,8 +15,11 @@ import {
   climateStripModel,
   bestInRow,
   compareRowsModel,
+  buildCompareTable,
   europeanAqiCategory,
   buildAdvisoryRow,
+  loadAirQuality,
+  resetAirCacheForTest,
 } from './scorecard.js';
 
 function fakeDoc() {
@@ -26,9 +28,23 @@ function fakeDoc() {
       this.tagName = tag;
       this.children = [];
       this._text = '';
+      this._attrs = {};
+      this._listeners = {};
     }
     append(...cs) {
       this.children.push(...cs);
+    }
+    addEventListener(type, handler) {
+      this._listeners[type] = handler;
+    }
+    click() {
+      this._listeners.click?.();
+    }
+    setAttribute(k, v) {
+      this._attrs[k] = v;
+    }
+    getAttribute(k) {
+      return this._attrs[k];
     }
     set textContent(v) {
       this._text = v;
@@ -71,12 +87,6 @@ test('advisoryBadgeText formats known levels and falls back to an em dash', () =
 test('weightChipText: "wN" or "off"', () => {
   assert.equal(weightChipText(5), 'w5');
   assert.equal(weightChipText(0), 'off');
-});
-
-test('pillarCoverageWord maps the three coverage states', () => {
-  assert.equal(pillarCoverageWord('full'), 'FULL');
-  assert.equal(pillarCoverageWord('partial'), 'PARTIAL');
-  assert.equal(pillarCoverageWord('unavailable'), 'UNAVAILABLE');
 });
 
 test('formatIndicatorRaw applies the unit-specific format', () => {
@@ -159,10 +169,24 @@ test('metricRowModel: null metric is null (pillar simply has fewer rows)', () =>
   assert.equal(metricRowModel(undefined), null);
 });
 
-test('directionTitle: only the known lower-is-better metrics carry the title', () => {
-  assert.equal(directionTitle('pm25'), 'Lower raw value is better');
-  assert.equal(directionTitle('homicideRate'), 'Lower raw value is better');
-  assert.equal(directionTitle('lifeExpectancy'), null);
+test('directionTitle: only indicators whose pack direction is "lower" carry the title', () => {
+  const indicators = {
+    pm25: { direction: 'lower' },
+    homicideRate: { direction: 'lower' },
+    lifeExpectancy: { direction: 'higher' },
+  };
+  assert.equal(directionTitle('pm25', indicators), 'Lower raw value is better');
+  assert.equal(
+    directionTitle('homicideRate', indicators),
+    'Lower raw value is better',
+  );
+  assert.equal(directionTitle('lifeExpectancy', indicators), null);
+  assert.equal(
+    directionTitle('airportAccess', indicators),
+    null,
+    'a key missing from the indicators pack is not lower-is-better',
+  );
+  assert.equal(directionTitle('pm25', undefined), null, 'no pack yet');
 });
 
 test('pillarBlockModel builds the header numbers and per-metric rows', () => {
@@ -227,20 +251,15 @@ test('scorecardHeaderModel: ineligible city gets the "not ranked" reason banner'
 });
 
 test('isPlanFull: full once every month is covered', () => {
-  const monthsOf = ({ start, len }) =>
-    Array.from({ length: len }, (_, i) => ((start - 1 + i) % 12) + 1);
-  assert.equal(isPlanFull([{ start: 1, len: 6 }], monthsOf), false);
+  assert.equal(isPlanFull([{ start: 1, len: 6 }]), false);
   assert.equal(
-    isPlanFull(
-      [
-        { start: 1, len: 6 },
-        { start: 7, len: 6 },
-      ],
-      monthsOf,
-    ),
+    isPlanFull([
+      { start: 1, len: 6 },
+      { start: 7, len: 6 },
+    ]),
     true,
   );
-  assert.equal(isPlanFull([], monthsOf), false);
+  assert.equal(isPlanFull([]), false);
 });
 
 test('climateStripModel: 12 cells tinted by score, plus the best window text', () => {
@@ -362,4 +381,69 @@ test('compareRowsModel: composite/pillar/metric rows with best-in-row marks, adv
   assert.deepEqual(rows[0].best, new Set([0]));
   assert.equal(rows.at(-2).type, 'advisory');
   assert.equal(rows.at(-1).type, 'rent');
+});
+
+test('buildCompareTable: each city header gets a "+ PLAN" button wired to ctx.onAddToPlan', () => {
+  const doc = fakeDoc();
+  const a = scoredCity('a', { composite: 74 });
+  const b = scoredCity('b', { composite: 60 });
+  const added = [];
+  const root = buildCompareTable(doc, [a, b], {
+    advisoriesByIso3: {},
+    rentByCity: new Map(),
+    onUnpin: () => {},
+    onClearPins: () => {},
+    onClose: () => {},
+    onAddToPlan: (id) => added.push(id),
+  });
+  const table = root.children[1];
+  const headRow = table.children[1].children[0];
+  const [, thA, thB] = headRow.children;
+  const addBtnA = thA.children[2];
+  assert.equal(addBtnA.textContent, '+ PLAN');
+  assert.equal(addBtnA.getAttribute('aria-label'), 'Add a to plan');
+  addBtnA.click();
+  thB.children[2].click();
+  assert.deepEqual(added, ['a', 'b']);
+});
+
+test('loadAirQuality: dedupes concurrent calls and caches within the TTL', async () => {
+  resetAirCacheForTest();
+  let calls = 0;
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => {
+    calls++;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        data: { pm25: 8, europeanAqi: 15 },
+        fetchedAt: Date.now(),
+      }),
+    };
+  };
+  try {
+    const city = { id: 'lisbon-prt', lat: 38.72, lon: -9.14 };
+    const [r1, r2] = await Promise.all([
+      loadAirQuality(city),
+      loadAirQuality(city),
+    ]);
+    assert.equal(
+      calls,
+      1,
+      'concurrent calls for the same city share one fetch',
+    );
+    assert.deepEqual(r1, r2);
+    await loadAirQuality(city);
+    assert.equal(
+      calls,
+      1,
+      'a cached result within the TTL is reused, not refetched',
+    );
+    await loadAirQuality({ id: 'valencia-esp', lat: 39.47, lon: -0.38 });
+    assert.equal(calls, 2, 'a different city is fetched separately');
+  } finally {
+    globalThis.fetch = original;
+  }
 });

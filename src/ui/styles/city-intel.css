@@ -860,6 +860,11 @@ a.ci-notscored-value {
   cursor: pointer;
   font-size: 11px;
 }
+.ci-compare-addplan {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+}
 .ci-compare-best {
   position: relative;
   padding-left: 12px;
