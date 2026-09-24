@@ -213,6 +213,20 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
     visa-string consolidation (churn beats the gain), plus the server→src import
     (boundary rule).
 - Loop 2 dispatched: W1 UI, W2 logic/voice/server.
+- Loop 2 committed.
+  - W2 logic/voice/server: net −297 lines. Dead trip APIs, `cities.js` and duplicate
+    helpers removed; one proxy cache; voice plan costs and even-split lengths.
+  - W1 UI: all 22 items; METHODOLOGY is now a Vite asset, so it works in the production
+    build.
+- mp-standards-spec-review (fixed point `ce671ce`, spec SPEC.md):
+  - Standards: no hard violations. Judgement calls: `tools.js` toast duplicate (kept,
+    since no ShellFeedback is reachable there), the `gevActions` if-chain (upstream
+    style) and large factories.
+  - Spec: no scope creep; cut list honoured. SPEC aligned: `model.js` folded into
+    `scoring.js`/`scorecard.js`; annual cost needs all 12 months.
+- Final mechanical gate: `npm test` 5264 tests, 0 fail; build, format:check and
+  check:boundaries all green.
+- Temp base worktree removed.
 - Shared registry files are owned by T9 so parallel workers can't collide:
   `format-scope.json`, `package.json`, `DATA_SOURCES.md`, `CHANGELOG.md` and
   `CURRENT-STATE.md`.
