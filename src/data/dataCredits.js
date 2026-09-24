@@ -261,6 +261,50 @@ export const DATA_CREDITS = [
       'Modified: resampled 10 m IFS forecast vectors and animated display. ' +
       'ECMWF does not accept any liability whatsoever for any error or omission in the data, their availability, or for any loss or damage arising from their use.',
   },
+  {
+    key: 'city-intel-bundled',
+    html:
+      'City Intel reference data: ' +
+      '<a href="https://www.naturalearthdata.com" target="_blank" rel="noopener">Natural Earth</a> ' +
+      '(populated places, countries) · ' +
+      '<a href="https://ourairports.com" target="_blank" rel="noopener">OurAirports</a> ' +
+      '(public domain) · ' +
+      '<a href="https://www.worldbank.org" target="_blank" rel="noopener">World Bank</a> ' +
+      'WDI/WGI indicators ' +
+      '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · ' +
+      'seasonality derived from ' +
+      '<a href="https://open-meteo.com/en/licence" target="_blank" rel="noopener">Open-Meteo</a> ' +
+      '(CC BY 4.0)',
+  },
+  {
+    key: 'city-intel-advisories',
+    html:
+      'City Intel travel advisories: ' +
+      '<a href="https://travel.state.gov/" target="_blank" rel="noopener">US Department of State</a> ' +
+      '(public domain; runtime-fetched, cached 6 hours)',
+  },
+  {
+    key: 'city-intel-visa',
+    html:
+      'City Intel visa requirements: ' +
+      '<a href="https://github.com/ilyankou/passport-index-dataset" target="_blank" rel="noopener">ilyankou/passport-index-dataset</a> ' +
+      '(MIT) &amp; passportindex.org (runtime-fetched, cached 7 days)',
+  },
+  {
+    key: 'city-intel-rent',
+    html:
+      'City Intel rent index: ' +
+      '<a href="https://www.zillow.com" target="_blank" rel="noopener">Zillow Observed Rent Index (ZORI)</a> ' +
+      '(runtime-fetched, cached 7 days; redistribution restricted)',
+  },
+  {
+    key: 'city-intel-air-quality',
+    html:
+      'City Intel air quality: ' +
+      '<a href="https://open-meteo.com/en/licence" target="_blank" rel="noopener">Open-Meteo air quality API</a> ' +
+      '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>; ' +
+      'free tier non-commercial; runtime-fetched, cached 1 hour)',
+  },
   // ── Bundled snapshots ───────────────────────────────────────────
   {
     key: 'datacenters',
