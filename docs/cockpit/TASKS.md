@@ -150,6 +150,22 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
   - Voice/search now folds diacritics (T12a).
 - T6b and T12a run in parallel with disjoint write sets. The `planView` is injected into
   the panel; T12b (resume T12a) does the integration.
+- T12a done (sonnet): `planView.js` with `createPlanView`.
+  - Pure helpers: gapRuns, heatmapModel, costCopy, visaCopy, rollupCopy.
+  - Seasonality heatmap with rows per plan city.
+  - `tripStore.setNodes`, the Trips plan guards, diacritic-folding search, and
+    `city-intel-plan.css`.
+- T6b done (sonnet).
+  - New `scorecard.js`, with the view models tested.
+  - Compare overlay with best-in-row; BRIEF ME goes to Travel Mode.
+  - RANK/PLAN scaffolding, and PASSPORT & FILTERS in a `<details>`.
+  - Fixed a collapsed mode segment and an AQI field mismatch.
+- Planner review of the T6b screenshots:
+  - The first-run launcher covers everything and has no cockpit entry. Added as T14.
+  - The scorecard gets only ~100px under the controls. T12b collapses the controls in
+    scorecard view.
+  - Top balanced ranking is Bandar Seri Begawan, Ipoh, Varna. That is the honest result
+    of country-level percentiles; METHODOLOGY explains why.
 - Shared registry files are owned by T9 so parallel workers can't collide:
   `format-scope.json`, `package.json`, `DATA_SOURCES.md`, `CHANGELOG.md` and
   `CURRENT-STATE.md`.
@@ -165,17 +181,18 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
 | T4 | Server provider `/api/city-intel/{advisories,visa,rent,air}` | sonnet | SPEC | `server/providers/cityIntel.js`, `src/data/cityIntelProxy.test.mjs`, `server/providers/local.js` | done |
 | T5 | Globe layer `city-intel` (markers by composite, legend hook) plus registration | sonnet | D0, T1, T3 | `src/layers/cityIntel/{index,source}.js`, `src/app/layers/cityIntel.js`, catalog and layerState entries | done |
 | T6a | ATLAS mode plus panel ranking view (weights, presets, passport, filters, list, pins, legend, states, persistence), `cityIntel` handle | sonnet | D0, T2–T5 | `cityIntelMode.js`, `panel.js`, template, `city-intel.css`, `tools.js`, rail CSS lists | running |
-| T6b | Scorecard, compare overlay, trip block, Brief-me handoff, live air/rent/visa display | sonnet | T6a | `panel.js` (+ a scorecard module), template, CSS | running |
+| T6b | Scorecard, compare overlay, trip block, Brief-me handoff, live air/rent/visa display | sonnet | T6a | `panel.js` (+ a scorecard module), template, CSS | done |
 | T7 | Voice tools `rank_cities`, `compare_cities`, `show_city_intel` | sonnet | T6a contract | `actionSchemas.js`, `toolDescriptions.js`, `src/voice/cityIntelActions.js`, `gevActions.js` hook | done |
 | T8 | Data credits plus `.env.example` (only if a key appears) | haiku | T1, T4 | `src/data/dataCredits.js`, `DATA_SOURCES.md` (pulled forward from T9) | done |
 | D1 | Design addendum §11 PLAN view (plus §3/§5/§8/§10 edits) | fable | SPEC §3.5 | `DESIGN.md` | done |
 | T10 | Plan pure model (`plan.js`) plus tripStore `kind:'plan'` | sonnet | SPEC §3.5 | `plan.js` and test, `tripStore.js` and test | done |
 | T11 | Seasonality v2 (NASA POWER, all cities), builder archive-free | sonnet | SPEC §3.5 | builder, `seasonality.json`, `source.json`, README, pack test | done |
-| T12a/b | PLAN view UI plus "Add to plan" | sonnet | D1, T6b, T10, T11; implements `cityIntel.plan` contract plus `tripStore.setNodes` | `panel.js` or `planView.js`, CSS, template | running (a) |
+| T12a/b | PLAN view UI plus "Add to plan" | sonnet | D1, T6b, T10, T11; implements `cityIntel.plan` contract plus `tripStore.setNodes` | `panel.js` or `planView.js`, CSS, template | a done, b running |
 | T13 | Voice `plan_lifestyle` plus `rank_cities` months param | sonnet | T10, T12 contract | voice files | done |
 | F1 | Restore upstream formatting of `scene-chrome.html` and `index.html` (keep semantic edits) | haiku | T6a | those 2 files | done |
 | F2 | ATLAS visual fixes: glass surface, horizon occlusion, camera pull-out on entry | sonnet | T6a | `city-intel.css`, `cityIntel/index.js`, `cityIntelMode.js` | done |
-| T9 | Integration: format-scope adoption, `DATA_SOURCES.md`, `CHANGELOG.md`, `CURRENT-STATE.md`, full format/build/test | haiku→sonnet if failures | T1–T8 | shared files | blocked |
+| T14 | First-run launcher tile LIFESTYLE PLANNING leading to ATLAS; launcher closes when ATLAS is entered | sonnet | T6a | `firstRunExperience.js`, `welcome.html`, `startupChrome.js`, `tools.js` | running |
+| T9 | Integration: format-scope adoption, `DATA_SOURCES.md`, `CHANGELOG.md`, `CURRENT-STATE.md`, full format/build/test | haiku→sonnet if failures | T1–T8 | shared files | running |
 | V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | blocked |
 
 ## Follow-ups (not in v1)
