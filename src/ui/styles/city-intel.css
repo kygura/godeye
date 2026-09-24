@@ -51,6 +51,16 @@
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
 }
 
+/* Collapse fix (T12b/T14): controls.css's collapse rule only names
+   .global-context-panel-inner / .cctv-panel-inner, so `.cyber-panel-body`'s
+   `display: contents` (controls.css) left this panel's whole body — RANK/PLAN
+   segment, legend, weights, ranking rows — rendered over the collapsed rail
+   in both themes. Same fix, this panel's own inner class, not theme-gated
+   since the base rule it mirrors isn't either. */
+.panel-collapsible.collapsed > .city-intel-panel-inner > .cyber-panel-body {
+  display: none;
+}
+
 /* ── Mode toggle pill (scene-chrome.html), styled like #travel-toggle ── */
 #top-center-actions #city-intel-toggle {
   width: auto;
@@ -902,4 +912,46 @@ a.ci-notscored-value {
 :root[data-ui-theme='cyber'] .ci-climate-cell,
 :root[data-ui-theme='cyber'] .ci-badge {
   border-radius: 1px;
+}
+
+/* ── T12b planner polish: collapse legend/weights/refine into one summary
+   row while the scorecard is open, so the scorecard itself isn't squeezed
+   into ~100px at 1440x900. Ranking view (#city-intel-panel without
+   [data-ci-view="scorecard"]) is untouched. Every selector below repeats
+   [data-ci-mode='rank']: this row also carries .ci-rank-only (equal
+   specificity to that class's PLAN-mode "display: none"), so without pinning
+   these to RANK explicitly, source order alone decided the fight and the
+   summary row leaked into PLAN. ── */
+.ci-controls-summary {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard']
+  .ci-controls-summary {
+  display: flex;
+}
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'] .ci-legend,
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'] .ci-weights,
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'] #ci-refine {
+  display: none;
+}
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'][data-ci-controls-expanded='true']
+  .ci-controls-summary {
+  display: none;
+}
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'][data-ci-controls-expanded='true']
+  .ci-legend,
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'][data-ci-controls-expanded='true']
+  .ci-weights,
+#city-intel-panel[data-ci-mode='rank'][data-ci-view='scorecard'][data-ci-controls-expanded='true']
+  #ci-refine {
+  display: block;
 }

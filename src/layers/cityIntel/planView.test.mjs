@@ -355,16 +355,23 @@ function fakeDoc() {
   };
 }
 
+// A fresh session has no plan trip at all until `ensurePlanTrip()` creates
+// one (real tripStore semantics) — starting from `null` here reproduces the
+// bug where `persist()` used `getPlanTrip()` and silently dropped the very
+// first ADD TO PLAN before PLAN had ever been shown.
 function fakeStore(nodes = []) {
-  const trip = { id: 'plan-1', kind: 'plan', nodes };
+  let trip = nodes.length ? { id: 'plan-1', kind: 'plan', nodes } : null;
   const calls = [];
   return {
-    trip,
+    get trip() {
+      return trip;
+    },
     calls,
     getPlanTrip: () => trip,
-    ensurePlanTrip: () => trip,
+    ensurePlanTrip: () => (trip ??= { id: 'plan-1', kind: 'plan', nodes: [] }),
     setNodes: (id, next) => {
       calls.push(next);
+      trip ??= { id: 'plan-1', kind: 'plan', nodes: [] };
       trip.nodes = [...next].sort((a, b) => a.start - b.start);
       return true;
     },

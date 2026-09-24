@@ -21,7 +21,7 @@ import {
  * Attach scene tools, rendering listeners and the application debug handle.
  *
  * Returns `travelMode` (from `src/travel/controller.js`) and `cityIntel`
- * (`{ mode, panel }`, from `src/ui/cityIntelMode.js` and
+ * (`{ mode, panel, plan }`, from `src/ui/cityIntelMode.js` and
  * `src/layers/cityIntel/panel.js`) alongside the other components —
  * reachable either from this function's return value (which
  * `application.getComponents().tools.travelMode`/`.cityIntel` surfaces, see
@@ -168,7 +168,11 @@ export function createApplicationTools({
     showToast: showCityIntelToast,
   });
   defer(() => cityIntelMode.exit());
-  const cityIntel = { mode: cityIntelMode, panel: cityIntelPanel };
+  const cityIntel = {
+    mode: cityIntelMode,
+    panel: cityIntelPanel,
+    plan: cityIntelPanel.plan,
+  };
 
   // Idle render governor: flips the scene into requestRenderMode whenever
   // nothing animates per frame. Installed AFTER every module above has had

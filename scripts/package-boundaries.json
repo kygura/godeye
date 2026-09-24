@@ -1328,6 +1328,7 @@
       "src/layers/cityIntel/panel.js",
       "src/layers/cityIntel/scorecard.js",
       "src/layers/cityIntel/plan.js",
+      "src/layers/cityIntel/planView.js",
       "src/ui/cityIntelMode.js",
       "src/data/local_data/city_intel/cities.json",
       "src/data/local_data/city_intel/countries.json",

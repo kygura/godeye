@@ -348,6 +348,81 @@ test('createCityIntelPanel degrades to an inert API without a layer or a DOM roo
   assert.doesNotThrow(() => panel.markVoice('panel'));
 });
 
+test('switching to PLAN activates the plan trip and remembers/restores the prior active trip', () => {
+  const fakeDoc = {
+    getElementById: (id) =>
+      id === 'city-intel-panel' ? { dataset: {} } : null,
+  };
+  const calls = [];
+  const store = {
+    getActiveTrip: () => ({ id: 'trip-old' }),
+    setActive: (id) => calls.push(id),
+    getState: () => ({ trips: [{ id: 'trip-old' }, { id: 'plan-1' }] }),
+  };
+  const fakePlanView = {
+    show() {},
+    hide() {},
+    render() {},
+    addStay: () => ({ ok: false }),
+    getStays: () => [],
+    getSummary: () => ({ stays: [], rollup: null }),
+    replacePlan: () => ({ ok: true, stays: [] }),
+    markVoice: () => {},
+    get planTripId() {
+      return 'plan-1';
+    },
+  };
+  const panel = createCityIntelPanel({
+    layer: {},
+    doc: fakeDoc,
+    store,
+    planView: fakePlanView,
+  });
+  panel.setPrefs({ mode: 'plan' });
+  assert.deepEqual(calls, ['plan-1']);
+  panel.setPrefs({ mode: 'rank' });
+  assert.deepEqual(calls, ['plan-1', 'trip-old']);
+});
+
+test("api.plan matches the plan_lifestyle voice contract and markVoice('plan') forwards to planView", () => {
+  const fakeDoc = {
+    getElementById: (id) => (id === 'city-intel-panel' ? {} : null),
+  };
+  const store = {
+    getActiveTrip: () => null,
+    setActive() {},
+    getState: () => ({ trips: [] }),
+  };
+  const markVoiceCalls = [];
+  const summary = { stays: [{ id: 's1' }], rollup: { monthsCovered: 3 } };
+  const fakePlanView = {
+    show() {},
+    hide() {},
+    render() {},
+    addStay: () => ({ ok: false }),
+    getStays: () => ['a', 'b'],
+    getSummary: () => summary,
+    replacePlan: (list) => ({ ok: true, stays: list }),
+    markVoice: () => markVoiceCalls.push('voiced'),
+    planTripId: 'plan-1',
+  };
+  const panel = createCityIntelPanel({
+    layer: {},
+    doc: fakeDoc,
+    store,
+    planView: fakePlanView,
+  });
+  assert.equal(typeof panel.plan.ready, 'function');
+  assert.deepEqual(panel.plan.getStays(), ['a', 'b']);
+  assert.equal(panel.plan.getSummary(), summary);
+  assert.deepEqual(panel.plan.replaceStays([{ cityId: 'x' }]), {
+    ok: true,
+    stays: [{ cityId: 'x' }],
+  });
+  panel.markVoice('plan');
+  assert.deepEqual(markVoiceCalls, ['voiced']);
+});
+
 test('createCityIntelPanel degrades to an inert API when the panel root is missing from the DOM', () => {
   const fakeDoc = { getElementById: () => null };
   const panel = createCityIntelPanel({ layer: {}, doc: fakeDoc });

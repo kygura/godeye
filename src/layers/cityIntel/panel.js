@@ -14,6 +14,7 @@ import { PILLARS } from './scoring.js';
 import { loadCityIntelPack, fetchAdvisories, fetchVisa } from './source.js';
 import { selectLabelIds } from './index.js';
 import { monthsOf, spanLabel } from './plan.js';
+import { createPlanView } from './planView.js';
 import {
   formatPopulation,
   advisoryBadgeText,
@@ -23,6 +24,7 @@ import {
   loadRentMap,
 } from './scorecard.js';
 import { createSurfaceKeyboard } from '../../ui/surfaceKeyboard.js';
+import { tripStore as defaultTripStore } from '../../travel/tripStore.js';
 
 // Re-exported for node:test (moved to scorecard.js, T6b: both the ranking
 // row and the scorecard/compare need them).
@@ -356,7 +358,7 @@ export function refineSummaryText({ passport, filters }) {
 /**
  * ATLAS panel: weights, passport, filters, ranking, scorecard and compare,
  * plus the RANK/PLAN mode scaffolding (DESIGN §11.1).
- * @param {{layer: object, flyTo?: (lat:number, lon:number, range?:number)=>void, showToast?: (msg:string)=>void, travelMode?: {openTravelBriefing: (place: {name:string, lat:number, lon:number}) => Promise<void>}|null, planView?: {show:Function, hide:Function, render:Function, addStay:Function, getStays:Function}|null, storage?: Storage, doc?: Document}} options
+ * @param {{layer: object, flyTo?: (lat:number, lon:number, range?:number)=>void, showToast?: (msg:string)=>void, travelMode?: {openTravelBriefing: (place: {name:string, lat:number, lon:number}) => Promise<void>}|null, planView?: {show:Function, hide:Function, render:Function, addStay:Function, getStays:Function}|null, store?: object, storage?: Storage, doc?: Document}} options
  */
 export function createCityIntelPanel({
   layer,
@@ -364,6 +366,9 @@ export function createCityIntelPanel({
   showToast = () => {},
   travelMode = null,
   planView = null,
+  // The Lifestyle Plan trip lives in the shared trip store (T10/T12);
+  // injectable so tests can substitute a fake without touching localStorage.
+  store = defaultTripStore,
   storage = typeof localStorage === 'undefined' ? null : localStorage,
   doc = typeof document === 'undefined' ? null : document,
 } = {}) {
@@ -420,6 +425,9 @@ export function createCityIntelPanel({
     planView: doc.getElementById('ci-plan-view'),
     refine: doc.getElementById('ci-refine'),
     refineActive: doc.getElementById('ci-refine-active'),
+    controlsSummary: doc.getElementById('ci-scorecard-controls-summary'),
+    controlsSummaryText: doc.getElementById('ci-controls-summary-text'),
+    controlsExpandBtn: doc.getElementById('ci-controls-expand-btn'),
     compareMount: doc.getElementById('city-intel-compare'),
   };
   const weightInputs = {
@@ -453,10 +461,17 @@ export function createCityIntelPanel({
   let voiceChipTimer = null;
   let compareVoiceTimer = null;
   let compareVoiceActive = false;
+  // DESIGN §11.1: the trip active before entering PLAN, restored on leaving
+  // it; `undefined` means "not currently in PLAN with something to restore".
+  let rememberedTripId;
 
   /** 'ranking' | 'scorecard': which RANK-mode section is showing (DESIGN §3). */
   let viewMode = 'ranking';
   let compareOpen = false;
+  // T12b planner polish: legend/weights/refine collapse to one summary row
+  // while the scorecard is open; EDIT expands them back. Session-only, reset
+  // whenever the scorecard closes — never persisted.
+  let controlsExpanded = false;
 
   const scorecardView = els.scorecardView
     ? createScorecardView({ doc, mount: els.scorecardView })
@@ -560,6 +575,7 @@ export function createCityIntelPanel({
   }
 
   function renderRows() {
+    syncControlsSummary();
     if (!index) return;
     if (isAllZero(state.weights)) {
       // DESIGN §8: every marker falls back to the neutral "no weights" style,
@@ -859,6 +875,27 @@ export function createCityIntelPanel({
   function syncViewModeVisibility() {
     if (els.rankingView) els.rankingView.hidden = viewMode !== 'ranking';
     if (els.scorecardView) els.scorecardView.hidden = viewMode !== 'scorecard';
+    if (viewMode !== 'scorecard') controlsExpanded = false;
+    syncControlsSummary();
+  }
+
+  /** T12b planner polish: "WEIGHTS 5·5·5·5 · <refine summary>" + EDIT/DONE. */
+  function syncControlsSummary() {
+    if (els.controlsSummaryText)
+      els.controlsSummaryText.textContent = `WEIGHTS ${PILLARS.map((p) => state.weights[p]).join('·')} · ${refineSummaryText(state)}`;
+    if (els.controlsExpandBtn)
+      els.controlsExpandBtn.textContent = controlsExpanded ? 'DONE' : 'EDIT';
+    if (root) {
+      root.dataset.ciView = viewMode;
+      root.dataset.ciControlsExpanded = String(controlsExpanded);
+    }
+  }
+
+  function bindControlsExpand() {
+    els.controlsExpandBtn?.addEventListener('click', () => {
+      controlsExpanded = !controlsExpanded;
+      syncControlsSummary();
+    });
   }
 
   /** ADD TO PLAN (DESIGN §3/§11.6): routes to the injected `planView`. */
@@ -920,6 +957,17 @@ export function createCityIntelPanel({
   // -- Compare ---------------------------------------------------------------
 
   let compareRentByCity = new Map();
+  let rentMapRequested = false;
+
+  /** DESIGN §4/§11.3 rent row: loaded once lazily, shared by compare and PLAN. */
+  function ensureRentMap(onLoaded) {
+    if (rentMapRequested) return;
+    rentMapRequested = true;
+    loadRentMap(packCities).then((map) => {
+      compareRentByCity = map;
+      onLoaded();
+    });
+  }
 
   function currentPinnedScored() {
     return state.pins.map((id) => scoredById.get(id)).filter(Boolean);
@@ -944,11 +992,7 @@ export function createCityIntelPanel({
     compareOpen = true;
     compareKeyboard?.activate();
     renderCompare();
-    // DESIGN §4 rent row, loaded once lazily and cached (scorecard.js).
-    loadRentMap(packCities).then((map) => {
-      compareRentByCity = map;
-      renderCompare();
-    });
+    ensureRentMap(renderCompare);
   }
 
   function closeCompare() {
@@ -1125,6 +1169,33 @@ export function createCityIntelPanel({
     els.compareBtn?.addEventListener('click', () => openCompare());
   }
 
+  /**
+   * DESIGN §11.1: entering PLAN remembers whichever trip was active and
+   * makes the plan trip active instead, so the Trips layer draws it (the
+   * layer is already enabled for the whole mode by cityIntelMode.js).
+   * Leaving PLAN restores that remembered trip, if it still exists.
+   */
+  function enterPlanSubmode() {
+    if (els.planView) els.planView.hidden = false;
+    planView?.show();
+    if (planView?.planTripId) {
+      rememberedTripId = store.getActiveTrip?.()?.id ?? null;
+      store.setActive?.(planView.planTripId);
+    }
+    ensureRentMap(() => planView?.render());
+  }
+  function leavePlanSubmode() {
+    if (els.planView) els.planView.hidden = true;
+    planView?.hide();
+    if (rememberedTripId === undefined) return;
+    const target = rememberedTripId;
+    rememberedTripId = undefined;
+    const stillExists =
+      target === null ||
+      store.getState?.()?.trips?.some((t) => t.id === target);
+    store.setActive?.(stillExists ? target : null);
+  }
+
   /** DESIGN §11.1: RANK/PLAN segment. Switching calls `planView.show()/hide()`. */
   function switchMode(mode) {
     const next = mode === 'plan' ? 'plan' : 'rank';
@@ -1135,11 +1206,9 @@ export function createCityIntelPanel({
     syncModeSegUi();
     if (next === 'plan') {
       closeCompare();
-      if (els.planView) els.planView.hidden = false;
-      planView?.show();
+      enterPlanSubmode();
     } else {
-      if (els.planView) els.planView.hidden = true;
-      planView?.hide();
+      leavePlanSubmode();
     }
   }
 
@@ -1235,6 +1304,35 @@ export function createCityIntelPanel({
     countries = pack.countries?.countries || {};
     packCities = pack.cities || [];
     seasonalityCities = pack.seasonality?.cities || {};
+    // T12b: construct the real Lifestyle Plan view now the pack is ready,
+    // unless a test (or a future caller) already injected one.
+    if (!planView && els.planView) {
+      planView = createPlanView({
+        doc,
+        container: els.planView,
+        store,
+        pack: {
+          cities: packCities,
+          citiesById: new Map(packCities.map((c) => [c.id, c])),
+          countries,
+          seasonality: pack.seasonality || { cities: {} },
+        },
+        getCtx: () => ({
+          scoredById,
+          advisories: advisoriesByIso3
+            ? { byIso3: advisoriesByIso3 }
+            : undefined,
+          visa: visaContext ?? undefined,
+          rentByCity: compareRentByCity,
+        }),
+        getPrefs: () => api.getPrefs(),
+        setPrefs: (partial) => api.setPrefs(partial),
+        showToast,
+        announce,
+        flyTo: (stay) => flyTo(stay.lat, stay.lng, 600_000),
+        switchMode,
+      });
+    }
     await populatePassportOptions();
     setDisabled(false);
     syncWeightsUi();
@@ -1246,10 +1344,7 @@ export function createCityIntelPanel({
     syncViewModeVisibility();
     // DESIGN §11.1: data-ci-mode drives the .ci-rank-only / #ci-plan-view CSS.
     root.dataset.ciMode = state.mode;
-    if (state.mode === 'plan') {
-      if (els.planView) els.planView.hidden = false;
-      planView?.show();
-    }
+    if (state.mode === 'plan') enterPlanSubmode();
     await loadAdvisories();
     if (state.passport) visaContext = await loadVisaContext(state.passport);
     layer.onPick((id) => select(id));
@@ -1261,6 +1356,7 @@ export function createCityIntelPanel({
     bindCompare();
     bindModeSeg();
     bindRefineDetails();
+    bindControlsExpand();
     for (const p of PILLARS) bindWeightSlider(p);
     layer.setPinned(state.pins);
     rerank();
@@ -1340,7 +1436,9 @@ export function createCityIntelPanel({
           compareVoiceActive = false;
           renderCompare();
         }, 4000);
+        return;
       }
+      if (surface === 'plan') planView?.markVoice();
     },
     getPrefs() {
       return {
@@ -1364,6 +1462,18 @@ export function createCityIntelPanel({
         state.overrides = sanitizeOverrides(partial.overrides);
       persist();
       if (viewMode === 'scorecard') renderScorecard();
+    },
+    // T12b: the `plan_lifestyle` voice tool's contract (src/voice/cityIntelActions.js).
+    plan: {
+      ready: () => api.ready(),
+      show: () => switchMode('plan'),
+      getStays: () => planView?.getStays() ?? [],
+      replaceStays: (list) =>
+        planView?.replacePlan(list) ?? {
+          ok: false,
+          error: 'lifestyle-plan-unavailable',
+        },
+      getSummary: () => planView?.getSummary() ?? { stays: [], rollup: null },
     },
   };
   return api;

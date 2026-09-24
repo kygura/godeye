@@ -359,8 +359,11 @@ export function createPlanView({
     return planTrip()?.nodes ?? [];
   }
   function persist(nodes) {
-    const trip = planTrip();
-    if (trip) store.setNodes(trip.id, nodes);
+    // DESIGN §11.6: ADD TO PLAN works from RANK before PLAN has ever been
+    // shown, so the plan trip may not exist yet — create it (not made
+    // active; that's `show()`'s job) rather than silently dropping the edit.
+    const trip = store.ensurePlanTrip();
+    store.setNodes(trip.id, nodes);
   }
   function toNode(stay) {
     const city = cityRecord(stay.cityId);
@@ -444,6 +447,10 @@ export function createPlanView({
     const nodes = stays.map(toNode);
     persist(nodes);
     render();
+    // DESIGN §8: "Plan replaced by voice: Lisbon JAN–APR, ... . 12 of 12 months."
+    announce?.(
+      `Plan replaced by voice: ${nodes.map((n) => `${n.name} ${spanCore(n)}`).join(', ')}. ${monthsCoveredOf(nodes)} of 12 months.`,
+    );
     return { ok: true, stays: nodes };
   }
 

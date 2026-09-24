@@ -74,6 +74,25 @@
         >
       </p>
 
+      <!-- T12b planner polish: at 1440x900 the legend/weights/refine trio left
+           only ~100px for the scorecard itself. Collapsed into one summary row
+           while a scorecard is open (JS toggles display via [data-ci-view]);
+           EDIT expands them back in place, DONE re-collapses. Session-only,
+           not persisted. Ranking view is unaffected. -->
+      <div
+        id="ci-scorecard-controls-summary"
+        class="ci-controls-summary ci-rank-only"
+      >
+        <span id="ci-controls-summary-text"></span>
+        <button
+          type="button"
+          id="ci-controls-expand-btn"
+          class="ci-link-btn"
+        >
+          EDIT
+        </button>
+      </div>
+
       <section
         class="ci-legend ci-rank-only"
         aria-label="Score colour scale, 0 to 100; hollow grey ring means insufficient data"
