@@ -141,28 +141,39 @@ test('every city iso3 resolves to a countries.json record', () => {
   }
 });
 
-test('seasonality.json: shape, city ids, and 12 months each', () => {
-  assert.equal(seasonality.version, 1);
-  assert.ok(Object.keys(seasonality.cities).length > 0);
+test('seasonality.json: v2 shape, city ids, 12 months each, integer scores', () => {
+  assert.equal(seasonality.version, 2);
+  const ids = Object.keys(seasonality.cities);
+  assert.ok(ids.length > 0);
   for (const [id, entry] of Object.entries(seasonality.cities)) {
     assert.ok(
       cities.cities.some((c) => c.id === id),
       `seasonality id ${id} exists in cities.json`,
     );
-    assert.ok(
-      Number.isFinite(entry.matchedKm) && entry.matchedKm <= 25,
-      `${id}: matchedKm <= 25`,
-    );
     assert.equal(entry.months.length, 12, `${id}: 12 months`);
+    assert.equal(
+      entry.matchedKm,
+      undefined,
+      `${id}: no matchedKm (v2 dropped it)`,
+    );
     for (const m of entry.months) {
       assert.ok(
-        Number.isFinite(m.score) && m.score >= 0 && m.score <= 100,
-        `${id}: score`,
+        Number.isInteger(m.score) && m.score >= 0 && m.score <= 100,
+        `${id}: integer score 0-100`,
       );
       assert.equal(typeof m.tempC, 'number', `${id}: tempC`);
       assert.equal(typeof m.precipMm, 'number', `${id}: precipMm`);
     }
   }
+});
+
+test('seasonality.json: covers at least 95% of pack cities', () => {
+  const covered = Object.keys(seasonality.cities).length;
+  const ratio = covered / cities.cities.length;
+  assert.ok(
+    ratio >= 0.95,
+    `seasonality covers ${covered}/${cities.cities.length} cities (${(ratio * 100).toFixed(1)}%), need >= 95%`,
+  );
 });
 
 test('known cities are present with expected flags', () => {
@@ -173,7 +184,26 @@ test('known cities are present with expected flags', () => {
   assert.equal(byId.get('montevideo-ury')?.capital, true);
 });
 
-test('pack stays within the 1.5 MB uncompressed size budget', () => {
+test('seasonality.json: known cities present and sane', () => {
+  for (const id of [
+    'lisbon-prt',
+    'chiang-mai-tha',
+    'barcelona-esp',
+    'medellin-col',
+  ]) {
+    if (!cities.cities.some((c) => c.id === id)) continue; // not in this pack build
+    assert.ok(seasonality.cities[id], `${id}: has a seasonality entry`);
+  }
+  const lisbonJuly = seasonality.cities['lisbon-prt']?.months[6];
+  if (lisbonJuly) {
+    assert.ok(
+      lisbonJuly.tempC >= 18 && lisbonJuly.tempC <= 26,
+      `lisbon-prt July tempC ${lisbonJuly.tempC} in [18,26]`,
+    );
+  }
+});
+
+test('pack stays within the 2.2 MB uncompressed size budget', () => {
   const files = [
     'cities.json',
     'countries.json',
@@ -186,7 +216,7 @@ test('pack stays within the 1.5 MB uncompressed size budget', () => {
     0,
   );
   assert.ok(
-    totalBytes < 1.5 * 1024 * 1024,
-    `pack is ${(totalBytes / 1024).toFixed(1)} KB, budget 1536 KB`,
+    totalBytes < 2.2 * 1024 * 1024,
+    `pack is ${(totalBytes / 1024).toFixed(1)} KB, budget 2252.8 KB`,
   );
 });

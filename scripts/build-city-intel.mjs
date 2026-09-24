@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
  * Build src/data/local_data/city_intel/{cities,countries,seasonality,source}.json
- * for the City Intel pack (docs/cockpit/SPEC.md §3.1-3.2).
+ * for the City Intel pack (docs/cockpit/SPEC.md §3.1-3.2, §3.5 Seasonality v2).
  *
  * Sources (network at build time, pinned + hashed in source.json):
  *   - Natural Earth 10m populated places simple (public domain)
  *   - Natural Earth 110m admin-0 countries + tiny-countries (public domain)
  *   - OurAirports airports.csv (public domain)
  *   - World Bank WDI/WGI API v2 (CC BY 4.0, keyless)
- *   - Meridian seasonality.json seed (CC BY 4.0, read-only) re-keyed by nearest
- *     coordinates, using Meridian's worldcities.csv ONLY for seed coordinates
- *     (never redistributed — see source.json).
+ *   - NASA POWER monthly climatology API (public; acknowledgement requested),
+ *     one call per unique (lat,lon), cached under .gev-cache/.
  *
  * Usage: node scripts/build-city-intel.mjs
  */
@@ -18,21 +17,27 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import os from 'node:os';
+import { comfortScore, MONTH_ABBR } from '../src/travel/seasonality.js';
 
 const ROOT = process.cwd();
 const CACHE_DIR = path.join(ROOT, '.gev-cache/city-intel-build');
+const POWER_CACHE_DIR = path.join(CACHE_DIR, 'power');
 const OUT_DIR = path.join(ROOT, 'src/data/local_data/city_intel');
-const MERIDIAN_DATA = path.join(
-  os.homedir(),
-  'projects/_archive/meridian/data',
-);
 
 const BUILD_YEAR = new Date().getUTCFullYear();
 const MAX_AGE_YEARS = 10;
 const MIN_METRIC_YEAR = BUILD_YEAR - MAX_AGE_YEARS;
 const POP_FLOOR_START = 150000;
 const MAX_CITIES = 3000;
+const PACK_BUDGET_KB = 2.2 * 1024; // §3.2/§3.5: seasonality v2 covers all cities
+
+// NASA POWER climatology fetch: politeness knobs.
+const POWER_CONCURRENCY = 3;
+const POWER_BATCH_DELAY_MS = 150;
+const POWER_MAX_RETRIES = 3;
+const POWER_USER_AGENT =
+  'gods-eye-view build (+https://github.com/bilawalsidhu/gods-eye-view)';
+const DAYS_IN_MONTH = [31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 const NE_REPO = 'nvkelso/natural-earth-vector';
 const OURAIRPORTS_REPO = 'davidmegginson/ourairports-data';
@@ -208,6 +213,55 @@ async function cachedFetch(url, cacheKey, { json = false } = {}) {
   return { text, sha256: hash, data: json ? JSON.parse(text) : undefined };
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const round2 = (v) => Math.round(v * 100) / 100;
+
+/**
+ * Fetch (or reuse a cached copy of) NASA POWER's monthly climatology for one
+ * rounded (lat,lon), retrying with backoff (max POWER_MAX_RETRIES) on 429,
+ * 5xx, timeouts and network errors. A malformed/incomplete response is also
+ * retried (transient upstream/CDN hiccups, not just clean HTTP errors).
+ * Returns { data } on success or { error } after retries are exhausted.
+ */
+async function fetchPowerClimatology(lat, lon) {
+  mkdirSync(POWER_CACHE_DIR, { recursive: true });
+  const cachePath = path.join(POWER_CACHE_DIR, `${lat}_${lon}.json`);
+  try {
+    return { data: JSON.parse(readFileSync(cachePath, 'utf8')) };
+  } catch {
+    // not cached, fall through to fetch
+  }
+  const url =
+    `https://power.larc.nasa.gov/api/temporal/climatology/point` +
+    `?parameters=T2M,PRECTOTCORR&community=RE&longitude=${lon}&latitude=${lat}&format=JSON`;
+  let lastError = 'unknown error';
+  for (let attempt = 0; attempt <= POWER_MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20000);
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, {
+        headers: { 'user-agent': POWER_USER_AGENT },
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timer));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // eslint-disable-next-line no-await-in-loop
+      const json = await res.json();
+      if (!json?.properties?.parameter?.T2M?.JAN) {
+        throw new Error('response missing T2M data');
+      }
+      writeFileSync(cachePath, JSON.stringify(json));
+      return { data: json };
+    } catch (err) {
+      lastError = err.message;
+      if (attempt === POWER_MAX_RETRIES) return { error: lastError };
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(500 * 2 ** attempt);
+    }
+  }
+  return { error: lastError };
+}
+
 async function ghLatestCommitSha(repo) {
   const res = await fetch(
     `https://api.github.com/repos/${repo}/commits?per_page=1`,
@@ -283,6 +337,7 @@ const round3 = (v) => Math.round(v * 1000) / 1000;
 const round4 = (v) => Math.round(v * 10000) / 10000;
 
 async function main() {
+  const mainStart = Date.now();
   const anomalies = [];
 
   // --- Natural Earth (populated places + admin-0 + tiny-countries) ---
@@ -496,48 +551,97 @@ async function main() {
     countries[iso3] = entry;
   }
 
-  // --- Seasonality: re-key Meridian seed to City Intel ids by nearest coords ---
-  const meridianSeasonality = JSON.parse(
-    readFileSync(path.join(MERIDIAN_DATA, 'seasonality.json'), 'utf8'),
+  // --- Seasonality v2: NASA POWER monthly climatology, every pack city ---
+  // One request per unique rounded (lat,lon); cached under .gev-cache/, so
+  // reruns are free. Concurrency capped, small delay between batches, retry
+  // with backoff on 429/5xx. A city is skipped (coverage) if any month is
+  // NASA's -999 fill value.
+  const coordKey = (lat, lon) => `${lat}_${lon}`;
+  const uniqueCoords = new Map(); // "lat_lon" -> {lat, lon}
+  const coordCityCount = new Map(); // "lat_lon" -> number of cities sharing it
+  for (const c of cities) {
+    const lat = round2(c.lat);
+    const lon = round2(c.lon);
+    const key = coordKey(lat, lon);
+    if (!uniqueCoords.has(key)) uniqueCoords.set(key, { lat, lon });
+    coordCityCount.set(key, (coordCityCount.get(key) ?? 0) + 1);
+  }
+
+  console.log(
+    `seasonality: fetching NASA POWER climatology for ${uniqueCoords.size} ` +
+      `unique coordinates (${cities.length} cities)`,
   );
-  const worldcitiesCsv = readFileSync(
-    path.join(MERIDIAN_DATA, 'worldcities.csv'),
-    'utf8',
-  );
-  const seedCoords = new Map(); // meridian slug id -> [lat, lon] (coords only, never redistributed)
-  for (const row of parseCsv(worldcitiesCsv)) {
-    const id = `${row.city}-${row.country}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    if (!seedCoords.has(id))
-      seedCoords.set(id, [Number(row.lat), Number(row.lng)]);
+
+  const climatologyByCoord = new Map();
+  let powerApiVersion = null;
+  let powerRange = null;
+  const coordEntries = [...uniqueCoords.entries()];
+  let citiesSeen = 0;
+  let nextLogAt = 100;
+  for (let i = 0; i < coordEntries.length; i += POWER_CONCURRENCY) {
+    const batch = coordEntries.slice(i, i + POWER_CONCURRENCY);
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(
+      batch.map(async ([key, { lat, lon }]) => {
+        const { data, error } = await fetchPowerClimatology(lat, lon);
+        if (data) {
+          climatologyByCoord.set(key, data);
+          if (!powerApiVersion) {
+            powerApiVersion = data.header?.api?.version ?? null;
+            powerRange = data.header?.range ?? null;
+          }
+        } else {
+          anomalies.push(`NASA POWER fetch failed for ${key}: ${error}`);
+        }
+      }),
+    );
+    for (const [key] of batch) citiesSeen += coordCityCount.get(key) ?? 0;
+    while (citiesSeen >= nextLogAt) {
+      console.log(`seasonality: fetched ~${nextLogAt}/${cities.length} cities`);
+      nextLogAt += 100;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(POWER_BATCH_DELAY_MS);
   }
 
   const seasonalityCities = {};
-  let seasonMatched = 0;
-  const seasonUnmatched = [];
-  for (const [seedId, entry] of Object.entries(meridianSeasonality.cities)) {
-    const coords = seedCoords.get(seedId);
-    if (!coords) {
-      seasonUnmatched.push(`${seedId} (no coordinates in seed)`);
+  const seasonSkipped = [];
+  for (const c of cities) {
+    const key = coordKey(round2(c.lat), round2(c.lon));
+    const clim = climatologyByCoord.get(key);
+    const t2m = clim?.properties?.parameter?.T2M;
+    const precip = clim?.properties?.parameter?.PRECTOTCORR;
+    if (!t2m || !precip) {
+      seasonSkipped.push(`${c.id} (fetch failed)`);
       continue;
     }
-    let nearest = null;
-    for (const city of cities) {
-      const d = haversineKm(coords, [city.lat, city.lon]);
-      if (d <= 25 && (!nearest || d < nearest.d)) nearest = { city, d };
+    const months = [];
+    for (let m = 0; m < 12; m++) {
+      const mk = MONTH_ABBR[m];
+      const tempC = t2m[mk];
+      const precipPerDay = precip[mk];
+      if (
+        tempC === -999 ||
+        precipPerDay === -999 ||
+        !Number.isFinite(tempC) ||
+        !Number.isFinite(precipPerDay)
+      ) {
+        break; // missing month: skip the whole city (coverage)
+      }
+      const precipMm = precipPerDay * DAYS_IN_MONTH[m];
+      months.push({
+        score: comfortScore(tempC, precipMm),
+        tempC: round1(tempC),
+        precipMm: Math.round(precipMm),
+      });
     }
-    if (!nearest) {
-      seasonUnmatched.push(`${seedId} (no pack city within 25km)`);
+    if (months.length !== 12) {
+      seasonSkipped.push(`${c.id} (missing month, fill_value -999)`);
       continue;
     }
-    seasonalityCities[nearest.city.id] = {
-      matchedKm: round1(nearest.d),
-      months: entry.months,
-    };
-    seasonMatched++;
+    seasonalityCities[c.id] = { months };
   }
+  const seasonCovered = Object.keys(seasonalityCities).length;
 
   // --- Write output ---
   mkdirSync(OUT_DIR, { recursive: true });
@@ -553,10 +657,10 @@ async function main() {
     countries,
   };
   const seasonalityOut = {
-    version: 1,
-    window: '2015-2024',
-    source: 'Open-Meteo Historical Weather API (via Meridian seed)',
-    license: 'CC BY 4.0',
+    version: 2,
+    window: '2001-2020',
+    source: 'NASA POWER monthly climatology (MERRA-2)',
+    license: 'Public (NASA POWER; acknowledgement requested)',
     cities: seasonalityCities,
   };
 
@@ -614,15 +718,23 @@ async function main() {
         license: 'CC BY 4.0',
         attribution: 'World Bank',
       },
-      meridianSeasonalitySeed: {
-        path: '~/projects/_archive/meridian/data/seasonality.json (read-only, not part of this repo)',
-        license: 'CC BY 4.0',
+      nasaPowerClimatology: {
+        url: 'https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=T2M,PRECTOTCORR&community=RE&format=JSON&longitude={lon}&latitude={lat}',
+        apiVersion: powerApiVersion,
+        range: powerRange,
+        fillValue: -999,
+        license: 'Public (NASA POWER data are freely available)',
         attribution:
-          'Derived from the Open-Meteo Historical Weather API, via the archived Meridian project',
+          'These data were obtained from the NASA Langley Research Center (LaRC) ' +
+          'POWER Project funded through the NASA Earth Science/Applied Science Program.',
+        acknowledgementUrl: 'https://power.larc.nasa.gov/docs/methodology/',
+        citiesCovered: seasonCovered,
+        citiesSkipped: seasonSkipped.length,
+        uniqueCoordinatesFetched: uniqueCoords.size,
         note:
-          'Re-keyed to City Intel ids by nearest coordinates (<=25km). ' +
-          "Meridian's worldcities.csv was read ONLY to recover seed-city coordinates " +
-          'at build time; it is not committed, redistributed, or otherwise present in this repo.',
+          'One call per unique (lat,lon) rounded to 2dp, cached under .gev-cache/. ' +
+          'A city is skipped when any month is the -999 fill value or the fetch failed ' +
+          `after ${POWER_MAX_RETRIES} retries.`,
       },
     },
   };
@@ -652,7 +764,7 @@ SHAs / access dates and records sha256 hashes in \`source.json\`.
 |---|---|
 | \`cities.json\` | ${citiesOut.count} cities (pop ≥ ${threshold.toLocaleString()}): id, name, ISO3, country, admin1, lat/lon, population, capital flag, nearest scheduled-service airport |
 | \`countries.json\` | Per-ISO3 name/region/continent/subregion + World Bank metrics (life expectancy, internet users, PM2.5, price level, homicide rate, political stability) |
-| \`seasonality.json\` | Monthly climate comfort for ${seasonMatched} cities, re-keyed from the Meridian/Open-Meteo seed by nearest coordinates |
+| \`seasonality.json\` | Monthly climate comfort for ${seasonCovered}/${cities.length} cities (v2), from NASA POWER monthly climatology 2001-2020 |
 
 ## Rebuild
 
@@ -661,14 +773,18 @@ node scripts/build-city-intel.mjs
 \`\`\`
 
 Requires network access; caches raw downloads under \`.gev-cache/city-intel-build/\`
-(gitignored) so re-runs are fast and offline-friendly.
+(gitignored) so re-runs are fast and offline-friendly. NASA POWER climatology is
+fetched once per unique rounded (lat,lon) and cached under
+\`.gev-cache/city-intel-build/power/\`; a city is skipped from \`seasonality.json\`
+only if NASA POWER has no data for its coordinates (fill value) or the fetch
+fails after retries.
 
 ## Licenses / attribution
 
 - Natural Earth (populated places, admin-0 countries, tiny countries) — public domain, "Made with Natural Earth".
 - OurAirports — public domain.
 - World Bank WDI/WGI indicators and country list — CC BY 4.0, attribution "World Bank".
-- Seasonality — CC BY 4.0, derived from the Open-Meteo Historical Weather API via the archived Meridian project's seed. Meridian's \`worldcities.csv\` was used only to look up seed-city coordinates at build time and is never redistributed.
+- Seasonality — NASA POWER monthly climatology (2001-2020, MERRA-2), public data. "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program."
 
 See \`source.json\` for exact URLs, pinned commits/access dates and sha256 hashes.
 `,
@@ -696,20 +812,26 @@ See \`source.json\` for exact URLs, pinned commits/access dates and sha256 hashe
     console.log(`  ${key}: ${n} countries`);
   }
   console.log(
-    `seasonality: ${seasonMatched} matched, ${seasonUnmatched.length} unmatched`,
+    `seasonality: ${seasonCovered}/${cities.length} covered, ` +
+      `${seasonSkipped.length} skipped (${uniqueCoords.size} unique coordinates)`,
   );
-  if (seasonUnmatched.length)
-    console.log(`  unmatched: ${seasonUnmatched.join(', ')}`);
+  if (seasonSkipped.length)
+    console.log(`  skipped: ${seasonSkipped.join(', ')}`);
   console.log(`NE commit: ${neSha}`);
   console.log(`OurAirports commit: ${airportsSha}`);
   for (const s of sizes) console.log(`  ${s.name}: ${s.kb} KB`);
-  console.log(`  total: ${totalKb.toFixed(1)} KB (budget 1536 KB)`);
-  if (totalKb > 1536)
-    throw new Error(`pack exceeds 1.5 MB budget: ${totalKb.toFixed(1)} KB`);
+  console.log(
+    `  total: ${totalKb.toFixed(1)} KB (budget ${PACK_BUDGET_KB.toFixed(1)} KB)`,
+  );
+  if (totalKb > PACK_BUDGET_KB)
+    throw new Error(
+      `pack exceeds ${(PACK_BUDGET_KB / 1024).toFixed(1)} MB budget: ${totalKb.toFixed(1)} KB`,
+    );
   if (anomalies.length) {
     console.log(`\nanomalies (${anomalies.length}):`);
     for (const a of anomalies) console.log(`  - ${a}`);
   }
+  console.log(`\ndone in ${((Date.now() - mainStart) / 1000).toFixed(1)}s`);
 }
 
 main().catch((err) => {

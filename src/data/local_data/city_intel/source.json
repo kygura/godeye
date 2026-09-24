@@ -77,11 +77,18 @@
       "license": "CC BY 4.0",
       "attribution": "World Bank"
     },
-    "meridianSeasonalitySeed": {
-      "path": "~/projects/_archive/meridian/data/seasonality.json (read-only, not part of this repo)",
-      "license": "CC BY 4.0",
-      "attribution": "Derived from the Open-Meteo Historical Weather API, via the archived Meridian project",
-      "note": "Re-keyed to City Intel ids by nearest coordinates (<=25km). Meridian's worldcities.csv was read ONLY to recover seed-city coordinates at build time; it is not committed, redistributed, or otherwise present in this repo."
+    "nasaPowerClimatology": {
+      "url": "https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=T2M,PRECTOTCORR&community=RE&format=JSON&longitude={lon}&latitude={lat}",
+      "apiVersion": "v2.10.0",
+      "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+      "fillValue": -999,
+      "license": "Public (NASA POWER data are freely available)",
+      "attribution": "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program.",
+      "acknowledgementUrl": "https://power.larc.nasa.gov/docs/methodology/",
+      "citiesCovered": 2480,
+      "citiesSkipped": 0,
+      "uniqueCoordinatesFetched": 2480,
+      "note": "One call per unique (lat,lon) rounded to 2dp, cached under .gev-cache/. A city is skipped when any month is the -999 fill value or the fetch failed after 3 retries."
     }
   }
 }
