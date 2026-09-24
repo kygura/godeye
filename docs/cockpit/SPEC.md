@@ -246,8 +246,9 @@ There is no second store, so the Trips layer draws the plan's arcs as-is. Each n
 
 - Months covered out of 12, with gaps listed.
 - Month-weighted mean fit.
-- Estimated annual cost: shown only as "partial, N/12 months" unless every covered month
-  has an estimate or override.
+- Estimated annual cost: a dollar total appears only when all 12 months are covered and
+  each has an estimate or override. Otherwise it reads "partial, N/12 months", because an
+  annual figure needs the whole year.
 - Month-weighted mean comfort.
 - Highest advisory level.
 - Moves per year and total great-circle km from the Trips geo helpers. The loop closes
@@ -281,7 +282,7 @@ docs/UI-OWNERSHIP.md). Upstream features are not rewritten.
 | Area | Files |
 |---|---|
 | Data build | `scripts/build-city-intel.mjs`, `src/data/local_data/city_intel/*` |
-| Pure logic | `src/layers/cityIntel/scoring.js` (pillars, normalisation, composite, ranking), `model.js` (metric records, formatting helpers), `source.js` (pack loader and live fetch client); `docs/cockpit/METHODOLOGY.md` |
+| Pure logic | `src/layers/cityIntel/scoring.js` (pillars, normalisation, composite, ranking, metric records), `source.js` (pack loader and live fetch client); metric formatting lives with the view models in `scorecard.js`; `docs/cockpit/METHODOLOGY.md` |
 | Globe layer | `src/layers/cityIntel/index.js` (layer contract `init/enable/disable/update/destroy/getStats`; markers coloured by composite), `src/app/layers/cityIntel.js`, entries in `constructCatalog.js` and `layerState.js` |
 | Panel UI | `src/layers/cityIntel/panel.js` (ranking, weights, filters, scorecard, compare), a template, and `src/ui/styles/city-intel.css` built on `foundation.css` tokens and respecting the Cyber HUD overlay |
 | Mode | A preset that hides unrelated layers and restores them on exit; DESIGN.md sets the entry point |
