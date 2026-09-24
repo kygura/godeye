@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-09-24",
+  "inputs": {
+    "naturalEarthPopulatedPlaces": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_populated_places_simple.geojson",
+      "commit": "ca96624a56bd078437bca8184e78163e5039ad19",
+      "sha256": "fd3fa867a320cbd5c5b6bb5bc550afeec2939fb2cef688e508007282a55ac42f",
+      "license": "Public domain (naturalearthdata.com/about/terms-of-use)",
+      "attribution": "Made with Natural Earth"
+    },
+    "naturalEarthAdmin0Countries": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_110m_admin_0_countries.geojson",
+      "commit": "ca96624a56bd078437bca8184e78163e5039ad19",
+      "sha256": "6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f",
+      "license": "Public domain (naturalearthdata.com/about/terms-of-use)",
+      "attribution": "Made with Natural Earth"
+    },
+    "naturalEarthAdmin0TinyCountries": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_110m_admin_0_tiny_countries.geojson",
+      "commit": "ca96624a56bd078437bca8184e78163e5039ad19",
+      "sha256": "753c4b167361f0f1223091d52f98aaddfb9101529eef263cc094057e43228c40",
+      "license": "Public domain (naturalearthdata.com/about/terms-of-use)",
+      "attribution": "Made with Natural Earth",
+      "note": "Supplies continent/subregion for micro-states invisible at 110m scale. Gibraltar, Hong Kong SAR and Macao SAR are still absent from both 110m files; their continent/subregion are filled in manually (uncontested geography, see MANUAL_GEO in build-city-intel.mjs)."
+    },
+    "ourAirports": {
+      "url": "https://raw.githubusercontent.com/davidmegginson/ourairports-data/44d4715eca5a7b01b88f0be00ed62dcca309b633/airports.csv",
+      "commit": "44d4715eca5a7b01b88f0be00ed62dcca309b633",
+      "sha256": "61076a8aa1e1fcaf7060753301158667ec597cf8859a163f8f3733c62cf4524b",
+      "license": "Public domain",
+      "attribution": "OurAirports (ourairports.com)"
+    },
+    "worldBankIndicators": {
+      "SP.DYN.LE00.IN": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/SP.DYN.LE00.IN?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "38e1bbccf3619b1fed803d9e4994904a74cf806a00ff4a533c7ed6e3cf6f5547"
+      },
+      "IT.NET.USER.ZS": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/IT.NET.USER.ZS?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "e90c67d476a75233e6f1ce3a5e0b6337e47dd336e87ab788ad2f32d35e2eb7c3"
+      },
+      "EN.ATM.PM25.MC.M3": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/EN.ATM.PM25.MC.M3?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "c02cc2adb4e1f407a767651060631396466eaef56c9a2a41bb3bb820cd813fa1"
+      },
+      "VC.IHR.PSRC.P5": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/VC.IHR.PSRC.P5?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "dd03b60f844762df7dd37be061a4d517086ac6e3092a205d9b9d9841a1d058d5"
+      },
+      "GOV_WGI_PV.EST": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/GOV_WGI_PV.EST?format=json&per_page=20000&date=2010%3A2026&source=3",
+        "accessDate": "2026-09-24",
+        "sha256": "0fadfda72ac13e8144889b6c44eede4d8a37c16032006b7382fbeee270448d68"
+      },
+      "PA.NUS.PRVT.PP": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/PA.NUS.PRVT.PP?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "f5d30706e0e8940a42734bd03b16e5e651958148b6726ae8d82dc9251706bba2"
+      },
+      "PA.NUS.FCRF": {
+        "url": "https://api.worldbank.org/v2/country/all/indicator/PA.NUS.FCRF?format=json&per_page=20000&date=2010%3A2026",
+        "accessDate": "2026-09-24",
+        "sha256": "d80238c9ac1a6be52d920d8b6f9c1cd8dd33c83f2b2fb20f134088e0ad8ae12f"
+      },
+      "license": "CC BY 4.0",
+      "attribution": "World Bank",
+      "note": "priceLevel is derived: PA.NUS.PRVT.PP ÷ PA.NUS.FCRF, same year, both non-null."
+    },
+    "worldBankCountryList": {
+      "url": "https://api.worldbank.org/v2/country?format=json&per_page=400",
+      "accessDate": "2026-09-24",
+      "sha256": "d29d57f8adf954c5e2a1520a02fb2c7b45575d8db3bd327a9dff47d66914231c",
+      "license": "CC BY 4.0",
+      "attribution": "World Bank"
+    },
+    "meridianSeasonalitySeed": {
+      "path": "~/projects/_archive/meridian/data/seasonality.json (read-only, not part of this repo)",
+      "license": "CC BY 4.0",
+      "attribution": "Derived from the Open-Meteo Historical Weather API, via the archived Meridian project",
+      "note": "Re-keyed to City Intel ids by nearest coordinates (<=25km). Meridian's worldcities.csv was read ONLY to recover seed-city coordinates at build time; it is not committed, redistributed, or otherwise present in this repo."
+    }
+  }
+}
