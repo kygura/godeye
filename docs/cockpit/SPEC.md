@@ -7,14 +7,29 @@ Companion docs: [DESIGN.md](DESIGN.md) (interface brief), [TASKS.md](TASKS.md) (
 ## 1. What this is
 
 God's Eye View (GEV) is a real-time 3D globe for public spatial data. This build adds a
-**planetary intelligence cockpit** for one headline question: **where should I live next?**
+**planetary intelligence cockpit** for **lifestyle planning and formation**: helping the user
+design the life they want to live and where. That covers:
 
-The user ranks and compares cities worldwide on four pillars: quality of life, cost
-(rent and property where real data exists, otherwise a country price level), safety, and
-travel ease. They adjust the pillar weights, see the ranking recolor the globe, open a
-per-city scorecard, compare two to four cities side by side, plan trips between them
-(Trips), and get a live safety briefing for a destination (Travel Mode). Voice commands
-drive the same operations.
+- a home base, or a seasonal rotation of bases across the year;
+- a monthly budget (rent plus cost of living);
+- quality-of-life priorities and safety tolerance;
+- a travel rhythm.
+
+(Revised 2026-09-24 after a user clarification. The first draft framed the job as "where
+should I live next?" That question is now one input to the plan, not the product.)
+
+The building blocks are:
+
+- **City ranking (ATLAS).** Rank and compare cities worldwide on four pillars: quality of
+  life, cost, safety and travel ease. Cost uses rent where real data exists, otherwise a
+  country price level. User-adjustable weights recolour the globe. Each city has a
+  scorecard, and two to four cities can be compared side by side.
+- **Lifestyle Plan (§3.5).** An ordered set of stays (city plus months). Each stay shows its
+  fit score, estimated monthly cost, safety and seasonality. The plan rolls these up per
+  year and draws the stays on the globe with the Trips arcs.
+- **Trips.** Ad-hoc routes between cities with great-circle arcs and seasonality windows.
+- **Travel Mode.** A live safety briefing for a destination.
+- **Voice.** Commands drive the same operations.
 
 It also integrates the ideas from the archived Meridian project: the Trips planner,
 great-circle routing, city search and seasonality (climate comfort) come from the
@@ -92,7 +107,7 @@ stay under 1.5 MB uncompressed; the builder prints the size.
 |---|---|---|
 | `cities.json` | Cities with `pop_max` of at least ~150k (the builder reports the final count): id, name, ISO3, country, admin1, lat, lon, population, capital flag, nearest scheduled-service airport (IATA, distance, airport type) | Natural Earth 10m populated places (public domain); OurAirports (public domain) |
 | `countries.json` | Per ISO3: name, region, and metrics, each with value and year; indicator metadata (label, unit, source, URL, licence, direction, derived flag) | World Bank WDI and WGI API (CC BY 4.0) |
-| `seasonality.json` | Monthly climate comfort (0 to 100), temperature and precipitation for the ~120 cities Meridian seeded, re-keyed to City Intel ids by nearest coordinates (within 25 km) rather than by name | Meridian seed, derived from the Open-Meteo historical archive (CC BY 4.0) |
+| `seasonality.json` | Monthly climate comfort (0 to 100), temperature and precipitation for every pack city (v2, §3.5). v1 was the ~120-city Meridian seed. | NASA POWER monthly climatology 2001–2020 (public; acknowledgement requested) |
 
 Build rules:
 
@@ -156,8 +171,9 @@ methodology to `docs/cockpit/METHODOLOGY.md`. These are the constraints it must 
   - Travel ease: nearest scheduled airport type and distance (city level), plus visa
     access for the chosen passport (country level, only once a passport is set).
 - **Excluded from the composite, shown in the scorecard:**
-  - Climate comfort covers only ~120 cities, so it would make QoL inconsistent. It
-    appears in the scorecard and Trips seasonality.
+  - Climate comfort appears in the scorecard, the Plan and Trips seasonality. v1 kept it
+    out of the composite because it covered only ~120 cities. v2 covers every city, but
+    it stays unscored for now to keep the model stable; revisit later.
   - Live air quality.
   - Zillow rent.
   - The advisory level is a badge and a filter, not a score. It largely re-states the
@@ -188,6 +204,75 @@ methodology to `docs/cockpit/METHODOLOGY.md`. These are the constraints it must 
 - **Not advice.** The panel carries a one-line "Indicative, built from public statistics;
   mostly country-level; not relocation advice" note, linking to METHODOLOGY.md.
 
+### 3.5 Lifestyle Plan (added 2026-09-24)
+
+The Lifestyle Plan is the piece that ties ranking, Trips and seasonality into one life
+design. An opus discussion pass pressure-tested it; its cuts are adopted below.
+
+**Model.** One plan in v1, stored as a Trips trip flagged `kind: 'plan'` in `tripStore`.
+There is no second store, so the Trips layer draws the plan's arcs as-is. Each node
+(stay) is `{ id, cityId, name, lat, lng, start: 1..12, len: 1..12 }`:
+
+- A stay is a contiguous run of months and may wrap past December (Nov + 4 = Nov–Feb).
+- Stays are keyed by their own `id`, so the same city can appear twice (spring and
+  autumn in Lisbon). Stays are ordered by `start`.
+- Months must not overlap between stays. Gaps are allowed and flagged.
+- Existing node operations must preserve the extra fields.
+- Persistence is `tripStore`'s localStorage.
+- Profile inputs (home city, monthly spend) live in `gev:city-intel:v1` with the ATLAS
+  weights and passport.
+
+**Per stay** (pure functions in `src/layers/cityIntel/plan.js`):
+
+- **Fit:** the city's composite under the current ATLAS weights, with its coverage.
+- **Cost:**
+  - The relative cost comes first: "×home" is the stay country's `priceLevel` divided by
+    the home country's.
+  - A dollar estimate follows only when a home monthly spend is set: spend × ratio. It is
+    labelled "estimate from country price levels, consumption basket; expat costs often
+    differ", with each country's own data year.
+  - A per-stay manual $ override replaces the estimate and is marked "your figure".
+  - Zillow rent is an info line for US stays only and is never added to the total,
+    because the spend already includes housing.
+  - With no home set, cost shows "set home to compare costs".
+- **Seasonality:** mean comfort over the stay's months from `seasonality.json`. That file
+  now covers every pack city (see below); a missing city shows as unavailable.
+- **Safety:** the safety pillar with its coverage, plus the advisory badge.
+- **Visa:** if a passport is set and the destination's visa-free days are known, a stay
+  longer than that allowance is flagged "stay exceeds visa-free days (N)". The
+  Schengen-wide 90/180 rule is out of scope for v1 and the view says so.
+
+**Rollup:**
+
+- Months covered out of 12, with gaps listed.
+- Month-weighted mean fit.
+- Estimated annual cost: shown only as "partial, N/12 months" unless every covered month
+  has an estimate or override.
+- Month-weighted mean comfort.
+- Highest advisory level.
+- Moves per year and total great-circle km from the Trips geo helpers. The loop closes
+  back to the first stay only when all 12 months are covered.
+
+**Seasonality v2.** `scripts/build-city-intel.mjs` computes monthly comfort for **all**
+pack cities from NASA POWER monthly climatology (2001–2020, MERRA-2 native grid of about
+50 km; public, acknowledgement requested). It uses the existing `comfortScore(tempC,
+precipMm)`, converting precipitation from mm/day to monthly mm. This replaces the ~120-city
+Meridian seed, so the build no longer reads anything from the archive. It is one call per
+city, cached under `.gev-cache/`, run politely. Climate comfort stays out of the ranking
+composite for v1: it is shown, not scored.
+
+**Cut from v1:** runtime climate route, plan-level safety floor, automatic month
+assignment by comfort, multiple plans, share links, and the ATLAS TRIP block (the PLAN view
+replaces it; ad-hoc trips keep the Trips layer's own row controls).
+
+**Voice:**
+
+- `plan_lifestyle { stays: [{ city, months? }] }`. If months are omitted, the year is
+  split evenly in the given order, and the tool says so.
+- `rank_cities` gains an optional report-only `months` parameter. It returns each result's
+  comfort for those months from the static data, for queries like "cheapest safe winter
+  base in Europe".
+
 ## 4. Components and file map
 
 Additive modules following GEV's own patterns (CONTRIBUTING.md, docs/CODE-BOUNDARIES.md,
@@ -203,6 +288,7 @@ docs/UI-OWNERSHIP.md). Upstream features are not rewritten.
 | Server | `server/providers/cityIntel.js` registered in `server/providers/local.js` |
 | Trips (port) | `src/travel/{geo,seasonality,citySearch,cities,tripColors,tripStore}.js`, `src/layers/trips/index.js`, `src/app/layers/trips.js`; cities come from the City Intel pack |
 | Travel Mode (port) | `src/travel/{briefing,controller}.js`, `src/ui/templates/travel.html`, `src/ui/styles/travel.css`, plus the WIP's small wiring edits |
+| Lifestyle Plan | `src/layers/cityIntel/plan.js` (pure: stays, per-stay metrics, rollup, even split), `tripStore` `kind:'plan'`, a PLAN view in the ATLAS panel (DESIGN.md addendum) |
 | Voice | Schemas in `src/voice/actionSchemas.js`, descriptions in `server/providers/openai/toolDescriptions.js`, and handlers in a new `src/voice/cityIntelActions.js` that `gevActions.js` delegates to |
 | Docs | `DATA_SOURCES.md`, `docs/CURRENT-STATE.md`, `CHANGELOG.md`, and `.env.example` if any optional key is added |
 
@@ -247,5 +333,9 @@ data".
    badge as unavailable.
 9. A headless browser smoke test shows the cockpit rendering with no console errors from
    the new code.
-10. `METHODOLOGY.md` exists, and the panel links it with the not-advice note.
-11. `DATA_SOURCES.md` lists every new source with its licence and attribution.
+10. In the PLAN view the user can add stays (from a scorecard or by voice) with start and
+    length. Per-stay fit, ×home cost with optional $ estimate or override, comfort,
+    safety and visa flags show with coverage. The yearly rollup renders, and the plan
+    draws as Trips arcs. The plan survives a reload.
+11. `METHODOLOGY.md` exists, and the panel links it with the not-advice note.
+12. `DATA_SOURCES.md` lists every new source with its licence and attribution.
