@@ -385,7 +385,12 @@ export function createCityIntelLayer() {
     },
 
     async update() {
-      return false;
+      // No periodic refresh: the DataManager's enable() flow calls update()
+      // once immediately after enabling and treats a `false` return as a
+      // failed transition (src/data/lifecycle.js), which made this layer
+      // un-enableable from City Intel mode / the DATA LAYERS row alike.
+      // `true` reports the (trivial) update as having succeeded.
+      return true;
     },
 
     destroy(viewer = _viewer) {

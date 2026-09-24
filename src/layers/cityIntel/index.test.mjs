@@ -169,7 +169,11 @@ test('layer contract: init/enable/disable/update/destroy/getStats', async () => 
     layer.getIndex(),
     'getIndex() exposes the scoring index once ready',
   );
-  assert.equal(await layer.update(), false);
+  assert.equal(
+    await layer.update(),
+    true,
+    'a `false` return would fail the DataManager enable() flow (src/data/lifecycle.js)',
+  );
 
   // Standalone toggling (row alone, no panel): scores without throwing, no
   // handlers wired since the fake viewer has no canvas/document.

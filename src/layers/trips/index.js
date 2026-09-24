@@ -189,7 +189,12 @@ export function createTripsLayer({ store, camera = null } = {}) {
       if (_dataSource) _dataSource.show = false;
     },
     async update() {
-      return false;
+      // No periodic refresh: the DataManager's enable() flow calls update()
+      // once immediately after enabling and treats a `false` return as a
+      // failed transition (src/data/lifecycle.js), which made this
+      // always-off-the-shelf-`false` layer un-enableable. `true` reports the
+      // (trivial) update as having succeeded.
+      return true;
     },
     destroy(viewer = _viewer) {
       _unsubscribe?.();

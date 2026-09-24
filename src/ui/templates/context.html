@@ -24,6 +24,7 @@
         <div id="recent-imagery-panel-body" data-rail-scroller></div>
       </div>
     </div>
+    <!-- gev:template city-intel -->
     <div id="global-context-panel" class="panel-collapsible collapsed" data-panel-id="global-context-panel">
       <div class="panel-glow"></div>
       <div class="global-context-panel-inner" data-rail-scroller>
@@ -242,5 +243,10 @@
       </div>
     </div>
   </aside>
+
+  <!-- Sibling of the rail, not nested in it: a centred overlay must not
+       inherit the rail panels' backdrop-filter (that would give it a
+       containing block other than the viewport). T6b fills this in. -->
+  <div id="city-intel-compare" role="dialog" aria-labelledby="city-intel-compare-title" hidden></div>
 
   <div id="scene-runtime"></div>

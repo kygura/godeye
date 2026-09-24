@@ -23,4 +23,5 @@
 
 @import './src/ui/styles/weather.css';
 @import './src/ui/styles/travel.css';
+@import './src/ui/styles/city-intel.css';
 @import './src/ui/styles/cyber.css';

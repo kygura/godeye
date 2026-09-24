@@ -11,20 +11,27 @@ export const APPLICATION_TEMPLATES = Object.freeze([
   'provider-settings',
   'hud-loading',
   'travel',
+  'city-intel',
 ]);
 const allowed = new Set(APPLICATION_TEMPLATES);
 
-/** Expand only known component templates; markers cannot name filesystem paths. */
+/**
+ * Expand only known component templates; markers cannot name filesystem
+ * paths. Recursive so an included template may itself nest another marker
+ * (context.html nests city-intel so `#city-intel-panel` lands as a real DOM
+ * child of `#right-context-rail`, sharing its flex/collapse rail CSS).
+ */
 export function expandApplicationHtml(html) {
   return html.replace(
     /^[ \t]*<!-- gev:template ([^\s]+) -->\r?\n?/gm,
     (_, name) => {
       if (!allowed.has(name))
         throw new Error(`Unknown application template: ${name}`);
-      return readFileSync(
+      const content = readFileSync(
         new URL(`../src/ui/templates/${name}.html`, import.meta.url),
         'utf8',
       );
+      return expandApplicationHtml(content);
     },
   );
 }

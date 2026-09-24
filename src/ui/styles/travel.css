@@ -13,6 +13,15 @@ body.travel-mode {
   --travel-status-none: #a9b2be;
 }
 
+/* DESIGN §6: the briefing keeps its calm civilian look, but in Cyber it
+   borrows the HUD's own surface/border/accent instead of looking like a
+   different product bolted onto the re-skin. */
+:root[data-ui-theme='cyber'] {
+  --travel-accent: var(--accent);
+  --travel-surface: var(--cyber-panel-surface);
+  --travel-border: var(--glass-border);
+}
+
 #top-center-actions #travel-toggle {
   width: auto;
   gap: 6px;
@@ -35,7 +44,9 @@ body.travel-mode {
 
 body.travel-mode #title-bar,
 body.travel-mode #style-indicator,
-body.travel-mode #top-center-actions > :not(#travel-toggle),
+body.travel-mode
+  #top-center-actions
+  > :not(#travel-toggle):not(#city-intel-toggle),
 body.travel-mode #global-loading-status,
 body.travel-mode #traffic-sync-chip,
 body.travel-mode #cctv-sync-chip,

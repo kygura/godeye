@@ -6,6 +6,9 @@ import { createRecentImageryPanel } from '../ui/recentImagery.js';
 import { initGevVoiceCommands } from '../voice/gevRealtime.js';
 import { installScopeMask, destroyScopeMask } from '../scopeMask.js';
 import { createTravelMode } from '../travel/controller.js';
+import { flyToLandmark } from '../locations.js';
+import { createCityIntelMode } from '../ui/cityIntelMode.js';
+import { createCityIntelPanel } from '../layers/cityIntel/panel.js';
 import {
   installRenderGovernor,
   getRenderGovernorDiagnostics,
@@ -17,12 +20,15 @@ import {
 /**
  * Attach scene tools, rendering listeners and the application debug handle.
  *
- * Returns `travelMode` (from `src/travel/controller.js`) alongside the other
- * components — reachable either from this function's return value (which
- * `application.getComponents().tools.travelMode` surfaces, see
- * `src/app/application.js`) or from `window.__godsEyeView.travelMode`. Call
- * `travelMode.openTravelBriefing({ name, lat, lon })` to open the briefing
- * for an already-resolved place (e.g. a City Intel scorecard's "Brief me").
+ * Returns `travelMode` (from `src/travel/controller.js`) and `cityIntel`
+ * (`{ mode, panel }`, from `src/ui/cityIntelMode.js` and
+ * `src/layers/cityIntel/panel.js`) alongside the other components —
+ * reachable either from this function's return value (which
+ * `application.getComponents().tools.travelMode`/`.cityIntel` surfaces, see
+ * `src/app/application.js`) or from `window.__godsEyeView.travelMode`/
+ * `.cityIntel`. Call `travelMode.openTravelBriefing({ name, lat, lon })` to
+ * open the briefing for an already-resolved place (e.g. a City Intel
+ * scorecard's "Brief me").
  */
 export function createApplicationTools({
   scene,
@@ -113,6 +119,41 @@ export function createApplicationTools({
     signal,
   });
   defer(() => travelMode.destroy());
+
+  // ATLAS (City Intel) mode + ranking panel. docs/cockpit/DESIGN.md, SPEC.md.
+  // No ShellFeedback instance is reachable from here (it lives inside
+  // whichever shell `startChrome` builds), so this reuses the shared
+  // `#toast` element directly — the same element and `.visible` timing
+  // `ShellFeedback._showToast` drives, just without that class instance.
+  let cityIntelToastTimer = null;
+  const showCityIntelToast = (message) => {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('visible');
+    clearTimeout(cityIntelToastTimer);
+    cityIntelToastTimer = setTimeout(
+      () => toast.classList.remove('visible'),
+      2000,
+    );
+  };
+  const cityIntelPanel = createCityIntelPanel({
+    layer: dataManager.layers.get('city-intel')?.module,
+    // Row click flies the camera but never zooms in below 800 km (DESIGN §2).
+    flyTo: (lat, lon, range = 800_000) =>
+      styleManager.runImmediateLocationNavigation(() =>
+        flyToLandmark(viewer, lat, lon, { range, pitch: -45, duration: 2 }),
+      ),
+    showToast: showCityIntelToast,
+  });
+  const cityIntelMode = createCityIntelMode({
+    dataManager,
+    panel: cityIntelPanel,
+    showToast: showCityIntelToast,
+  });
+  defer(() => cityIntelMode.exit());
+  const cityIntel = { mode: cityIntelMode, panel: cityIntelPanel };
+
   // Idle render governor: flips the scene into requestRenderMode whenever
   // nothing animates per frame. Installed AFTER every module above has had
   // its chance to register pre-install holds. (perf wave 2)
@@ -172,6 +213,7 @@ export function createApplicationTools({
     surfaceServices: operations.surface,
     requestRender: governorRequestRender,
     travelMode,
+    cityIntel,
   };
   const debug = window.__godsEyeView;
   defer(() => {
@@ -189,6 +231,7 @@ export function createApplicationTools({
     dataManager,
     sceneDirector,
     annotations,
+    cityIntel,
   });
   defer(() => {
     voiceCommands.stop({ removeUi: true });
@@ -196,5 +239,5 @@ export function createApplicationTools({
       delete window.__gevVoiceCommands;
   });
   debug.voiceCommands = voiceCommands;
-  return { sceneDirector, annotations, voiceCommands, travelMode };
+  return { sceneDirector, annotations, voiceCommands, travelMode, cityIntel };
 }

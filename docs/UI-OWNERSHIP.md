@@ -16,6 +16,7 @@ scene playback and voice. It delegates; new behavior belongs with its owner.
 | `displayBindings.js` | Keyboard/display subscriptions and frame-rate monitor lifetime |
 | `shareRestoration.js` | Initial share/layer restoration and cancellation |
 | `shellFeedback.js` | Loading feedback, notices and toast lifetime |
+| `cityIntelMode.js` | ATLAS mode entry/exit: layer snapshot/restore, `body.city-intel-mode`, panel collapse choreography and the toggle's `aria-pressed`. Constructed in `src/app/tools.js`, not `applicationShell.js` — listed here for discoverability, same as its sibling `src/travel/controller.js`. |
 
 Owners receive named services, elements, operations and readers. They do not
 receive the application shell itself. Readers resolve a replaceable collaborator
