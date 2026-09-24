@@ -63,3 +63,55 @@ test('clearTrip empties nodes without deleting the trip', () => {
   assert.equal(s.clearTrip(), false);
   assert.equal(s.clearTrip('does-not-exist'), false);
 });
+
+test('addNode, reorder and removeNodeAt preserve unknown node fields', () => {
+  const s = createTripStore({ storage: fakeStorage() });
+  s.addNode({ ...tokyo, id: 'stay-1', start: 6, len: 2 });
+  s.addNode({ ...lima, id: 'stay-2', start: 1, len: 3 });
+  const [a, b] = s.getActiveTrip().nodes;
+  assert.equal(a.id, 'stay-1');
+  assert.equal(a.start, 6);
+  assert.equal(a.len, 2);
+  assert.equal(b.id, 'stay-2');
+  s.reorder(0, 1);
+  assert.equal(s.getActiveTrip().nodes[1].id, 'stay-1');
+  assert.equal(s.getActiveTrip().nodes[1].len, 2);
+  s.removeNodeAt(0);
+  assert.equal(s.getActiveTrip().nodes.length, 1);
+  assert.equal(s.getActiveTrip().nodes[0].id, 'stay-1');
+  assert.equal(s.getActiveTrip().nodes[0].start, 6);
+});
+
+test('ensurePlanTrip creates the plan trip once, without stealing activeTripId, and is idempotent', () => {
+  const s = createTripStore({ storage: fakeStorage() });
+  s.addNode(tokyo); // an ordinary trip, becomes active
+  const ordinaryId = s.getActiveTrip().id;
+  assert.equal(s.getPlanTrip(), null);
+  const plan = s.ensurePlanTrip();
+  assert.equal(plan.kind, 'plan');
+  assert.equal(plan.name, 'Lifestyle plan');
+  assert.equal(plan.nodes.length, 0);
+  assert.equal(
+    s.getActiveTrip().id,
+    ordinaryId,
+    'ensurePlanTrip must not change the active trip',
+  );
+  assert.equal(
+    s.ensurePlanTrip(),
+    plan,
+    'idempotent: same trip on a second call',
+  );
+  assert.equal(s.getPlanTrip(), plan);
+});
+
+test('plan trip nodes are kept ordered by start regardless of insertion order', () => {
+  const s = createTripStore({ storage: fakeStorage() });
+  const plan = s.ensurePlanTrip();
+  s.addNode({ ...tokyo, id: 'stay-nov', start: 11, len: 4 }, plan.id);
+  s.addNode({ ...lima, id: 'stay-jan', start: 1, len: 3 }, plan.id);
+  s.addNode({ ...tokyo, id: 'stay-jun', start: 6, len: 2 }, plan.id);
+  assert.deepEqual(
+    s.getPlanTrip().nodes.map((n) => n.id),
+    ['stay-jan', 'stay-jun', 'stay-nov'],
+  );
+});

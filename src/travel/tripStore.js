@@ -43,10 +43,31 @@ export function createTripStore({ storage = globalThis.localStorage } = {}) {
   }
   const trip = (id) => state.trips.find((t) => t.id === id);
   const active = () => trip(state.activeTripId) || null;
+  const planTrip = () => state.trips.find((t) => t.kind === 'plan') || null;
 
   return {
     getState: () => state,
     getActiveTrip: active,
+    /** The single Lifestyle Plan trip (`kind: 'plan'`), or null if never created. */
+    getPlanTrip: planTrip,
+    /**
+     * The Lifestyle Plan trip, creating it (not made active) on first use.
+     * @param {string} [name]
+     */
+    ensurePlanTrip(name = 'Lifestyle plan') {
+      let t = planTrip();
+      if (t) return t;
+      t = {
+        id: `trip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        name,
+        kind: 'plan',
+        color: nextTripColor(state.trips.map((x) => x.color)),
+        nodes: [],
+      };
+      state.trips.push(t);
+      commit();
+      return t;
+    },
     subscribe(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
@@ -84,19 +105,25 @@ export function createTripStore({ storage = globalThis.localStorage } = {}) {
       commit();
       return state.trips.length < before;
     },
-    /** Append a node to the active trip, creating one when none exists. */
+    /**
+     * Append a node to the active trip, creating one when none exists. Extra
+     * fields (e.g. a Lifestyle Plan stay's `id`/`start`/`len`) pass through
+     * unchanged. On a `kind: 'plan'` trip, nodes are kept ordered by `start`
+     * instead of appended.
+     */
     addNode(node, tripId = state.activeTripId) {
       if (!node || !Number.isFinite(node.lat) || !Number.isFinite(node.lng))
         return null;
       let t = trip(tripId);
       if (!t) t = this.createTrip();
-      t.nodes.push({
-        cityId: node.cityId,
-        name: node.name,
-        lat: node.lat,
-        lng: node.lng,
-        iata: node.iata,
-      });
+      const entry = { ...node };
+      if (t.kind === 'plan' && Number.isFinite(entry.start)) {
+        const at = t.nodes.findIndex((n) => n.start > entry.start);
+        if (at === -1) t.nodes.push(entry);
+        else t.nodes.splice(at, 0, entry);
+      } else {
+        t.nodes.push(entry);
+      }
       commit();
       return t;
     },
