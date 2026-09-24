@@ -41,6 +41,8 @@ const PANEL_GROUPS = [
       'military-installations',
       'local-datacenters',
       'telegeography-submarine-cables',
+      'city-intel',
+      'trips',
       'local-dams',
     ],
   },
@@ -60,7 +62,7 @@ const PANEL_GROUPS = [
   },
   {
     label: 'Utilities',
-    ids: ['directions', 'trips', 'radio'],
+    ids: ['directions', 'radio'],
   },
 ];
 const PANEL_ORDER = PANEL_GROUPS.flatMap(({ label, ids }) =>
