@@ -662,7 +662,13 @@ test('the voice TOOL SCHEMA matches the pinned release — the mission mapping i
   // ordering while allowing source formatting. Derived from the unchanged
   // release schema before formatting (the previous source-byte pin passed).
   // City Intel voice tools (docs/cockpit/SPEC.md §4) are wholly new, like the sonar tool.
-  const additive = new Set(['set_cyber_sonar', 'rank_cities', 'compare_cities', 'show_city_intel']);
+  const additive = new Set([
+    'set_cyber_sonar',
+    'rank_cities',
+    'compare_cities',
+    'show_city_intel',
+    'plan_lifestyle',
+  ]);
   const legacyTools = structuredClone(GEV_REALTIME_TOOLS).filter((tool) => !additive.has(tool.name));
   const hudLayout = legacyTools.find((tool) => tool.name === 'set_hud').parameters.properties.layout;
   assert.deepEqual(hudLayout.enum, ['tactical', 'operator', 'minimal', 'cyber']);

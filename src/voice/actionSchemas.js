@@ -927,6 +927,13 @@ const schemas = [
           },
         },
         limit: { type: 'integer', minimum: 1, maximum: 10 },
+        months: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 12,
+          uniqueItems: true,
+          items: { type: 'integer', minimum: 1, maximum: 12 },
+        },
       },
     },
   },
@@ -955,6 +962,36 @@ const schemas = [
         city: { type: 'string' },
       },
       required: ['city'],
+    },
+  },
+  {
+    name: 'plan_lifestyle',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        stays: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 6,
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              city: { type: 'string' },
+              months: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 12,
+                uniqueItems: true,
+                items: { type: 'integer', minimum: 1, maximum: 12 },
+              },
+            },
+            required: ['city'],
+          },
+        },
+      },
+      required: ['stays'],
     },
   },
 ];

@@ -14,7 +14,7 @@ The session adapter, action runner and backend interfaces remain unchanged.
 | `realtimeCost.js`        | Next-session preferences and the current session's model-bound meter                                                                                                                                          |
 | `realtimeViewport.js`    | One retained image, bounded deletion identities and capture generation                                                                                                                                        |
 | `realtimeDiagnostics.js` | Bounded error history and sanitized optional diagnostics                                                                                                                                                      |
-| `cityIntelActions.js`    | `rank_cities`, `compare_cities`, `show_city_intel` (docs/cockpit/SPEC.md §4); owns no realtime session state itself — delegates entirely to the `cityIntel` handle (`mode`, `panel`) `gevActions.js` is given |
+| `cityIntelActions.js`    | `rank_cities`, `compare_cities`, `show_city_intel`, `plan_lifestyle` (docs/cockpit/SPEC.md §4, §3.5); owns no realtime session state itself — delegates entirely to the `cityIntel` handle (`mode`, `panel`, `plan`) `gevActions.js` is given |
 
 Pure input policy, preferences and protocol-response policy have separate modules.
 Owners receive named readers, operations or focused collaborators. Cross-owner

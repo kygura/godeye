@@ -25,11 +25,11 @@ const css = readStylesheet(new URL('../style.css', import.meta.url));
 
 function realtimeTools() { return GEV_REALTIME_TOOLS; }
 
-test('Realtime schema exposes the authoritative 33-tool inventory', () => {
+test('Realtime schema exposes the authoritative 34-tool inventory', () => {
   const tools = realtimeTools();
-  assert.equal(tools.length, 33);
+  assert.equal(tools.length, 34);
   const names = tools.map((tool) => tool.name);
-  assert.equal(new Set(names).size, 33, 'tool names are unique');
+  assert.equal(new Set(names).size, 34, 'tool names are unique');
   assert.ok(names.includes('set_context_mode'));
   assert.ok(names.includes('control_cockpit'));
   assert.ok(names.includes('select_nearest_aircraft'));
@@ -190,6 +190,8 @@ test('no unchanged Realtime tool definition drifts silently', () => {
     'rank_cities',
     'compare_cities',
     'show_city_intel',
+    // Lifestyle Plan voice tool (docs/cockpit/SPEC.md §3.5) is wholly new.
+    'plan_lifestyle',
   ]);
   const unchanged = realtimeTools()
     .filter((tool) => !TOUCHED.has(tool.name))

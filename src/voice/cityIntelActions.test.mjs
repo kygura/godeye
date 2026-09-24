@@ -4,14 +4,21 @@ import { GEV_ACTION_SCHEMAS, createActionTools } from './actionSchemas.js';
 import { ACTION_DESCRIPTIONS } from '../../server/providers/openai/toolDescriptions.js';
 import {
   compareCities,
+  planLifestyle,
   rankCities,
   resolveCity,
   showCityIntel,
 } from './cityIntelActions.js';
+import { evenSplit } from '../layers/cityIntel/plan.js';
 
 const CAVEAT =
   'Scores are mostly country-level public statistics; not relocation advice.';
-const NEW_TOOLS = ['rank_cities', 'compare_cities', 'show_city_intel'];
+const NEW_TOOLS = [
+  'rank_cities',
+  'compare_cities',
+  'show_city_intel',
+  'plan_lifestyle',
+];
 
 function fakeCityIntel(overrides = {}) {
   const calls = [];
@@ -62,6 +69,27 @@ function fakeCityIntel(overrides = {}) {
       },
     },
   };
+  if (overrides.noPlan !== true) {
+    cityIntel.plan = {
+      async ready() {
+        calls.push(['plan.ready']);
+      },
+      show() {
+        calls.push(['plan.show']);
+      },
+      getStays() {
+        return overrides.planStays ?? [];
+      },
+      replaceStays(stays) {
+        calls.push(['plan.replaceStays', stays]);
+        return overrides.replaceStaysResult ?? { ok: true, stays };
+      },
+      getSummary() {
+        calls.push(['plan.getSummary']);
+        return overrides.planSummary ?? { stays: [], rollup: null };
+      },
+    };
+  }
   return { cityIntel, calls };
 }
 
@@ -389,6 +417,235 @@ test('show_city_intel: ineligible city still reports its reason', async () => {
 test('runOptions.isCurrent supersedes an in-flight request', async () => {
   const { cityIntel } = fakeCityIntel({ topRanked: [] });
   const result = await rankCities(cityIntel, {}, { isCurrent: () => false });
+  assert.equal(result.ok, false);
+  assert.equal(result.cancelled, true);
+  assert.match(result.error, /superseded/);
+});
+
+// ── rank_cities: report-only months/comfort ─────────────────────────────
+
+test('rank_cities: months adds report-only comfort without touching ranking', async () => {
+  const topRanked = [
+    {
+      rank: 1,
+      id: 'tokyo-jpn',
+      name: 'Tokyo',
+      country: 'Japan',
+      composite: 80,
+    },
+    {
+      rank: 2,
+      id: 'nowhere-xyz',
+      name: 'Nowhere',
+      country: 'Nowhereland',
+      composite: 70,
+    },
+  ];
+  const { cityIntel } = fakeCityIntel({ topRanked });
+  const result = await rankCities(cityIntel, { months: [12, 1, 2] });
+  assert.equal(result.ok, true);
+  // Ranking fields are untouched.
+  assert.equal(result.cities[0].rank, 1);
+  assert.equal(result.cities[0].composite, 80);
+  assert.equal(result.cities[1].composite, 70);
+  // Comfort is present (real seasonality) for Tokyo, unavailable for a
+  // city id with no seasonality row.
+  assert.equal(result.cities[0].comfortStatus, 'ok');
+  assert.ok(Number.isInteger(result.cities[0].comfort));
+  assert.equal(result.cities[1].comfortStatus, 'unavailable');
+  assert.equal(result.cities[1].comfort, null);
+  assert.ok(result.summary.includes(CAVEAT));
+});
+
+test('rank_cities: without months, no comfort fields are added', async () => {
+  const { cityIntel } = fakeCityIntel({
+    topRanked: [{ rank: 1, id: 'tokyo-jpn', name: 'Tokyo', country: 'Japan' }],
+  });
+  const result = await rankCities(cityIntel, {});
+  assert.equal(result.ok, true);
+  assert.equal('comfort' in result.cities[0], false);
+  assert.equal('comfortStatus' in result.cities[0], false);
+});
+
+// ── plan_lifestyle ───────────────────────────────────────────────────────
+
+test('plan_lifestyle: null handle reports unavailable', async () => {
+  const result = await planLifestyle(null, { stays: [{ city: 'Lisbon' }] });
+  assert.deepEqual(result, {
+    ok: false,
+    action: 'plan_lifestyle',
+    error: 'city-intel-unavailable',
+  });
+});
+
+test('plan_lifestyle: no plan handle reports lifestyle-plan-unavailable', async () => {
+  const { cityIntel } = fakeCityIntel({ noPlan: true });
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon' }],
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    action: 'plan_lifestyle',
+    error: 'lifestyle-plan-unavailable',
+  });
+});
+
+test('plan_lifestyle: an unresolved city fails honestly and touches nothing', async () => {
+  const { cityIntel, calls } = fakeCityIntel();
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon' }, { city: 'Nowhereville' }],
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.unresolved, ['Nowhereville']);
+  assert.equal(calls.length, 0, 'must not touch cityIntel or replaceStays');
+});
+
+test('plan_lifestyle: no stay has months -> evenSplit in the order given (n=1..3)', async () => {
+  const names = ['Lisbon', 'Valencia, Spain', 'Montevideo'];
+  const ids = ['lisbon-prt', 'valencia-esp', 'montevideo-ury'];
+  for (let n = 1; n <= 3; n++) {
+    const { cityIntel, calls } = fakeCityIntel();
+    const stays = names.slice(0, n).map((city) => ({ city }));
+    const result = await planLifestyle(cityIntel, { stays });
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.note, 'Split the year evenly in the order given.');
+    const expected = evenSplit(n).map((split, i) => ({
+      cityId: ids[i],
+      ...split,
+    }));
+    assert.deepEqual(
+      calls.find(([op]) => op === 'plan.replaceStays')[1],
+      expected,
+    );
+  }
+});
+
+test('plan_lifestyle: some months given, others filled evenly across what is left', async () => {
+  const { cityIntel, calls } = fakeCityIntel();
+  const result = await planLifestyle(cityIntel, {
+    stays: [
+      { city: 'Lisbon', months: [1, 2, 3, 4] },
+      { city: 'Valencia, Spain' },
+      { city: 'Montevideo' },
+    ],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.match(result.note, /Filled the open months evenly/);
+  assert.deepEqual(calls.find(([op]) => op === 'plan.replaceStays')[1], [
+    { cityId: 'lisbon-prt', start: 1, len: 4 },
+    { cityId: 'valencia-esp', start: 5, len: 4 },
+    { cityId: 'montevideo-ury', start: 9, len: 4 },
+  ]);
+});
+
+test('plan_lifestyle: wrap-past-December months are accepted', async () => {
+  const { cityIntel, calls } = fakeCityIntel();
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon', months: [11, 12, 1, 2] }],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(calls.find(([op]) => op === 'plan.replaceStays')[1], [
+    { cityId: 'lisbon-prt', start: 11, len: 4 },
+  ]);
+});
+
+test('plan_lifestyle: non-contiguous months are rejected honestly, nothing touched', async () => {
+  const { cityIntel, calls } = fakeCityIntel();
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon', months: [1, 3] }],
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /not one contiguous run/);
+  assert.equal(calls.length, 0);
+});
+
+test('plan_lifestyle: an overlap between named-months stays is rejected, naming both', async () => {
+  const { cityIntel, calls } = fakeCityIntel();
+  const result = await planLifestyle(cityIntel, {
+    stays: [
+      { city: 'Lisbon', months: [1, 2, 3, 4] },
+      { city: 'Valencia, Spain', months: [3, 4, 5, 6] },
+    ],
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Lisbon \(Portugal\)/);
+  assert.match(result.error, /Valencia \(Spain\)/);
+  assert.equal(calls.length, 0);
+});
+
+test('plan_lifestyle: a replaceStays failure is reported, not swallowed', async () => {
+  const { cityIntel } = fakeCityIntel({
+    replaceStaysResult: { ok: false, error: 'overlap', detail: 'clash' },
+  });
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon' }],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'clash');
+});
+
+test('plan_lifestyle: success reshapes the summary into per-stay fields, rollup and caveat', async () => {
+  const planSummary = {
+    stays: [
+      {
+        id: 's1',
+        cityId: 'lisbon-prt',
+        name: 'Lisbon',
+        country: 'Portugal',
+        span: 'JAN–DEC · 12 mo',
+        metrics: {
+          fit: { score: 73, coverageText: '4 of 4 pillars' },
+          cost: { label: 'x0.62 home' },
+          comfort: { mean: 61, months: [], status: 'ok' },
+          safety: { score: 80, coverage: 'full' },
+          advisory: { level: 1 },
+          visa: { status: 'ok', allowanceDays: 90 },
+        },
+      },
+    ],
+    rollup: {
+      monthsCovered: 12,
+      gaps: [],
+      fitMean: 73,
+      annualCost: { usd: 22000, coveredMonths: 12, complete: true },
+      comfortMean: 61,
+      maxAdvisory: 1,
+      moves: 0,
+      km: 0,
+    },
+  };
+  const { cityIntel } = fakeCityIntel({ planSummary });
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon' }],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(result.stays, [
+    {
+      city: 'Lisbon (Portugal)',
+      span: 'JAN–DEC · 12 mo',
+      fit: 73,
+      cost: 'x0.62 home',
+      comfort: 61,
+      visa: 'ok',
+    },
+  ]);
+  assert.deepEqual(result.rollup, {
+    monthsCovered: 12,
+    gaps: [],
+    annualCost: 22000,
+    moves: 0,
+    km: 0,
+  });
+  assert.equal(result.summary, CAVEAT);
+});
+
+test('plan_lifestyle: isCurrent supersedes an in-flight request', async () => {
+  const { cityIntel } = fakeCityIntel();
+  const result = await planLifestyle(
+    cityIntel,
+    { stays: [{ city: 'Lisbon' }] },
+    { isCurrent: () => false },
+  );
   assert.equal(result.ok, false);
   assert.equal(result.cancelled, true);
   assert.match(result.error, /superseded/);

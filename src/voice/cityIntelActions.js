@@ -12,6 +12,12 @@
  */
 import { loadCityIntelPack } from '../layers/cityIntel/source.js';
 import { searchCities } from '../travel/citySearch.js';
+import {
+  evenSplit,
+  monthsOf,
+  overlaps,
+  spanLabel,
+} from '../layers/cityIntel/plan.js';
 
 const CAVEAT =
   'Scores are mostly country-level public statistics; not relocation advice.';
@@ -113,10 +119,81 @@ export function resolveCity(cities, query) {
 }
 
 /**
+ * Resolve a list of free-form city names, in order, using the anchor-vote
+ * continent disambiguation shared by `compare_cities` and `plan_lifestyle`:
+ * names that are already unambiguous (hinted, or a single pack match) vote
+ * their continent, and an ambiguous unhinted name then prefers the candidate
+ * matching the majority continent over the bare population-rank top pick —
+ * otherwise "compare Lisbon and Valencia" would pick Valencia, Venezuela
+ * over Valencia, Spain on population alone.
+ * @param {object[]} cities Pack cities (citySearch schema).
+ * @param {object} countries Pack per-country records (`source.js` pack `countries.countries`).
+ * @param {string[]} names Free-form city queries, in order.
+ * @returns {{resolved: Array<{raw: string, city: object}|null>, unresolved: string[]}} `resolved` is parallel to `names`; `null` marks an unresolved entry.
+ */
+function resolveNames(cities, countries, names) {
+  const continentOf = (city) => countries[city.iso3]?.continent || null;
+  const perName = names.map((raw) => ({ raw, ...candidatesFor(cities, raw) }));
+
+  const votes = new Map();
+  for (const entry of perName) {
+    if (!entry.matches.length) continue;
+    if (entry.hinted || entry.matches.length === 1) {
+      const continent = continentOf(entry.matches[0]);
+      if (continent) votes.set(continent, (votes.get(continent) || 0) + 1);
+    }
+  }
+  let majority = null;
+  let majorityVotes = 0;
+  for (const [continent, count] of votes) {
+    if (count > majorityVotes) {
+      majority = continent;
+      majorityVotes = count;
+    }
+  }
+
+  const unresolved = [];
+  const resolved = perName.map((entry) => {
+    if (!entry.matches.length) {
+      unresolved.push(entry.raw);
+      return null;
+    }
+    let city = entry.matches[0];
+    if (!entry.hinted && entry.matches.length > 1 && majority) {
+      const preferred = entry.matches.find(
+        (candidate) => continentOf(candidate) === majority,
+      );
+      if (preferred) city = preferred;
+    }
+    return { raw: entry.raw, city };
+  });
+  return { resolved, unresolved };
+}
+
+/**
+ * Mean seasonality comfort for one city over an arbitrary set of months
+ * (unlike `plan.js`'s `stayComfort`, these months need not be contiguous —
+ * `rank_cities` reports comfort, it does not model a stay).
+ * @param {string} cityId
+ * @param {number[]} months 1-12
+ * @param {object} seasonality Pack seasonality (`source.js` pack `.seasonality`).
+ * @returns {number|null} Mean 0-100, or null when no month has a score.
+ */
+function meanComfort(cityId, months, seasonality) {
+  const cityRow = seasonality?.cities?.[cityId];
+  const scores = months
+    .map((m) => cityRow?.months?.[m - 1]?.score)
+    .filter((score) => Number.isFinite(score));
+  return scores.length
+    ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+    : null;
+}
+
+/**
  * `rank_cities` voice tool: apply weights/region and return the top ranked
  * cities. See docs/cockpit/SPEC.md §4.
  * @param {object|null} cityIntel
- * @param {{region?: string, weights?: object, limit?: number}} [args]
+ * @param {{region?: string, weights?: object, limit?: number, months?: number[]}} [args]
  * @param {{signal?: AbortSignal, isCurrent?: () => boolean}} [runOptions]
  */
 export async function rankCities(cityIntel, args = {}, runOptions = {}) {
@@ -141,7 +218,25 @@ export async function rankCities(cityIntel, args = {}, runOptions = {}) {
     const limit = Number.isFinite(args.limit)
       ? Math.min(10, Math.max(1, Math.round(args.limit)))
       : 5;
-    const cities = cityIntel.panel.getTopRanked(limit) || [];
+    let cities = cityIntel.panel.getTopRanked(limit) || [];
+
+    const months = Array.isArray(args.months)
+      ? [...new Set(args.months)].filter(
+          (m) => Number.isInteger(m) && m >= 1 && m <= 12,
+        )
+      : [];
+    if (months.length) {
+      const { seasonality } = await loadCityIntelPack();
+      cities = cities.map((city) => {
+        const mean = meanComfort(city.id, months, seasonality);
+        return {
+          ...city,
+          comfort: Number.isFinite(mean) ? Math.round(mean) : null,
+          comfortStatus: Number.isFinite(mean) ? 'ok' : 'unavailable',
+        };
+      });
+    }
+
     const summary = cities.length
       ? `Top ${cities.length}: ${cities.map((c) => `${c.rank} ${c.name}`).join(', ')}. ${CAVEAT}`
       : `No cities matched the current filters. ${CAVEAT}`;
@@ -174,53 +269,18 @@ export async function compareCities(cityIntel, args = {}, runOptions = {}) {
   }
   try {
     const { cities, countries } = await loadPackData();
-    const continentOf = (city) => countries[city.iso3]?.continent || null;
-
-    const perName = names.map((raw) => ({
-      raw,
-      ...candidatesFor(cities, raw),
-    }));
-
-    // Anchor vote: names that are already unambiguous (hinted, or only one
-    // pack match) vote their continent. An ambiguous, unhinted name (e.g.
-    // "Valencia" against Lisbon and Montevideo) then prefers the candidate
-    // matching the other cities' continent over the bare population-rank
-    // top pick, which is otherwise wrong for "compare Lisbon and Valencia"
-    // (Valencia, Venezuela outranks Valencia, Spain on population alone).
-    const votes = new Map();
-    for (const entry of perName) {
-      if (!entry.matches.length) continue;
-      if (entry.hinted || entry.matches.length === 1) {
-        const continent = continentOf(entry.matches[0]);
-        if (continent) votes.set(continent, (votes.get(continent) || 0) + 1);
-      }
-    }
-    let majority = null;
-    let majorityVotes = 0;
-    for (const [continent, count] of votes) {
-      if (count > majorityVotes) {
-        majority = continent;
-        majorityVotes = count;
-      }
-    }
+    const { resolved: perName, unresolved } = resolveNames(
+      cities,
+      countries,
+      names,
+    );
 
     const resolved = [];
     const picks = [];
-    const unresolved = [];
     for (const entry of perName) {
-      if (!entry.matches.length) {
-        unresolved.push(entry.raw);
-        continue;
-      }
-      let city = entry.matches[0];
-      if (!entry.hinted && entry.matches.length > 1 && majority) {
-        const preferred = entry.matches.find(
-          (candidate) => continentOf(candidate) === majority,
-        );
-        if (preferred) city = preferred;
-      }
-      resolved.push(city);
-      picks.push(`${city.name} (${city.country})`);
+      if (!entry) continue;
+      resolved.push(entry.city);
+      picks.push(`${entry.city.name} (${entry.city.country})`);
     }
     if (resolved.length < 2) {
       return {
@@ -361,6 +421,220 @@ export async function showCityIntel(cityIntel, args = {}, runOptions = {}) {
       ok: false,
       action: 'show_city_intel',
       error: error?.message || 'show_city_intel failed',
+    };
+  }
+}
+
+/**
+ * Fit a set of months to `{start, len}` iff they form one contiguous run
+ * (wrap past December allowed), by brute-forcing the 12 possible starts
+ * against `plan.js`'s own `monthsOf` — cheaper than writing a bespoke
+ * contiguity check, and it can never disagree with what `plan.js` accepts.
+ * @param {*} months Expected to be an array of unique integers 1-12.
+ * @returns {{start: number, len: number}|null} null when invalid or non-contiguous.
+ */
+function monthsToRun(months) {
+  if (!Array.isArray(months) || !months.length || months.length > 12)
+    return null;
+  const set = new Set(months);
+  if (set.size !== months.length) return null; // duplicates
+  for (const m of set) if (!Number.isInteger(m) || m < 1 || m > 12) return null;
+  const len = months.length;
+  for (let start = 1; start <= 12; start++) {
+    const candidate = monthsOf({ start, len });
+    if (candidate.length === set.size && candidate.every((m) => set.has(m)))
+      return { start, len };
+  }
+  return null;
+}
+
+/** First stay in `placed` that shares a month with `candidate`, or null. */
+function findClash(placed, candidate) {
+  const clash = new Set(overlaps(placed, candidate));
+  return placed.find((p) => monthsOf(p).some((m) => clash.has(m))) || null;
+}
+
+/**
+ * `plan_lifestyle` voice tool: resolve every stay's city, work out its
+ * months (evenly split when omitted), validate contiguity and overlap, then
+ * replace the whole Lifestyle Plan atomically. See docs/cockpit/SPEC.md §3.5.
+ * @param {object|null} cityIntel
+ * @param {{stays?: Array<{city?: string, months?: number[]}>}} [args]
+ * @param {{signal?: AbortSignal, isCurrent?: () => boolean}} [runOptions]
+ */
+export async function planLifestyle(cityIntel, args = {}, runOptions = {}) {
+  if (!cityIntel) return unavailable('plan_lifestyle');
+  if (!cityIntel.plan)
+    return {
+      ok: false,
+      action: 'plan_lifestyle',
+      error: 'lifestyle-plan-unavailable',
+    };
+
+  const inputStays = Array.isArray(args.stays) ? args.stays : [];
+  if (!inputStays.length) {
+    return {
+      ok: false,
+      action: 'plan_lifestyle',
+      error: 'plan_lifestyle needs at least one stay',
+    };
+  }
+
+  const { cities, countries } = await loadPackData();
+  const { resolved: perName, unresolved } = resolveNames(
+    cities,
+    countries,
+    inputStays.map((s) => s?.city),
+  );
+  if (unresolved.length) {
+    return {
+      ok: false,
+      action: 'plan_lifestyle',
+      error: `Could not find: ${unresolved.join(', ')}`,
+      unresolved,
+    };
+  }
+
+  // Each run tracks its own months once known; `start`/`len` stay null for a
+  // stay whose months are assigned automatically below.
+  const runs = inputStays.map((input, i) => ({
+    label: `${perName[i].city.name} (${perName[i].city.country})`,
+    city: perName[i].city,
+    start: null,
+    len: null,
+    hadMonths: input?.months !== undefined && input?.months !== null,
+  }));
+  for (let i = 0; i < runs.length; i++) {
+    if (!runs[i].hadMonths) continue;
+    const run = monthsToRun(inputStays[i].months);
+    if (!run) {
+      return {
+        ok: false,
+        action: 'plan_lifestyle',
+        error: `${runs[i].label}'s months are not one contiguous run: ${JSON.stringify(inputStays[i].months)}`,
+      };
+    }
+    runs[i].start = run.start;
+    runs[i].len = run.len;
+  }
+
+  const explicit = runs.filter((r) => r.hadMonths);
+  const implicit = runs.filter((r) => !r.hadMonths);
+  let note = null;
+
+  if (implicit.length === runs.length) {
+    // No stay named months: split the year evenly, in the order given.
+    const splits = evenSplit(runs.length);
+    runs.forEach((r, i) => {
+      r.start = splits[i].start;
+      r.len = splits[i].len;
+    });
+    note = 'Split the year evenly in the order given.';
+  } else {
+    // At least one stay named months: they must not clash with each other.
+    const placed = [];
+    for (const r of explicit) {
+      const clash = findClash(placed, r);
+      if (clash) {
+        return {
+          ok: false,
+          action: 'plan_lifestyle',
+          error: `${r.label} (${spanLabel(r)}) overlaps ${clash.label} (${spanLabel(clash)})`,
+        };
+      }
+      placed.push(r);
+    }
+    if (implicit.length) {
+      // Fill the unspecified stays evenly across whatever's left, in order.
+      const covered = new Set(explicit.flatMap((r) => monthsOf(r)));
+      const free = [];
+      for (let m = 1; m <= 12; m++) if (!covered.has(m)) free.push(m);
+      const freeRun = monthsToRun(free);
+      if (!freeRun) {
+        return {
+          ok: false,
+          action: 'plan_lifestyle',
+          error: `The open months are split across the year; give explicit months for ${implicit.map((r) => r.label).join(', ')}`,
+        };
+      }
+      if (freeRun.len < implicit.length) {
+        return {
+          ok: false,
+          action: 'plan_lifestyle',
+          error: `Only ${freeRun.len} open month(s) left for ${implicit.length} unhinted stays`,
+        };
+      }
+      const base = Math.floor(freeRun.len / implicit.length);
+      const remainder = freeRun.len % implicit.length;
+      let start = freeRun.start;
+      implicit.forEach((r, i) => {
+        const len = base + (i < remainder ? 1 : 0);
+        r.start = ((start - 1) % 12) + 1;
+        r.len = len;
+        start += len;
+      });
+      note = `Filled the open months evenly for ${implicit.map((r) => r.label).join(', ')}.`;
+    }
+  }
+
+  try {
+    if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
+    if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
+    if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
+    await cityIntel.plan.ready();
+    if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
+
+    const stays = runs.map((r) => ({
+      cityId: r.city.id,
+      start: r.start,
+      len: r.len,
+    }));
+    const result = cityIntel.plan.replaceStays(stays);
+    if (!result.ok) {
+      return {
+        ok: false,
+        action: 'plan_lifestyle',
+        error: result.detail || result.error || 'plan_lifestyle failed',
+      };
+    }
+    cityIntel.plan.show();
+    cityIntel.panel.markVoice('plan');
+
+    const summary = cityIntel.plan.getSummary();
+    const staysOut = (summary?.stays || []).map((s) => ({
+      city: `${s.name} (${s.country})`,
+      span: s.span,
+      fit: s.metrics?.fit?.score ?? null,
+      cost: s.metrics?.cost?.label ?? null,
+      comfort: s.metrics?.comfort?.mean ?? null,
+      visa: s.metrics?.visa?.status ?? null,
+    }));
+    const r = summary?.rollup;
+    const rollup = r
+      ? {
+          monthsCovered: r.monthsCovered,
+          gaps: r.gaps,
+          annualCost: r.annualCost?.complete
+            ? r.annualCost.usd
+            : (r.annualCost?.label ?? null),
+          moves: r.moves,
+          km: r.km,
+        }
+      : null;
+
+    return {
+      ok: true,
+      action: 'plan_lifestyle',
+      stays: staysOut,
+      rollup,
+      ...(note ? { note } : {}),
+      summary: CAVEAT,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      action: 'plan_lifestyle',
+      error: error?.message || 'plan_lifestyle failed',
     };
   }
 }

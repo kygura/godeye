@@ -25,6 +25,7 @@ import {
 import { CCTV_FOCUS_RESULT } from '../layers/cctv/index.js';
 import {
   compareCities,
+  planLifestyle,
   rankCities,
   showCityIntel,
 } from './cityIntelActions.js';
@@ -1176,6 +1177,10 @@ export function createGevActionRunner({
 
     if (name === 'show_city_intel') {
       return showCityIntel(cityIntel, args, runOptions);
+    }
+
+    if (name === 'plan_lifestyle') {
+      return planLifestyle(cityIntel, args, runOptions);
     }
 
     throw new Error(`Unknown GEV tool: ${name}`);

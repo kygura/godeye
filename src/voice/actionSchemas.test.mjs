@@ -27,9 +27,10 @@ test('the complete Realtime tool payload pins the additive analyst, satellite, L
     .digest('hex');
   assert.equal(
     digest,
-    // Re-derived for the additive City Intel voice tools (rank_cities,
-    // compare_cities, show_city_intel); the separate sonar tool stays excluded.
-    '277e7d6308e83946106e8d91be75233a143482cd47159a022adea01bf98c68a5',
+    // Re-derived for the additive City Intel Lifestyle Plan release
+    // (plan_lifestyle, and rank_cities' report-only months parameter); the
+    // separate sonar tool stays excluded.
+    '88ddd173be4c3e588003da59272577824f62ec6f0c8233c732bcbaa0fd958e8b',
   );
 });
 
@@ -94,6 +95,7 @@ test('all legacy action arguments are byte-identical after removing the delibera
         'rank_cities',
         'compare_cities',
         'show_city_intel',
+        'plan_lifestyle',
       ].includes(tool.name),
   );
   const layers = legacy.find((tool) => tool.name === 'analyst_query').parameters
