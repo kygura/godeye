@@ -79,11 +79,6 @@ body.travel-mode #gev-voice-control {
   pointer-events: none !important;
 }
 
-/* The command dock normally lifts the credits; it is hidden in Travel mode. */
-body.travel-mode #cesium-credits {
-  bottom: 0.75rem !important;
-}
-
 #travel-panel {
   position: fixed;
   top: 24px;
@@ -425,12 +420,6 @@ body.travel-mode #cesium-credits {
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     border-width: 1px 0 0;
     border-radius: var(--panel-radius) var(--panel-radius) 0 0;
-  }
-
-  body.travel-mode #cesium-credits {
-    top: max(12px, env(safe-area-inset-top));
-    bottom: auto !important;
-    left: 12px;
   }
 }
 
