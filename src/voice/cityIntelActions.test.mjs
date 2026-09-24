@@ -508,8 +508,12 @@ test('plan_lifestyle: no stay has months -> evenSplit in the order given (n=1..3
     const stays = names.slice(0, n).map((city) => ({ city }));
     const result = await planLifestyle(cityIntel, { stays });
     assert.equal(result.ok, true, result.error);
-    assert.equal(result.note, 'Split the year evenly in the order given.');
-    const expected = evenSplit(n).map((split, i) => ({
+    const splits = evenSplit(n);
+    assert.equal(
+      result.note,
+      `Split the year evenly in the order given: ${splits.map((s) => s.len).join('/')} months.`,
+    );
+    const expected = splits.map((split, i) => ({
       cityId: ids[i],
       ...split,
     }));
@@ -595,7 +599,12 @@ test('plan_lifestyle: success reshapes the summary into per-stay fields, rollup 
         span: 'JAN–DEC · 12 mo',
         metrics: {
           fit: { score: 73, coverageText: '4 of 4 pillars' },
-          cost: { label: 'x0.62 home' },
+          cost: {
+            ratio: 0.62,
+            estimateUsd: 1860,
+            basis: 'estimate',
+            label: 'x0.62 home',
+          },
           comfort: { mean: 61, months: [], status: 'ok' },
           safety: { score: 80, coverage: 'full' },
           advisory: { level: 1 },
@@ -624,7 +633,12 @@ test('plan_lifestyle: success reshapes the summary into per-stay fields, rollup 
       city: 'Lisbon (Portugal)',
       span: 'JAN–DEC · 12 mo',
       fit: 73,
-      cost: 'x0.62 home',
+      cost: {
+        ratio: 0.62,
+        estimateUsd: 1860,
+        basis: 'estimate',
+        label: 'x0.62 home',
+      },
       comfort: 61,
       visa: 'ok',
     },

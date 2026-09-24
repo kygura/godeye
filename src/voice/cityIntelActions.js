@@ -49,8 +49,26 @@ async function loadPackData() {
   };
 }
 
-async function loadCities() {
-  return (await loadPackData()).cities;
+/**
+ * Enter City Intel mode if it isn't already active, bailing out (without
+ * entering) when the run has already been superseded. Shared by the four
+ * voice tools that gate on mode entry before touching the panel/plan.
+ * @returns {Promise<boolean>} false when the run is no longer current
+ */
+async function ensureMode(cityIntel, runOptions) {
+  if (!isCurrent(runOptions)) return false;
+  if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
+  return isCurrent(runOptions);
+}
+
+/** Score+coverage per pillar — the shape both compare_cities and show_city_intel report. */
+function pillarSummary(scored) {
+  return Object.fromEntries(
+    Object.entries(scored.pillars).map(([key, p]) => [
+      key,
+      { score: p.score, coverage: p.coverage },
+    ]),
+  );
 }
 
 /**
@@ -199,8 +217,8 @@ function meanComfort(cityId, months, seasonality) {
 export async function rankCities(cityIntel, args = {}, runOptions = {}) {
   if (!cityIntel) return unavailable('rank_cities');
   try {
-    if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
-    if (!isCurrent(runOptions)) return cancelled('rank_cities');
+    if (!(await ensureMode(cityIntel, runOptions)))
+      return cancelled('rank_cities');
     await cityIntel.panel.ready();
     if (!isCurrent(runOptions)) return cancelled('rank_cities');
 
@@ -290,9 +308,8 @@ export async function compareCities(cityIntel, args = {}, runOptions = {}) {
         unresolved,
       };
     }
-    if (!isCurrent(runOptions)) return cancelled('compare_cities');
-    if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
-    if (!isCurrent(runOptions)) return cancelled('compare_cities');
+    if (!(await ensureMode(cityIntel, runOptions)))
+      return cancelled('compare_cities');
 
     const ids = resolved.slice(0, 4).map((c) => c.id);
     const { pinned, refused } = cityIntel.panel.setPins(ids);
@@ -309,12 +326,7 @@ export async function compareCities(cityIntel, args = {}, runOptions = {}) {
         composite: s.composite,
         coverage: s.coverage.text,
         eligible: s.eligible,
-        pillars: Object.fromEntries(
-          Object.entries(s.pillars).map(([pillar, p]) => [
-            pillar,
-            { score: p.score, coverage: p.coverage },
-          ]),
-        ),
+        pillars: pillarSummary(s),
       }));
 
     return {
@@ -354,7 +366,7 @@ export async function showCityIntel(cityIntel, args = {}, runOptions = {}) {
     };
   }
   try {
-    const cities = await loadCities();
+    const cities = (await loadPackData()).cities;
     const match = resolveCity(cities, query);
     if (!match) {
       return {
@@ -363,9 +375,8 @@ export async function showCityIntel(cityIntel, args = {}, runOptions = {}) {
         error: `Could not find a city matching "${query}"`,
       };
     }
-    if (!isCurrent(runOptions)) return cancelled('show_city_intel');
-    if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
-    if (!isCurrent(runOptions)) return cancelled('show_city_intel');
+    if (!(await ensureMode(cityIntel, runOptions)))
+      return cancelled('show_city_intel');
 
     cityIntel.panel.select(match.city.id);
     cityIntel.panel.markVoice('panel');
@@ -407,12 +418,7 @@ export async function showCityIntel(cityIntel, args = {}, runOptions = {}) {
       coverage: scored.coverage.text,
       eligible: scored.eligible,
       reason: scored.reason,
-      pillars: Object.fromEntries(
-        Object.entries(scored.pillars).map(([key, p]) => [
-          key,
-          { score: p.score, coverage: p.coverage },
-        ]),
-      ),
+      pillars: pillarSummary(scored),
       headlineMetrics,
       summary: CAVEAT,
     };
@@ -529,7 +535,7 @@ export async function planLifestyle(cityIntel, args = {}, runOptions = {}) {
       r.start = splits[i].start;
       r.len = splits[i].len;
     });
-    note = 'Split the year evenly in the order given.';
+    note = `Split the year evenly in the order given: ${splits.map((s) => s.len).join('/')} months.`;
   } else {
     // At least one stay named months: they must not clash with each other.
     const placed = [];
@@ -564,23 +570,18 @@ export async function planLifestyle(cityIntel, args = {}, runOptions = {}) {
           error: `Only ${freeRun.len} open month(s) left for ${implicit.length} unhinted stays`,
         };
       }
-      const base = Math.floor(freeRun.len / implicit.length);
-      const remainder = freeRun.len % implicit.length;
-      let start = freeRun.start;
+      const fillSplits = evenSplit(implicit.length, freeRun.len, freeRun.start);
       implicit.forEach((r, i) => {
-        const len = base + (i < remainder ? 1 : 0);
-        r.start = ((start - 1) % 12) + 1;
-        r.len = len;
-        start += len;
+        r.start = fillSplits[i].start;
+        r.len = fillSplits[i].len;
       });
       note = `Filled the open months evenly for ${implicit.map((r) => r.label).join(', ')}.`;
     }
   }
 
   try {
-    if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
-    if (!cityIntel.mode.isActive()) await cityIntel.mode.enter();
-    if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
+    if (!(await ensureMode(cityIntel, runOptions)))
+      return cancelled('plan_lifestyle');
     await cityIntel.plan.ready();
     if (!isCurrent(runOptions)) return cancelled('plan_lifestyle');
 
@@ -605,7 +606,14 @@ export async function planLifestyle(cityIntel, args = {}, runOptions = {}) {
       city: `${s.name} (${s.country})`,
       span: s.span,
       fit: s.metrics?.fit?.score ?? null,
-      cost: s.metrics?.cost?.label ?? null,
+      cost: s.metrics?.cost
+        ? {
+            ratio: s.metrics.cost.ratio,
+            estimateUsd: s.metrics.cost.override ?? s.metrics.cost.estimateUsd,
+            basis: s.metrics.cost.basis,
+            label: s.metrics.cost.label,
+          }
+        : null,
       comfort: s.metrics?.comfort?.mean ?? null,
       visa: s.metrics?.visa?.status ?? null,
     }));
