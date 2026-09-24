@@ -5,6 +5,7 @@ import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
 import { initGevVoiceCommands } from '../voice/gevRealtime.js';
 import { installScopeMask, destroyScopeMask } from '../scopeMask.js';
+import { createTravelMode } from '../travel/controller.js';
 import {
   installRenderGovernor,
   getRenderGovernorDiagnostics,
@@ -13,7 +14,16 @@ import {
   releaseContinuousRender,
 } from '../renderGovernor.js';
 
-/** Attach scene tools, rendering listeners and the application debug handle. */
+/**
+ * Attach scene tools, rendering listeners and the application debug handle.
+ *
+ * Returns `travelMode` (from `src/travel/controller.js`) alongside the other
+ * components — reachable either from this function's return value (which
+ * `application.getComponents().tools.travelMode` surfaces, see
+ * `src/app/application.js`) or from `window.__godsEyeView.travelMode`. Call
+ * `travelMode.openTravelBriefing({ name, lat, lon })` to open the briefing
+ * for an already-resolved place (e.g. a City Intel scorecard's "Brief me").
+ */
 export function createApplicationTools({
   scene,
   controls,
@@ -94,6 +104,15 @@ export function createApplicationTools({
   }
   if (startChrome)
     defer(startChrome({ loadingScreen, styleManager, dataManager, signal }));
+  const travelMode = createTravelMode({
+    viewer,
+    styleManager,
+    dataManager,
+    placeSearch,
+    requests: operations.requests,
+    signal,
+  });
+  defer(() => travelMode.destroy());
   // Idle render governor: flips the scene into requestRenderMode whenever
   // nothing animates per frame. Installed AFTER every module above has had
   // its chance to register pre-install holds. (perf wave 2)
@@ -152,6 +171,7 @@ export function createApplicationTools({
     getRenderGovernorDiagnostics,
     surfaceServices: operations.surface,
     requestRender: governorRequestRender,
+    travelMode,
   };
   const debug = window.__godsEyeView;
   defer(() => {
@@ -176,5 +196,5 @@ export function createApplicationTools({
       delete window.__gevVoiceCommands;
   });
   debug.voiceCommands = voiceCommands;
-  return { sceneDirector, annotations, voiceCommands };
+  return { sceneDirector, annotations, voiceCommands, travelMode };
 }

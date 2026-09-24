@@ -24,6 +24,8 @@ export function bindApplicationShortcuts({
   actions,
 }) {
   const onKeyDown = (event) => {
+    // Travel mode hides the controls these shortcuts would change.
+    if (documentRef.body?.classList?.contains('travel-mode')) return;
     const isFormControl =
       event.target?.matches?.('select, input, textarea') ||
       event.target === searchInput;
