@@ -5,6 +5,7 @@ import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
 import { initGevVoiceCommands } from '../voice/gevRealtime.js';
 import { installScopeMask, destroyScopeMask } from '../scopeMask.js';
+import { createTravelMode } from '../travel/controller.js';
 import {
   installRenderGovernor,
   getRenderGovernorDiagnostics,
@@ -94,6 +95,15 @@ export function createApplicationTools({
   }
   if (startChrome)
     defer(startChrome({ loadingScreen, styleManager, dataManager, signal }));
+  const travelMode = createTravelMode({
+    viewer,
+    styleManager,
+    dataManager,
+    placeSearch,
+    requests: operations.requests,
+    signal,
+  });
+  defer(() => travelMode.destroy());
   // Idle render governor: flips the scene into requestRenderMode whenever
   // nothing animates per frame. Installed AFTER every module above has had
   // its chance to register pre-install holds. (perf wave 2)

@@ -1,0 +1,430 @@
+/* ── Travel Mode ──────────────────────────────── */
+body.travel-mode {
+  --travel-surface: rgba(18, 21, 27, 0.9);
+  --travel-surface-raised: rgba(255, 255, 255, 0.04);
+  --travel-border: rgba(255, 255, 255, 0.1);
+  --travel-text: #e9edf2;
+  --travel-text-muted: #a9b2be;
+  --travel-accent: #8fb8ff;
+  --travel-status-low: #6fcf97;
+  --travel-status-moderate: #e8c15a;
+  --travel-status-elevated: #f39c4d;
+  --travel-status-high: #f26d6d;
+  --travel-status-none: #a9b2be;
+}
+
+#top-center-actions #travel-toggle {
+  width: auto;
+  gap: 6px;
+  padding: 0 14px 0 11px;
+  border-radius: 18px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+#travel-toggle .travel-toggle-label {
+  display: inline;
+}
+
+#top-center-actions #travel-toggle[aria-pressed='true'] {
+  border-color: var(--travel-accent);
+  color: var(--travel-text);
+  background: var(--travel-surface);
+}
+
+body.travel-mode #title-bar,
+body.travel-mode #style-indicator,
+body.travel-mode #top-center-actions > :not(#travel-toggle),
+body.travel-mode #global-loading-status,
+body.travel-mode #traffic-sync-chip,
+body.travel-mode #cctv-sync-chip,
+body.travel-mode #world-overlay-root,
+body.travel-mode #world-overlay-actions,
+body.travel-mode #cockpit-hud,
+body.travel-mode #view-switcher,
+body.travel-mode #clean-view-exit,
+body.travel-mode #command-dock,
+body.travel-mode #left-panel-stack,
+body.travel-mode #right-context-rail,
+body.travel-mode #scene-runtime,
+body.travel-mode #first-run-launcher,
+body.travel-mode #key-setup-chip,
+body.travel-mode #intel-hud,
+body.travel-mode #orbit-indicator,
+body.travel-mode #safe-frame-overlay,
+body.travel-mode #pp-toggles,
+body.travel-mode #param-slider-panel,
+body.travel-mode #control-panel,
+body.travel-mode #location-bar,
+body.travel-mode #data-panel,
+body.travel-mode #cctv-panel,
+body.travel-mode #radio-panel,
+body.travel-mode #global-context-panel,
+body.travel-mode #scene-panel,
+body.travel-mode #gev-voice-control {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* The command dock normally lifts the credits; it is hidden in Travel mode. */
+body.travel-mode #cesium-credits {
+  bottom: 0.75rem !important;
+}
+
+#travel-panel {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 360px;
+  max-height: calc(100vh - 88px);
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--travel-surface);
+  border: 1px solid var(--travel-border);
+  border-radius: var(--panel-radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--travel-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+#travel-panel[hidden] {
+  display: none;
+}
+
+#travel-panel .material-symbols-outlined {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.travel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.travel-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--travel-text-muted);
+}
+
+.travel-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.travel-icon-btn,
+.travel-text-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--travel-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.travel-icon-btn {
+  width: 32px;
+}
+
+.travel-text-btn {
+  padding: 0 10px;
+  border-color: var(--travel-border);
+  color: var(--travel-accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.travel-icon-btn:hover,
+.travel-text-btn:hover {
+  background: var(--travel-surface-raised);
+  color: var(--travel-text);
+}
+
+.travel-text-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.travel-dest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 2px 12px;
+  border: 1px solid var(--travel-border);
+  border-radius: 10px;
+  background: var(--travel-surface-raised);
+}
+
+.travel-dest input {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  border: 0;
+  background: none;
+  color: var(--travel-text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.travel-dest input::placeholder {
+  color: var(--travel-text-muted);
+  font-weight: 400;
+}
+
+.travel-dest:focus-within {
+  border-color: var(--travel-accent);
+}
+
+#travel-panel:not([data-ready]) .travel-risk,
+#travel-panel:not([data-ready]) .travel-sections {
+  display: none;
+}
+
+.travel-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--travel-text-muted);
+  font-size: 13px;
+}
+
+.travel-sections {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  border-top: 1px solid var(--travel-border);
+}
+
+.travel-section {
+  border-bottom: 1px solid var(--travel-border);
+}
+
+.travel-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--travel-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.travel-row:hover {
+  background: var(--travel-surface-raised);
+}
+
+.travel-chevron {
+  color: var(--travel-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.travel-row[aria-expanded='true'] .travel-chevron {
+  transform: rotate(90deg);
+}
+
+.travel-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.travel-row-label .material-symbols-outlined {
+  color: var(--travel-text-muted);
+}
+
+.travel-row-summary {
+  grid-column: 2 / 4;
+  color: var(--travel-text-muted);
+  font-size: 14px;
+}
+
+.travel-risk {
+  padding: 10px 8px;
+  background: var(--travel-surface-raised);
+  font-size: 15px;
+}
+
+.travel-badge {
+  --travel-status: var(--travel-status-none);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--travel-status) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--travel-status) 14%, transparent);
+  color: var(--travel-status);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.travel-badge:empty {
+  display: none;
+}
+
+.travel-badge .material-symbols-outlined {
+  font-size: 16px !important;
+}
+
+.travel-badge[data-status='low'] {
+  --travel-status: var(--travel-status-low);
+}
+.travel-badge[data-status='moderate'] {
+  --travel-status: var(--travel-status-moderate);
+}
+.travel-badge[data-status='elevated'] {
+  --travel-status: var(--travel-status-elevated);
+}
+.travel-badge[data-status='high'] {
+  --travel-status: var(--travel-status-high);
+}
+
+.travel-risk .travel-badge {
+  font-size: 14px;
+}
+
+.travel-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 4px 12px 30px;
+}
+
+.travel-detail[hidden] {
+  display: none;
+}
+
+.travel-overview .travel-detail {
+  padding-left: 34px;
+}
+
+.travel-note {
+  color: var(--travel-text-muted);
+  font-size: 13px;
+}
+
+.travel-driver {
+  font-weight: 500;
+}
+
+.travel-group {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.travel-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+.travel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.travel-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.travel-item-primary {
+  overflow-wrap: anywhere;
+}
+
+.travel-item-secondary {
+  color: var(--travel-text-muted);
+  font-size: 13px;
+}
+
+.travel-item .travel-text-btn {
+  flex: none;
+}
+
+.travel-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+}
+
+.travel-facts dt {
+  color: var(--travel-text-muted);
+}
+
+.travel-flight-form input {
+  font-size: 14px;
+}
+
+.travel-footnote {
+  color: var(--travel-text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  #travel-panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 62vh;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    border-radius: var(--panel-radius) var(--panel-radius) 0 0;
+  }
+
+  body.travel-mode #cesium-credits {
+    top: max(12px, env(safe-area-inset-top));
+    bottom: auto !important;
+    left: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .travel-chevron {
+    transition: none;
+  }
+}

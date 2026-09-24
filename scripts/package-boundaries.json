@@ -1293,6 +1293,8 @@
       "src/app/surfaceServices.js",
       "src/app/tools.js",
       "src/app/viewer.js",
+      "src/travel/briefing.js",
+      "src/travel/controller.js",
       "src/bloom.js",
       "src/camera.js",
       "src/cameraVerbs.js",

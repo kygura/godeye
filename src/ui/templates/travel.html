@@ -1,0 +1,36 @@
+  <!-- Travel mode: a civilian safety briefing layered over the globe. -->
+  <section id="travel-panel" aria-labelledby="travel-title" hidden>
+    <header class="travel-header">
+      <h2 id="travel-title" class="travel-eyebrow">
+        <span class="material-symbols-outlined" aria-hidden="true">luggage</span>
+        Travel
+      </h2>
+      <button id="travel-exit" class="travel-icon-btn" type="button" aria-label="Exit Travel mode" title="Exit Travel mode">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+    <form id="travel-dest-form" class="travel-dest" role="search" aria-label="Destination">
+      <label for="travel-dest-input" class="travel-visually-hidden">Destination</label>
+      <input id="travel-dest-input" type="search" placeholder="Where are you going?" autocomplete="off" enterkeyhint="go" maxlength="120" />
+      <button class="travel-icon-btn" type="submit" aria-label="Show briefing" title="Show briefing">
+        <span class="material-symbols-outlined" aria-hidden="true">search</span>
+      </button>
+    </form>
+    <div class="travel-overview">
+      <button id="travel-risk" class="travel-row travel-risk" type="button" aria-expanded="false" aria-controls="travel-risk-detail" data-status="unavailable">
+        <span class="material-symbols-outlined travel-chevron" aria-hidden="true">chevron_right</span>
+        <span class="travel-row-label">Risk</span>
+        <span id="travel-risk-badge" class="travel-badge"></span>
+      </button>
+      <div id="travel-risk-detail" class="travel-detail" hidden></div>
+      <div class="travel-meta">
+        <span id="travel-updated" role="status" aria-live="polite">Choose a destination to begin</span>
+        <button id="travel-refresh" class="travel-text-btn" type="button" disabled>
+          <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+          Refresh
+        </button>
+      </div>
+    </div>
+    <ul id="travel-sections" class="travel-sections" aria-label="Briefing"></ul>
+    <p class="travel-footnote">Automated summary of public feeds. Always check official travel advisories.</p>
+  </section>
