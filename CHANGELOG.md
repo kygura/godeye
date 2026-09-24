@@ -1,5 +1,42 @@
 # Changelog
 
+- Add **ATLAS**, a keyless city-intelligence mode (`#city-intel-toggle`,
+  layer `city-intel`): a bundled pack of 2,480 cities (population 150k+)
+  across 171 countries, scored on four pillars — quality of life, cost,
+  safety, travel ease — by direction-aware percentile rank of World Bank
+  WDI/WGI indicators and OurAirports access. A city ranks only when Safety
+  is available and at least 3 of 4 pillars are; others still show on the
+  globe and in the scorecard, marked insufficient data with the reason.
+  Weight sliders re-rank and recolor the globe live; the panel groups
+  cities by country (toggle to flat), pins two to four into a compare
+  overlay, and every metric shows its value, unit, year, source and level
+  (city or country). A US State Dept advisory badge with a Level 3–4
+  filter, and visa access once a home passport is set, round out travel
+  ease. See `docs/cockpit/SPEC.md` and `docs/cockpit/METHODOLOGY.md`.
+- Add the **Lifestyle Plan** (ATLAS PLAN view): an ordered set of stays
+  (city plus start month and length, wrapping past December) stored as a
+  `kind: 'plan'` trip in `tripStore`. Each stay shows fit under the
+  current weights, a ×home cost ratio then a dollar estimate once a
+  monthly spend is set (or a manual override), a monthly seasonality
+  heatmap from NASA POWER climatology, safety and a visa-days flag. The
+  yearly rollup covers months planned, weighted fit and comfort,
+  estimated cost and the highest advisory level; the plan draws as Trips
+  arcs on the globe.
+- Port the **Trips** layer and **Travel Mode** briefing from the archived
+  Meridian WIP scaffolds, re-pointed at the ATLAS city pack: great-circle
+  route arcs with seasonality windows, and a live destination safety
+  briefing (quakes, cyclones, fires, weather, nearby help) built from
+  GEV's existing sources.
+- Add keyless server proxies
+  `GET /api/city-intel/{advisories,visa,rent,air}` (US State Dept,
+  passport-index, Zillow ZORI, Open-Meteo air quality; cached
+  6h/7d/7d/1h), each degrading to "unavailable (source offline)" without
+  blocking the rest of the cockpit. Add voice tools `rank_cities`,
+  `compare_cities`, `show_city_intel` and `plan_lifestyle`, and a
+  first-run launcher tile, LIFESTYLE PLANNING, that opens ATLAS. Add
+  `scripts/build-city-intel.mjs`, the reproducible pack builder pinning
+  Natural Earth, OurAirports, World Bank and NASA POWER sources.
+
 - Region scopes in voice analyst queries ("in the Gulf of Mexico", "over
   the Alps") work again in the dev server: the bundled Natural Earth and
   neighborhood packs are fetched as JSON in the browser

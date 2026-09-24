@@ -135,9 +135,11 @@ nothing; the panel says the advisory data is unavailable.
 
 ## Shown, but not scored
 
-- **Climate comfort** covers only about 120 cities. Adding it to Quality of life would
-  score those cities on a different basis from the rest. It appears in the scorecard and
-  in Trips seasonality.
+- **Climate comfort** is monthly comfort from NASA POWER climatology (2001–2020) for
+  every pack city. It is a seasonal signal, and whether a climate suits someone depends on
+  the months they stay, so it is not in the composite. It appears in the scorecard, the
+  Lifestyle Plan heatmap and Trips seasonality. `rank_cities` can report it for chosen
+  months.
 - **Live air quality** is a current reading, not a long-run average. Scorecard only.
 - **Zillow rent** covers US metros only and cannot share a scale with country price
   levels. Scorecard and comparison only.

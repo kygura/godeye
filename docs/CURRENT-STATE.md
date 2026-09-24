@@ -3565,7 +3565,7 @@ silently demoting every later lookup for the session.
 
 - **Token flow**: browser fetches a short-lived client secret from `/api/realtime/token`; the Vite middleware holds `OPENAI_API_KEY` and posts the full session config (instructions, tool schemas, VAD, truncation) to `api.openai.com/v1/realtime/client_secrets`. SDP exchange goes directly to `api.openai.com/v1/realtime/calls` with the ephemeral token.
 - **Session defaults** (env-tunable): model `gpt-realtime-2` (or `gpt-realtime-2.1-mini` when the MINI tier is selected — see the model-tier entry below), voice `marin`, reasoning effort `low`, semantic VAD with low eagerness, no response interruption, context window truncated to ~3,000 post-instruction tokens with 0.5 retention ratio — the conversational window stays short because map state is fetched live per turn.
-- **Twenty-nine tools** (argument schemas in `src/voice/actionSchemas.js`, served with their descriptions by `server/providers/openai/tools.js`, executed client-side in `src/voice/gevActions.js`): `fly_to_location`, `select_nearest_aircraft`, `adjust_camera_zoom`, `zoom_to_globe`, `set_layer_visibility`, `show_data_layers_menu`, `set_panel_open`, `set_visual_style`, `get_entity_context`, `get_current_view_state`, `set_hud`, `set_detection`, `set_map_stack`, `set_post_processing`, `control_scene`, `control_cctv`, `set_context_mode`, `control_cockpit`, `control_radio`, `track_entity`, `stop_tracking`, `frame_overhead`, `annotate_map`, `clear_annotations`, `move_camera`, `fly_route`, `analyst_query`, `next_iss_pass`, and `next_satellite_pass`.
+- **Thirty-four tools** (argument schemas in `src/voice/actionSchemas.js`, served with their descriptions by `server/providers/openai/tools.js`, executed client-side in `src/voice/gevActions.js`): `fly_to_location`, `select_nearest_aircraft`, `adjust_camera_zoom`, `zoom_to_globe`, `set_layer_visibility`, `show_data_layers_menu`, `set_panel_open`, `set_visual_style`, `get_entity_context`, `get_current_view_state`, `set_hud`, `set_cyber_sonar`, `set_detection`, `set_map_stack`, `set_post_processing`, `control_scene`, `control_cctv`, `set_context_mode`, `control_cockpit`, `control_radio`, `track_entity`, `stop_tracking`, `frame_overhead`, `annotate_map`, `clear_annotations`, `move_camera`, `fly_route`, `analyst_query`, `next_iss_pass`, `next_satellite_pass`, `rank_cities`, `compare_cities`, `show_city_intel`, and `plan_lifestyle`.
 
 > **Reading `npm test` totals:** the count depends on the Node major. The two
 > GC-bracketed allocation microbenchmarks (`src/data/focusAllocations.test.mjs`
@@ -3757,6 +3757,83 @@ are omitted rather than framing the wrong part of the globe.
   pathological field and 5,200-object normal field without relaxing budgets.
 - `src/data/detectionDraw.js` performs the batched, DPI-crisp canvas drawing for tier-colored labels, corner brackets, callouts, and distance-scaled tracked boxes. Unit tests cover label measurement and draw geometry.
 - `src/data/trackedReadout.js` publishes a protected shared-host callout above tracked aircraft and satellites or selected mapped installations. It reads only each layer's cached display position—never a fresh entity position evaluation—preventing readout jitter against the rendered target. AIS selection remains in the vessel source's protected card path.
+
+### City Intel (ATLAS), Lifestyle Plan, Trips and Travel Mode (September 2026)
+
+City Intel is a keyless lifestyle-planning cockpit (`docs/cockpit/SPEC.md`,
+`DESIGN.md`, `METHODOLOGY.md`). It bundles a rank-and-compare city index
+("ATLAS"), a personal Lifestyle Plan of stays, an ad-hoc Trips layer and a
+Travel Mode safety briefing, ported from the archived Meridian
+`gev-wip-travel-layer`/`gev-wip-travel-ui` scaffolds and re-pointed at the new
+city pack.
+
+- **Entry points.** `#city-intel-toggle` (pill, `#top-center-actions`) enters
+  ATLAS mode: unrelated layers are hidden for the session and restored on
+  exit, `#city-intel-panel` expands in the right rail with a RANK/PLAN
+  segment. The `city-intel` layer also has a plain DATA LAYERS row (Trips
+  sits directly after it) so markers can show without entering the mode.
+  Trips has its own DATA LAYERS row for ad-hoc routes. A first-run launcher
+  tile, LIFESTYLE PLANNING, opens ATLAS directly and closes once it is
+  entered. Voice: `rank_cities`, `compare_cities`, `show_city_intel`,
+  `plan_lifestyle`.
+- **Ranking.** `src/layers/cityIntel/scoring.js` scores 2,480 bundled cities
+  on four pillars (quality of life, cost, safety, travel ease) by
+  direction-aware percentile rank; weight sliders re-rank and recolor the
+  globe live. A city is **ranked** only when Safety is available and at
+  least 3 of 4 pillars are (`safety-unavailable` / `insufficient-pillars`
+  otherwise); ineligible cities still render on the globe and in the
+  scorecard, marked insufficient data with the reason. The list groups by
+  country by default (toggle to flat). Every metric carries
+  `{ value, unit, year, source, level, coverage }`; country-level proxies
+  are labelled as such and nothing is interpolated or guessed. A US State
+  Dept advisory badge and a Level 3–4 filter, plus visa access once a home
+  passport is set, sit under travel ease. The panel links `METHODOLOGY.md`
+  with a not-advice note.
+- **Lifestyle Plan (PLAN view).** An ordered set of stays (`src/layers/cityIntel/plan.js`:
+  city, start month, length, may wrap past December) stored as a single
+  `kind: 'plan'` trip in `tripStore`, drawn with the Trips arcs. Each stay
+  shows fit under the current weights, cost as a ×home price-level ratio
+  then an optional dollar estimate (home spend × ratio) or a manual
+  override, a monthly seasonality heatmap from NASA POWER climatology,
+  safety, and a visa-days-exceeded flag once a passport is set. The yearly
+  rollup reports months covered, weighted fit and comfort, cost (partial
+  unless every covered month has an estimate or override), highest
+  advisory level, and moves/km per year.
+- **Persistence.** `gev:city-intel:v1` (ATLAS weights, preset, passport,
+  filters, pins, view mode, RANK/PLAN mode, `homeCityId`, `monthlySpendUsd`,
+  per-stay `overrides`). `gev:travel:v1` (`tripStore`: ad-hoc trips plus the
+  one Lifestyle Plan trip; same key Trips/Travel Mode already used).
+- **Server proxies** (`server/providers/cityIntel.js`), each returning
+  `{ ok, data, fetchedAt, stale, source }` and degrading the dependent UI
+  element to "unavailable (source offline)" without blocking the rest of
+  the cockpit when upstream is down:
+  - `GET /api/city-intel/advisories` — US State Dept, all countries, 6 h cache.
+  - `GET /api/city-intel/visa?passport=ISO3` — passport-index-dataset (fetched
+    at runtime, never bundled), 7 day cache.
+  - `GET /api/city-intel/rent` — Zillow ZORI, US metros only, exact-name
+    match, scorecard/compare display only, 7 day cache.
+  - `GET /api/city-intel/air?lat&lon` — Open-Meteo air quality, current
+    PM2.5/AQI, scorecard display only, 1 h cache.
+- **Data pack** (`src/data/local_data/city_intel/{cities,countries,seasonality,source}.json`,
+  1.77 MB): 2,480 cities (population ≥ 150k) across 171 countries. Built by
+  `node scripts/build-city-intel.mjs` from Natural Earth 10m populated
+  places + 110m admin-0 (public domain), OurAirports (public domain), World
+  Bank WDI/WGI (CC BY 4.0) and NASA POWER monthly climatology 2001–2020
+  (public, acknowledgement requested); deterministic output, pinned source
+  SHAs and hashes recorded in `source.json`. See `DATA_SOURCES.md`.
+- **Tests.** `src/layers/cityIntel/{scoring,source,panel,plan,planView,scorecard,index}.test.mjs`,
+  `src/data/{cityIntelPack,cityIntelProxy}.test.mjs`, `src/ui/cityIntelMode.test.mjs`,
+  `src/voice/cityIntelActions.test.mjs`, `src/travel/{geo,seasonality,citySearch,
+  tripColors,tripStore,briefing}.test.mjs`, `src/layers/trips/index.test.mjs`.
+- **Known limits.** Six of eight scoring metrics are national, so most cities
+  in one country score near-identically (country grouping keeps this
+  visible; only airport access differentiates them). Zillow rent is
+  US-only. The Schengen-wide 90/180 rule is not modelled — only a flat
+  visa-free-days check per stay. The 150k population floor misses small
+  lifestyle towns not in Natural Earth at all, or below it (Tulum, Ubud,
+  Boulder, Asheville). Open-Meteo's air-quality API free tier is
+  non-commercial only; NASA POWER and Natural Earth both ask for
+  attribution, carried in `DATA_SOURCES.md` and `src/data/dataCredits.js`.
 
 ### Not Currently in Runtime
 
