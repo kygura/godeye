@@ -227,6 +227,9 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
 - Final mechanical gate: `npm test` 5264 tests, 0 fail; build, format:check and
   check:boundaries all green.
 - Temp base worktree removed.
+- Final browser smoke test (sonnet): all 10 steps pass. `npm run test:track` 109/109.
+  Zero console or network errors from new code; the remaining errors are upstream 429s
+  and keyless 503s. **Verification gate passed after 2 fix loops.**
 - Shared registry files are owned by T9 so parallel workers can't collide:
   `format-scope.json`, `package.json`, `DATA_SOURCES.md`, `CHANGELOG.md` and
   `CURRENT-STATE.md`.
@@ -254,7 +257,7 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
 | F2 | ATLAS visual fixes: glass surface, horizon occlusion, camera pull-out on entry | sonnet | T6a | `city-intel.css`, `cityIntel/index.js`, `cityIntelMode.js` | done |
 | T14 | First-run launcher tile LIFESTYLE PLANNING leading to ATLAS; launcher closes when ATLAS is entered | sonnet | T6a | `firstRunExperience.js`, `welcome.html`, `startupChrome.js`, `tools.js` | done |
 | T9 | Integration: format-scope adoption, `DATA_SOURCES.md`, `CHANGELOG.md`, `CURRENT-STATE.md`, full format/build/test | haiku→sonnet if failures | T1–T8 | shared files | done |
-| V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | running (loop 2) |
+| V | Verification gate: review lenses, checker, ponytail-review, mp-standards-spec-review, design drift, browser smoke | mixed | T9 | fixes delegated | done |
 
 ## Follow-ups (not in v1)
 
