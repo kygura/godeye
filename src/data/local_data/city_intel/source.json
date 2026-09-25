@@ -1,12 +1,41 @@
 {
-  "generatedAt": "2026-09-24",
+  "generatedAt": "2026-09-25",
   "inputs": {
-    "naturalEarthPopulatedPlaces": {
-      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_populated_places_simple.geojson",
-      "commit": "ca96624a56bd078437bca8184e78163e5039ad19",
-      "sha256": "fd3fa867a320cbd5c5b6bb5bc550afeec2939fb2cef688e508007282a55ac42f",
-      "license": "Public domain (naturalearthdata.com/about/terms-of-use)",
-      "attribution": "Made with Natural Earth"
+    "geonamesCities": {
+      "url": "https://download.geonames.org/export/dump/cities1000.zip",
+      "downloadedAt": "2026-09-25",
+      "sha256": "56fb681d6daf41f0fad2e8ee3431082399f3b321daea102fcf25c02bfa8bb370",
+      "license": "CC BY 4.0",
+      "attribution": "GeoNames (geonames.org)",
+      "note": "Unversioned dump: pinned by download date + sha256. Selection: population >= 50000 (feature codes PPLX/PPLH/PPLQ/PPLW/PPLCH excluded), plus 39 curated lifestyle towns (EXTRA_TOWNS, hand-picked: no open destination signal exists), plus every previous-pack city (id registry). Metro dedupe: a place within 20 km of a more populous kept city in the same country is dropped (capitals, curated towns and previous ids exempt).",
+      "metroDedupeKm": 20,
+      "metroMerged": 3763
+    },
+    "geonamesAdmin1": {
+      "url": "https://download.geonames.org/export/dump/admin1CodesASCII.txt",
+      "downloadedAt": "2026-09-25",
+      "sha256": "1da92a6323a5fec3176f3f743bf4cf4040fd56a876da55e46fbca23c863aa60a",
+      "license": "CC BY 4.0",
+      "attribution": "GeoNames (geonames.org)"
+    },
+    "geonamesCountryInfo": {
+      "url": "https://download.geonames.org/export/dump/countryInfo.txt",
+      "downloadedAt": "2026-09-25",
+      "sha256": "93bafc525813f22e4711ff9ed6d626343094ce48c26388dc7c49189b3d7d5512",
+      "license": "CC BY 4.0",
+      "attribution": "GeoNames (geonames.org)"
+    },
+    "legacyCities": {
+      "previousCities": 2480,
+      "matchedToGeonames": 2466,
+      "carriedOverUnmatched": 14,
+      "note": "Previous-pack city ids are preserved (users store them). Legacy records were built from Natural Earth 10m populated places (public domain) @ ca96624a56bd078437bca8184e78163e5039ad19; unmatched ones keep their Natural Earth fields (origin \"naturalearth\")."
+    },
+    "manualCities": {
+      "cities": [
+        "canggu-idn"
+      ],
+      "note": "Not in any GeoNames cities file; coordinates set by hand, population unknown (0)."
     },
     "naturalEarthAdmin0Countries": {
       "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_110m_admin_0_countries.geojson",
@@ -21,7 +50,7 @@
       "sha256": "753c4b167361f0f1223091d52f98aaddfb9101529eef263cc094057e43228c40",
       "license": "Public domain (naturalearthdata.com/about/terms-of-use)",
       "attribution": "Made with Natural Earth",
-      "note": "Supplies continent/subregion for micro-states invisible at 110m scale. Gibraltar, Hong Kong SAR and Macao SAR are still absent from both 110m files; their continent/subregion are filled in manually (uncontested geography, see MANUAL_GEO in build-city-intel.mjs)."
+      "note": "Supplies continent/subregion for micro-states invisible at 110m scale. Gibraltar, Hong Kong SAR and Macao SAR are still absent from both 110m files; their continent/subregion are filled in manually (uncontested geography, see MANUAL_GEO in build-city-intel.mjs). Other territories missing from both fall back to the GeoNames continent (no subregion)."
     },
     "ourAirports": {
       "url": "https://raw.githubusercontent.com/davidmegginson/ourairports-data/44d4715eca5a7b01b88f0be00ed62dcca309b633/airports.csv",
@@ -33,62 +62,1319 @@
     "worldBankIndicators": {
       "SP.DYN.LE00.IN": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/SP.DYN.LE00.IN?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "38e1bbccf3619b1fed803d9e4994904a74cf806a00ff4a533c7ed6e3cf6f5547"
       },
       "IT.NET.USER.ZS": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/IT.NET.USER.ZS?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "e90c67d476a75233e6f1ce3a5e0b6337e47dd336e87ab788ad2f32d35e2eb7c3"
       },
       "EN.ATM.PM25.MC.M3": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/EN.ATM.PM25.MC.M3?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "c02cc2adb4e1f407a767651060631396466eaef56c9a2a41bb3bb820cd813fa1"
       },
       "VC.IHR.PSRC.P5": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/VC.IHR.PSRC.P5?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "dd03b60f844762df7dd37be061a4d517086ac6e3092a205d9b9d9841a1d058d5"
       },
       "GOV_WGI_PV.EST": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/GOV_WGI_PV.EST?format=json&per_page=20000&date=2010%3A2026&source=3",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "0fadfda72ac13e8144889b6c44eede4d8a37c16032006b7382fbeee270448d68"
       },
       "PA.NUS.PRVT.PP": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/PA.NUS.PRVT.PP?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "f5d30706e0e8940a42734bd03b16e5e651958148b6726ae8d82dc9251706bba2"
       },
       "PA.NUS.FCRF": {
         "url": "https://api.worldbank.org/v2/country/all/indicator/PA.NUS.FCRF?format=json&per_page=20000&date=2010%3A2026",
-        "accessDate": "2026-09-24",
+        "accessDate": "2026-09-25",
         "sha256": "d80238c9ac1a6be52d920d8b6f9c1cd8dd33c83f2b2fb20f134088e0ad8ae12f"
       },
       "license": "CC BY 4.0",
       "attribution": "World Bank",
-      "note": "priceLevel is derived: PA.NUS.PRVT.PP ÷ PA.NUS.FCRF, same year, both non-null."
+      "note": "priceLevel is derived: PA.NUS.PRVT.PP ÷ PA.NUS.FCRF, same year, both non-null; values outside 0.05-2 × US are dropped (currency/rate-regime mismatch). FCRF rebased to EUR for BGR (PRVT.PP already in EUR)."
     },
     "worldBankCountryList": {
       "url": "https://api.worldbank.org/v2/country?format=json&per_page=400",
-      "accessDate": "2026-09-24",
+      "accessDate": "2026-09-25",
       "sha256": "d29d57f8adf954c5e2a1520a02fb2c7b45575d8db3bd327a9dff47d66914231c",
       "license": "CC BY 4.0",
       "attribution": "World Bank"
     },
     "nasaPowerClimatology": {
-      "url": "https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=T2M,PRECTOTCORR&community=RE&format=JSON&longitude={lon}&latitude={lat}",
+      "url": "https://power.larc.nasa.gov/api/temporal/climatology/regional?parameters={T2M|PRECTOTCORR}&community=RE&format=JSON&latitude-min={lat}&latitude-max={lat+10}&longitude-min={lon}&longitude-max={lon+10}",
       "apiVersion": "v2.10.0",
-      "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+      "range": null,
       "fillValue": -999,
       "license": "Public (NASA POWER data are freely available)",
       "attribution": "These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program.",
       "acknowledgementUrl": "https://power.larc.nasa.gov/docs/methodology/",
-      "citiesCovered": 2480,
+      "citiesCovered": 7903,
       "citiesSkipped": 0,
-      "uniqueCoordinatesFetched": 2480,
-      "note": "One call per unique (lat,lon) rounded to 2dp, cached under .gev-cache/. A city is skipped when any month is the -999 fill value or the fetch failed after 3 retries."
+      "gridCells": 5875,
+      "regionalTiles": 198,
+      "note": "Each city uses its MERRA-2 grid cell (0.5° lat × 0.625° lon). Cells come from the regional endpoint in 10° tiles, one call per tile and parameter, cached under .gev-cache/. A city is skipped when any month of its cell is the -999 fill value or the tile fetch failed."
+    },
+    "insideAirbnb": {
+      "url": "https://insideairbnb.com/get-the-data/",
+      "accessDate": "2026-09-25",
+      "sha256": "8d20e988e0e91be6b927bbe0ef3dd908b73509d8c6f11ceccda096930e9eaa29",
+      "license": "CC BY 4.0",
+      "attribution": "Inside Airbnb (insideairbnb.com)",
+      "method": "Latest listings summary per city dataset; room_type \"Entire home/apt\", minimum_nights >= 28 (relaxed to >= 7 when fewer than 30 listings; skipped below 15), valid price. Monthly = median nightly × 30, local currency converted with the latest World Bank PA.NUS.FCRF year.",
+      "datasets": [
+        {
+          "cityId": "buenos-aires-arg",
+          "url": "https://data.insideairbnb.com/argentina/ciudad-autónoma-de-buenos-aires/buenos-aires/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 775,
+          "rule": "min28",
+          "medianNightlyLocal": 58168,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1240.8513
+          },
+          "monthlyUsd": 1406,
+          "sha256": "845472c69e282ba85caf651c918701f0ae81b86e123b238f1eec8ef176e28a00"
+        },
+        {
+          "cityId": "sydney-aus",
+          "url": "https://data.insideairbnb.com/australia/nsw/sydney/2026-06-16/visualisations/listings.csv",
+          "snapshot": "2026-06-16",
+          "n": 1142,
+          "rule": "min28",
+          "medianNightlyLocal": 123.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.552
+          },
+          "monthlyUsd": 2387,
+          "sha256": "695ae7fec7fef9e24a0a9569071fa06d77fcb8517213b747f1e2700456f23372"
+        },
+        {
+          "cityId": "brisbane-aus",
+          "url": "https://data.insideairbnb.com/australia/qld/brisbane/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 50,
+          "rule": "min28",
+          "medianNightlyLocal": 116.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.552
+          },
+          "monthlyUsd": 2252,
+          "sha256": "eb4e889a0a8335e1dae3aa1542536c512557242f52af6222894aecf9f22b1944"
+        },
+        {
+          "cityId": "sunshine-coast-aus",
+          "url": "https://data.insideairbnb.com/australia/qld/sunshine-coast/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 31,
+          "rule": "min28",
+          "medianNightlyLocal": 221,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.552
+          },
+          "monthlyUsd": 4272,
+          "sha256": "e938b3339cbc156088e210145769d2ee11ba79b0033b89c7a24844bebba52e99"
+        },
+        {
+          "cityId": "melbourne-aus",
+          "url": "https://data.insideairbnb.com/australia/vic/melbourne/2026-06-16/visualisations/listings.csv",
+          "snapshot": "2026-06-16",
+          "n": 235,
+          "rule": "min28",
+          "medianNightlyLocal": 170,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.552
+          },
+          "monthlyUsd": 3286,
+          "sha256": "a3e96aa4d4dd2f4d0fcfce71c961c3481e3b6f353923b94ddf55f0cc2c7c94b6"
+        },
+        {
+          "cityId": "vienna-aut",
+          "url": "https://data.insideairbnb.com/austria/vienna/vienna/2026-06-20/visualisations/listings.csv",
+          "snapshot": "2026-06-20",
+          "n": 1197,
+          "rule": "min28",
+          "medianNightlyLocal": 68,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2305,
+          "sha256": "3a412eaec05da6f27e191973c50284c8f4cbc3c2a2811a376ac5cefff401dea6"
+        },
+        {
+          "cityId": "brussels-bel",
+          "url": "https://data.insideairbnb.com/belgium/bru/brussels/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 222,
+          "rule": "min28",
+          "medianNightlyLocal": 26,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 881,
+          "sha256": "9e8f9305c6b59400268d210be9506eae52691da633c0f71f1bf9a24ef5ca5684"
+        },
+        {
+          "cityId": "antwerpen-bel",
+          "url": "https://data.insideairbnb.com/belgium/vlg/antwerp/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 81,
+          "rule": "min28",
+          "medianNightlyLocal": 70,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2373,
+          "sha256": "d63387d6e8fd1c9b1239323c0e11724ba38207db29745c221a8dc8be2908a0f6"
+        },
+        {
+          "cityId": "gent-bel",
+          "url": "https://data.insideairbnb.com/belgium/vlg/ghent/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 56,
+          "rule": "min7",
+          "medianNightlyLocal": 98.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3339,
+          "sha256": "4753078d3ec7952156c6e3ad850c74707da506857a4da1269433addfb8b22e05"
+        },
+        {
+          "cityId": "rio-de-janeiro-bra",
+          "url": "https://data.insideairbnb.com/brazil/rj/rio-de-janeiro/2026-06-24/visualisations/listings.csv",
+          "snapshot": "2026-06-24",
+          "n": 369,
+          "rule": "min28",
+          "medianNightlyLocal": 443,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 5.5873
+          },
+          "monthlyUsd": 2379,
+          "sha256": "78abba14368797dc7dcbb103be95310edb9e243aab0aeea6919e5dafd5eeb898"
+        },
+        {
+          "cityId": "sao-paulo-bra",
+          "url": "https://data.insideairbnb.com/brazil/sp/são-paulo/2026-06-14/visualisations/listings.csv",
+          "snapshot": "2026-06-14",
+          "n": 609,
+          "rule": "min28",
+          "medianNightlyLocal": 174,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 5.5873
+          },
+          "monthlyUsd": 934,
+          "sha256": "156dfa045f752b4bd7ee16d56981c741d966571e2b07e3e732d4705dde525e60"
+        },
+        {
+          "cityId": "vancouver-can",
+          "url": "https://data.insideairbnb.com/canada/bc/vancouver/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 1019,
+          "rule": "min28",
+          "medianNightlyLocal": 54,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 1159,
+          "sha256": "b473f6e40ccaf4cb6608d60277fce1e0195a6725661349b925262f210899ee34"
+        },
+        {
+          "cityId": "victoria-can",
+          "url": "https://data.insideairbnb.com/canada/bc/victoria/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 645,
+          "rule": "min28",
+          "medianNightlyLocal": 52,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 1116,
+          "sha256": "a6ad262caf7d7b70b956a351e2b345e130768fcfc2fb3668b95e5d06085c4d48"
+        },
+        {
+          "cityId": "winnipeg-can",
+          "url": "https://data.insideairbnb.com/canada/mb/winnipeg/2026-06-22/visualisations/listings.csv",
+          "snapshot": "2026-06-22",
+          "n": 218,
+          "rule": "min28",
+          "medianNightlyLocal": 114,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 2446,
+          "sha256": "6a6a3a61c27ce8272e6cbc83c0a8395d28026d6b9a6f1628e3d947dfbfa1947a"
+        },
+        {
+          "cityId": "ottawa-can",
+          "url": "https://data.insideairbnb.com/canada/on/ottawa/2026-06-24/visualisations/listings.csv",
+          "snapshot": "2026-06-24",
+          "n": 862,
+          "rule": "min28",
+          "medianNightlyLocal": 117,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 2511,
+          "sha256": "125ac1d22cd5f053c45693390a09a4ee2c2c1752aa0d2c3abcd7dd80ae9ced09"
+        },
+        {
+          "cityId": "toronto-can",
+          "url": "https://data.insideairbnb.com/canada/on/toronto/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 6394,
+          "rule": "min28",
+          "medianNightlyLocal": 149,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 3197,
+          "sha256": "d15f466e6f1646bc0dfed249c64ff200ecfc53688e6ffad7f99e4351760f111c"
+        },
+        {
+          "cityId": "montreal-can",
+          "url": "https://data.insideairbnb.com/canada/qc/montreal/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 3670,
+          "rule": "min28",
+          "medianNightlyLocal": 102,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 2189,
+          "sha256": "39cbea362e7ba933a90a15f2c2a2b2cee6f2ee1aae46e1aa517801b277880bf0"
+        },
+        {
+          "cityId": "quebec-can",
+          "url": "https://data.insideairbnb.com/canada/qc/quebec-city/2026-06-19/visualisations/listings.csv",
+          "snapshot": "2026-06-19",
+          "n": 529,
+          "rule": "min28",
+          "medianNightlyLocal": 98,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3981
+          },
+          "monthlyUsd": 2103,
+          "sha256": "da15cad81147706ce034412086a386922a41b83d07eec0184fee681f1c5c4cd6"
+        },
+        {
+          "cityId": "santiago-chl",
+          "url": "https://data.insideairbnb.com/chile/rm/santiago/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 221,
+          "rule": "min28",
+          "medianNightlyLocal": 40058,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 951.3295
+          },
+          "monthlyUsd": 1263,
+          "sha256": "7b74858d06bb5b8fb82ab605abbe1272da26d0feb13d6d91783dcfea6314fe6c"
+        },
+        {
+          "cityId": "hong-kong-hkg",
+          "url": "https://data.insideairbnb.com/china/hk/hong-kong/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 653,
+          "rule": "min28",
+          "medianNightlyLocal": 686,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 7.7971
+          },
+          "monthlyUsd": 2639,
+          "sha256": "ef8511e8483bf3cbb5c7fb8d56d4c6d5c53105ced6b27099516fc7c5cde5049d"
+        },
+        {
+          "cityId": "bogota-col",
+          "url": "https://data.insideairbnb.com/colombia/dc/bogotá/2026-06-21/visualisations/listings.csv",
+          "snapshot": "2026-06-21",
+          "n": 1871,
+          "rule": "min28",
+          "medianNightlyLocal": 155582,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 4053.1358
+          },
+          "monthlyUsd": 1152,
+          "sha256": "bfa8552f3c36582e655c5d34bbf6269f1088f55905f49cf2506cfb5f130d5ad1"
+        },
+        {
+          "cityId": "prague-cze",
+          "url": "https://data.insideairbnb.com/czech-republic/prague/prague/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 89,
+          "rule": "min28",
+          "medianNightlyLocal": 1509,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 21.882
+          },
+          "monthlyUsd": 2069,
+          "sha256": "9dd3ac0eac0788d8b83ec2bd27d069897bff9b9532e639cbb962648f5deac8b1"
+        },
+        {
+          "cityId": "kobenhavn-dnk",
+          "url": "https://data.insideairbnb.com/denmark/hovedstaden/copenhagen/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 75,
+          "rule": "min28",
+          "medianNightlyLocal": 941,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 6.6218
+          },
+          "monthlyUsd": 4263,
+          "sha256": "26ea702c22e1f0bde9512d4296f8d71de61566db88f6a9f39479b033801a61a4"
+        },
+        {
+          "cityId": "lyon-fra",
+          "url": "https://data.insideairbnb.com/france/auvergne-rhone-alpes/lyon/2026-06-22/visualisations/listings.csv",
+          "snapshot": "2026-06-22",
+          "n": 477,
+          "rule": "min28",
+          "medianNightlyLocal": 59,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2000,
+          "sha256": "c10f10890eeb63128f78c35e869dea5124f4234d16b027b49bb6f7bdbdf9fa04"
+        },
+        {
+          "cityId": "paris-fra",
+          "url": "https://data.insideairbnb.com/france/ile-de-france/paris/2026-06-16/visualisations/listings.csv",
+          "snapshot": "2026-06-16",
+          "n": 6529,
+          "rule": "min28",
+          "medianNightlyLocal": 84,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2848,
+          "sha256": "315692e1fbad7912f1d61bea022e3ec43c4250970bee67ed8ce3b32c91f087db"
+        },
+        {
+          "cityId": "bordeaux-fra",
+          "url": "https://data.insideairbnb.com/france/nouvelle-aquitaine/bordeaux/2026-06-22/visualisations/listings.csv",
+          "snapshot": "2026-06-22",
+          "n": 423,
+          "rule": "min28",
+          "medianNightlyLocal": 47,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1593,
+          "sha256": "948b414fdef8d21d22892b747400f89afb55b22e2eec422321f99702921c6c0a"
+        },
+        {
+          "cityId": "berlin-deu",
+          "url": "https://data.insideairbnb.com/germany/be/berlin/2026-06-26/visualisations/listings.csv",
+          "snapshot": "2026-06-26",
+          "n": 1448,
+          "rule": "min28",
+          "medianNightlyLocal": 24,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 814,
+          "sha256": "42f6412922426aab00ad0cabab17148f3d3609bf0802432f8027349586720883"
+        },
+        {
+          "cityId": "munich-deu",
+          "url": "https://data.insideairbnb.com/germany/bv/munich/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 128,
+          "rule": "min28",
+          "medianNightlyLocal": 41,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1390,
+          "sha256": "d999d81dff594495e85239991829ddc64e469a76e1e6eaa619eb8407f1c0a9ad"
+        },
+        {
+          "cityId": "athens-grc",
+          "url": "https://data.insideairbnb.com/greece/attica/athens/2026-06-28/visualisations/listings.csv",
+          "snapshot": "2026-06-28",
+          "n": 38,
+          "rule": "min28",
+          "medianNightlyLocal": 50.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1712,
+          "sha256": "ede3b7020dec56e1516b814d97d1644f97fcc4276b49f5f332c1799b77863726"
+        },
+        {
+          "cityId": "thessaloniki-grc",
+          "url": "https://data.insideairbnb.com/greece/central-macedonia/thessaloniki/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 81,
+          "rule": "min7",
+          "medianNightlyLocal": 56,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1898,
+          "sha256": "8da4fc972803edbc809a0bb994b35fcb2809e38fe97e54b18548b2872cce4b85"
+        },
+        {
+          "cityId": "budapest-hun",
+          "url": "https://data.insideairbnb.com/hungary/közép-magyarország/budapest/2026-06-28/visualisations/listings.csv",
+          "snapshot": "2026-06-28",
+          "n": 142,
+          "rule": "min28",
+          "medianNightlyLocal": 17020.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 353.14
+          },
+          "monthlyUsd": 1446,
+          "sha256": "72bc2f4181d0f61f60239147877b7e0a90dd7a71ff25712cf0d9f8ab977e0424"
+        },
+        {
+          "cityId": "dublin-irl",
+          "url": "https://data.insideairbnb.com/ireland/leinster/dublin/2026-06-21/visualisations/listings.csv",
+          "snapshot": "2026-06-21",
+          "n": 44,
+          "rule": "min28",
+          "medianNightlyLocal": 147.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 5000,
+          "sha256": "206ae7874757c4272fd7fdaf3d9e0e67081f3cbdae830bc6932d408e4e645cb7"
+        },
+        {
+          "cityId": "naples-ita",
+          "url": "https://data.insideairbnb.com/italy/campania/naples/2026-06-25/visualisations/listings.csv",
+          "snapshot": "2026-06-25",
+          "n": 593,
+          "rule": "min28",
+          "medianNightlyLocal": 82,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2780,
+          "sha256": "25c71afbc124264620d661b157195bfb3266fb663136024cb4206db003d0614e"
+        },
+        {
+          "cityId": "bologna-ita",
+          "url": "https://data.insideairbnb.com/italy/emilia-romagna/bologna/2026-06-26/visualisations/listings.csv",
+          "snapshot": "2026-06-26",
+          "n": 217,
+          "rule": "min28",
+          "medianNightlyLocal": 74,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2509,
+          "sha256": "95021d8b3501baa7ae6461c23b831aeecee67ff42b03e353a61e32deddde1649"
+        },
+        {
+          "cityId": "rome-ita",
+          "url": "https://data.insideairbnb.com/italy/lazio/rome/2026-06-20/visualisations/listings.csv",
+          "snapshot": "2026-06-20",
+          "n": 1171,
+          "rule": "min28",
+          "medianNightlyLocal": 107,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3627,
+          "sha256": "d405f870961430dce7c1a90bb9377ccd4c78feee2f32d376900e7619a9d0fd09"
+        },
+        {
+          "cityId": "bergamo-ita",
+          "url": "https://data.insideairbnb.com/italy/lombardia/bergamo/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 151,
+          "rule": "min28",
+          "medianNightlyLocal": 71,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2407,
+          "sha256": "5cf91bec3ac089ed0d038fd3f49f740b312b120d1262379e115b5a83e0a727d9"
+        },
+        {
+          "cityId": "milan-ita",
+          "url": "https://data.insideairbnb.com/italy/lombardy/milan/2026-06-25/visualisations/listings.csv",
+          "snapshot": "2026-06-25",
+          "n": 2286,
+          "rule": "min28",
+          "medianNightlyLocal": 94,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3187,
+          "sha256": "e61eebb9315dcc86e69add0ef145df5245e2426aae1f828dba95ff1d52dfd631"
+        },
+        {
+          "cityId": "florence-ita",
+          "url": "https://data.insideairbnb.com/italy/toscana/florence/2026-06-26/visualisations/listings.csv",
+          "snapshot": "2026-06-26",
+          "n": 435,
+          "rule": "min28",
+          "medianNightlyLocal": 100,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3390,
+          "sha256": "bb3ad83c0f6a2a1788a31236d89737eab323b34118b58f565313684872ae9b4d"
+        },
+        {
+          "cityId": "venice-ita",
+          "url": "https://data.insideairbnb.com/italy/veneto/venice/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 128,
+          "rule": "min28",
+          "medianNightlyLocal": 171.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 5814,
+          "sha256": "e567b3862803b97589cc3e621c7baad938e5b0c04896a14465cf986515019992"
+        },
+        {
+          "cityId": "tokyo-jpn",
+          "url": "https://data.insideairbnb.com/japan/kantō/tokyo/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 3331,
+          "rule": "min28",
+          "medianNightlyLocal": 12468,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 149.6579
+          },
+          "monthlyUsd": 2499,
+          "sha256": "13cc1e659051b98ca5e5fd7c392b6756f07c44823e672b4869d66e4638b2c4a7"
+        },
+        {
+          "cityId": "nairobi-ken",
+          "url": "https://data.insideairbnb.com/kenya/nairobi/nairobi/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 117,
+          "rule": "min28",
+          "medianNightlyLocal": 7736,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 129.3026
+          },
+          "monthlyUsd": 1795,
+          "sha256": "902f164f5c76734019bd468a714cb65ce374fbc4c8932acdac9ae6b82fd0af9a"
+        },
+        {
+          "cityId": "riga-lva",
+          "url": "https://data.insideairbnb.com/latvia/riga/riga/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 37,
+          "rule": "min7",
+          "medianNightlyLocal": 54,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1831,
+          "sha256": "9ac5214c2ee3e60a8cddb12e9e9459b95cf5ecaaba4ae56936bd1cac770e9ea0"
+        },
+        {
+          "cityId": "mexico-city-mex",
+          "url": "https://data.insideairbnb.com/mexico/df/mexico-city/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 218,
+          "rule": "min28",
+          "medianNightlyLocal": 1318.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 19.2375
+          },
+          "monthlyUsd": 2056,
+          "sha256": "6dc32be008c5562bcf280656138a529995614cd113ed0cb86399bc354ec8734b"
+        },
+        {
+          "cityId": "oslo-nor",
+          "url": "https://data.insideairbnb.com/norway/oslo/oslo/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 93,
+          "rule": "min28",
+          "medianNightlyLocal": 894,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 10.3958
+          },
+          "monthlyUsd": 2580,
+          "sha256": "c5eb94d5fc34805077af98ba0f7e02a38832d2c58b12944b9e623fa9d729f6dc"
+        },
+        {
+          "cityId": "lisbon-prt",
+          "url": "https://data.insideairbnb.com/portugal/lisbon/lisbon/2026-06-23/visualisations/listings.csv",
+          "snapshot": "2026-06-23",
+          "n": 649,
+          "rule": "min28",
+          "medianNightlyLocal": 110,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3729,
+          "sha256": "38eb0f3c30333ad468e31a96acb1c25e55936977c9b8f7b75387345155ddfad9"
+        },
+        {
+          "cityId": "porto-prt",
+          "url": "https://data.insideairbnb.com/portugal/norte/porto/2026-06-23/visualisations/listings.csv",
+          "snapshot": "2026-06-23",
+          "n": 147,
+          "rule": "min28",
+          "medianNightlyLocal": 64,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2170,
+          "sha256": "b32bdf8eacc0d80614ceffafa420b8fcd93a2d09f213a0dca0aabaa9f90f2442"
+        },
+        {
+          "cityId": "singapore-sgp",
+          "url": "https://data.insideairbnb.com/singapore/sg/singapore/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 462,
+          "rule": "min28",
+          "medianNightlyLocal": 95,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1.3075
+          },
+          "monthlyUsd": 2180,
+          "sha256": "d87a1ccd7a629974f72fd068b1d36f41ac4f20bd0b6cf16d29489b02a175ae95"
+        },
+        {
+          "cityId": "cape-town-zaf",
+          "url": "https://data.insideairbnb.com/south-africa/wc/cape-town/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 192,
+          "rule": "min28",
+          "medianNightlyLocal": 1028,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 17.8887
+          },
+          "monthlyUsd": 1724,
+          "sha256": "1dbd35f25a2b6c0f8c66c3865b092a87ded4c00a041da36bcf23cc2df3371c16"
+        },
+        {
+          "cityId": "malaga-esp",
+          "url": "https://data.insideairbnb.com/spain/andalucía/malaga/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 109,
+          "rule": "min28",
+          "medianNightlyLocal": 46,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1559,
+          "sha256": "b13c77593d8e3d2b00b4447306db8b8ea2795437ffc19f6b44cc3e632175979b"
+        },
+        {
+          "cityId": "seville-esp",
+          "url": "https://data.insideairbnb.com/spain/andalucía/sevilla/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 92,
+          "rule": "min28",
+          "medianNightlyLocal": 32,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 1085,
+          "sha256": "110fe5b13a3894183ce307ba8340a3de8cf06d8b4e9f69fea692d1f6e49178eb"
+        },
+        {
+          "cityId": "barcelona-esp",
+          "url": "https://data.insideairbnb.com/spain/catalonia/barcelona/2026-06-24/visualisations/listings.csv",
+          "snapshot": "2026-06-24",
+          "n": 3324,
+          "rule": "min28",
+          "medianNightlyLocal": 101,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3424,
+          "sha256": "385c4ec238ee852c3f93de7b20fadee2d8e4919d8593729d27ec641adf0d9811"
+        },
+        {
+          "cityId": "girona-esp",
+          "url": "https://data.insideairbnb.com/spain/catalonia/girona/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 295,
+          "rule": "min28",
+          "medianNightlyLocal": 129,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 4373,
+          "sha256": "1aa445b14fb8ea1b0db94a18b1dfe738eb587138de5bbfd7269c08a6845eac16"
+        },
+        {
+          "cityId": "madrid-esp",
+          "url": "https://data.insideairbnb.com/spain/comunidad-de-madrid/madrid/2026-06-20/visualisations/listings.csv",
+          "snapshot": "2026-06-20",
+          "n": 1894,
+          "rule": "min28",
+          "medianNightlyLocal": 98,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3322,
+          "sha256": "724723663d854d658d3cf2cdc3803b078e67f3a043211dc353a71ffe3fb16feb"
+        },
+        {
+          "cityId": "valencia-esp",
+          "url": "https://data.insideairbnb.com/spain/vc/valencia/2026-06-26/visualisations/listings.csv",
+          "snapshot": "2026-06-26",
+          "n": 202,
+          "rule": "min28",
+          "medianNightlyLocal": 83,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 2814,
+          "sha256": "6afc6f5baac1df7c8f52e3bf4a5828e1fe56a2e9d5443181705f674dc857fad4"
+        },
+        {
+          "cityId": "stockholm-swe",
+          "url": "https://data.insideairbnb.com/sweden/stockholms-län/stockholm/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 63,
+          "rule": "min28",
+          "medianNightlyLocal": 554,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 9.8207
+          },
+          "monthlyUsd": 1692,
+          "sha256": "d7d862ed1001312cc6a8f2577c0beafe989205f5e370677e8b0ac7fd7bd830fa"
+        },
+        {
+          "cityId": "bangkok-tha",
+          "url": "https://data.insideairbnb.com/thailand/central-thailand/bangkok/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 4745,
+          "rule": "min28",
+          "medianNightlyLocal": 1083,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 32.8828
+          },
+          "monthlyUsd": 988,
+          "sha256": "36e41105baa3eab796682753ce174eb4cc018ea1ed0f3d2ca586d79743762a15"
+        },
+        {
+          "cityId": "amsterdam-nld",
+          "url": "https://data.insideairbnb.com/the-netherlands/north-holland/amsterdam/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 51,
+          "rule": "min28",
+          "medianNightlyLocal": 95,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 3220,
+          "sha256": "2693f85339e21983b8928c8d275b3c549c4666b08abdc63398f81028926ba510"
+        },
+        {
+          "cityId": "rotterdam-nld",
+          "url": "https://data.insideairbnb.com/the-netherlands/south-holland/rotterdam/2026-06-28/visualisations/listings.csv",
+          "snapshot": "2026-06-28",
+          "n": 74,
+          "rule": "min7",
+          "medianNightlyLocal": 122.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 4153,
+          "sha256": "587478fccf09276df4c6bb74a4ccc50fd87f36eedb69bd2b0f3a39c860eb4035"
+        },
+        {
+          "cityId": "the-hague-nld",
+          "url": "https://data.insideairbnb.com/the-netherlands/south-holland/the-hague/2026-06-28/visualisations/listings.csv",
+          "snapshot": "2026-06-28",
+          "n": 83,
+          "rule": "min7",
+          "medianNightlyLocal": 259,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.885
+          },
+          "monthlyUsd": 8780,
+          "sha256": "fc16b538137c6995431ea10c68d2e23bb08d06d24ac17c136a080ecc46f7b70f"
+        },
+        {
+          "cityId": "istanbul-tur",
+          "url": "https://data.insideairbnb.com/turkey/marmara/istanbul/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 5281,
+          "rule": "min28",
+          "medianNightlyLocal": 864,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 39.4548
+          },
+          "monthlyUsd": 657,
+          "sha256": "54944d4c9c8f0bbfeabd4306639b08fe8d6414919b3bde9bf143b4d8b674370d"
+        },
+        {
+          "cityId": "bristol-gbr",
+          "url": "https://data.insideairbnb.com/united-kingdom/england/bristol/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 134,
+          "rule": "min7",
+          "medianNightlyLocal": 155.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.7595
+          },
+          "monthlyUsd": 6142,
+          "sha256": "442eb12b4fb4c3130e5f793cbe71a17b608a9dc3560c95c2b0c69326f8559343"
+        },
+        {
+          "cityId": "london-gbr",
+          "url": "https://data.insideairbnb.com/united-kingdom/england/london/2026-06-19/visualisations/listings.csv",
+          "snapshot": "2026-06-19",
+          "n": 1181,
+          "rule": "min28",
+          "medianNightlyLocal": 161,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.7595
+          },
+          "monthlyUsd": 6360,
+          "sha256": "ba29c1032bae03d10d1c5c2ae248de64d8f76b1468a08af76e50af310e24519d"
+        },
+        {
+          "cityId": "edinburgh-gbr",
+          "url": "https://data.insideairbnb.com/united-kingdom/scotland/edinburgh/2026-06-23/visualisations/listings.csv",
+          "snapshot": "2026-06-23",
+          "n": 30,
+          "rule": "min28",
+          "medianNightlyLocal": 148,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 0.7595
+          },
+          "monthlyUsd": 5846,
+          "sha256": "7cdcc231d50ee6afa9380311f71ce397e567dc5485712b2a5fcecd8d557f938b"
+        },
+        {
+          "cityId": "los-angeles-usa",
+          "url": "https://data.insideairbnb.com/united-states/ca/los-angeles/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 12654,
+          "rule": "min28",
+          "medianNightlyLocal": 178,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 5340,
+          "sha256": "16007ed61afb75ffe44a69e7296bd50a71d61b2cce7cf885eb9d71d1dbd6f289"
+        },
+        {
+          "cityId": "oakland-usa",
+          "url": "https://data.insideairbnb.com/united-states/ca/oakland/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 164,
+          "rule": "min28",
+          "medianNightlyLocal": 113,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3390,
+          "sha256": "26419c46d8516fe901963ef8c003161e3348c91563d756b218bd3d4b53110dc0"
+        },
+        {
+          "cityId": "san-diego-usa",
+          "url": "https://data.insideairbnb.com/united-states/ca/san-diego/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 2522,
+          "rule": "min28",
+          "medianNightlyLocal": 165,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 4950,
+          "sha256": "e8dd724723d6f3f5a6e38396f5ada56287839f8db12d5f7e382585566635a5a3"
+        },
+        {
+          "cityId": "san-francisco-usa",
+          "url": "https://data.insideairbnb.com/united-states/ca/san-francisco/2026-06-14/visualisations/listings.csv",
+          "snapshot": "2026-06-14",
+          "n": 1503,
+          "rule": "min28",
+          "medianNightlyLocal": 197,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 5910,
+          "sha256": "7e8921ff56d7b5d321f131c16c8bd64bbb23c92c4eaf905af75c6ac2635a4c50"
+        },
+        {
+          "cityId": "denver-usa",
+          "url": "https://data.insideairbnb.com/united-states/co/denver/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 1661,
+          "rule": "min28",
+          "medianNightlyLocal": 114,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3420,
+          "sha256": "cca3cd21f75d8aa99ee1b02637945ac2a259fb9a45e56669f7b504b1b1af036a"
+        },
+        {
+          "cityId": "washington-d-c-usa",
+          "url": "https://data.insideairbnb.com/united-states/dc/washington-dc/2026-06-24/visualisations/listings.csv",
+          "snapshot": "2026-06-24",
+          "n": 1120,
+          "rule": "min28",
+          "medianNightlyLocal": 140,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 4200,
+          "sha256": "7dc89c4f364c8d1742b24603c7195c6f70394ddebf3e787afb2367c48a32dff4"
+        },
+        {
+          "cityId": "chicago-usa",
+          "url": "https://data.insideairbnb.com/united-states/il/chicago/2026-06-24/visualisations/listings.csv",
+          "snapshot": "2026-06-24",
+          "n": 1576,
+          "rule": "min28",
+          "medianNightlyLocal": 175,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 5250,
+          "sha256": "c739f7e853df53bb1f8f89364dca11b54adb7dfe09fc8330467cf0eaef0cd724"
+        },
+        {
+          "cityId": "new-orleans-usa",
+          "url": "https://data.insideairbnb.com/united-states/la/new-orleans/2026-06-16/visualisations/listings.csv",
+          "snapshot": "2026-06-16",
+          "n": 2044,
+          "rule": "min28",
+          "medianNightlyLocal": 115,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3450,
+          "sha256": "621c8d0d9aa36d12229df156aaef523efa6d1142e9b4970eeec68b9862eaffd5"
+        },
+        {
+          "cityId": "boston-usa",
+          "url": "https://data.insideairbnb.com/united-states/ma/boston/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 791,
+          "rule": "min28",
+          "medianNightlyLocal": 220,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 6600,
+          "sha256": "b04b5d52505fcdbb8990d26af5651e61de98cb5b5190da6b91a0a532f00c2588"
+        },
+        {
+          "cityId": "asheville-usa",
+          "url": "https://data.insideairbnb.com/united-states/nc/asheville/2026-06-25/visualisations/listings.csv",
+          "snapshot": "2026-06-25",
+          "n": 242,
+          "rule": "min28",
+          "medianNightlyLocal": 112,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3360,
+          "sha256": "5d817d73b8421cfbba1057aeba901207fe17bc6cd544affb2e79477550eb3f78"
+        },
+        {
+          "cityId": "newark-usa",
+          "url": "https://data.insideairbnb.com/united-states/nj/newark/2026-06-30/visualisations/listings.csv",
+          "snapshot": "2026-06-30",
+          "n": 100,
+          "rule": "min28",
+          "medianNightlyLocal": 136.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 4095,
+          "sha256": "c043860f493f7bd13184c58b4e9bf60283f934f89bafdc719eb38e9cdd4ae07f"
+        },
+        {
+          "cityId": "albany-usa",
+          "url": "https://data.insideairbnb.com/united-states/ny/albany/2026-06-16/visualisations/listings.csv",
+          "snapshot": "2026-06-16",
+          "n": 38,
+          "rule": "min7",
+          "medianNightlyLocal": 107.5,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3225,
+          "sha256": "15bb443d7e589a49cc20bcc3ab3ecbbc715a12d2fc505da31d363d5dee8ad3bd"
+        },
+        {
+          "cityId": "new-york-usa",
+          "url": "https://data.insideairbnb.com/united-states/ny/new-york-city/2026-06-14/visualisations/listings.csv",
+          "snapshot": "2026-06-14",
+          "n": 9942,
+          "rule": "min28",
+          "medianNightlyLocal": 202,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 6060,
+          "sha256": "e42f8f897a4ed89d489e703dc462d314f5aa98912cca6637c988c99f5490caba"
+        },
+        {
+          "cityId": "rochester-usa",
+          "url": "https://data.insideairbnb.com/united-states/ny/rochester/2026-06-27/visualisations/listings.csv",
+          "snapshot": "2026-06-27",
+          "n": 95,
+          "rule": "min28",
+          "medianNightlyLocal": 86,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 2580,
+          "sha256": "b605c3cb36888b26294927042375e99326b7fccd6df84ee02e91ad2c4f3d4ff0"
+        },
+        {
+          "cityId": "columbus-ohio-usa",
+          "url": "https://data.insideairbnb.com/united-states/oh/columbus/2026-06-29/visualisations/listings.csv",
+          "snapshot": "2026-06-29",
+          "n": 635,
+          "rule": "min28",
+          "medianNightlyLocal": 104,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3120,
+          "sha256": "9a55e2e9016b90afd9f5e40ac5e84ff139ff15974d8eb5bcc8183a9cb2293b2d"
+        },
+        {
+          "cityId": "portland-usa",
+          "url": "https://data.insideairbnb.com/united-states/or/portland/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 1077,
+          "rule": "min28",
+          "medianNightlyLocal": 114,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3420,
+          "sha256": "7c9a26c4e9fc6e29596c473488c527432d1ac1d0fd17dfd6ea0ff98a10dbb16d"
+        },
+        {
+          "cityId": "salem-oregon-usa",
+          "url": "https://data.insideairbnb.com/united-states/or/salem-or/2026-06-28/visualisations/listings.csv",
+          "snapshot": "2026-06-28",
+          "n": 56,
+          "rule": "min28",
+          "medianNightlyLocal": 121,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3630,
+          "sha256": "d3f35f2c59591e335b25ce153eed7b522187d8cc412366a464a10e85f3e1a8e6"
+        },
+        {
+          "cityId": "nashville-usa",
+          "url": "https://data.insideairbnb.com/united-states/tn/nashville/2026-06-26/visualisations/listings.csv",
+          "snapshot": "2026-06-26",
+          "n": 978,
+          "rule": "min28",
+          "medianNightlyLocal": 121,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3630,
+          "sha256": "9624b5ea8c3e4d9adfcb1d6e21d7f50fb39c09ae271032e41dfa5179b9e4bde1"
+        },
+        {
+          "cityId": "austin-usa",
+          "url": "https://data.insideairbnb.com/united-states/tx/austin/2026-06-22/visualisations/listings.csv",
+          "snapshot": "2026-06-22",
+          "n": 1131,
+          "rule": "min28",
+          "medianNightlyLocal": 105,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3150,
+          "sha256": "cb2792edc452c98a0f13c4562b898bb2af9f5c9c4fea3c4a30db72144296b6e2"
+        },
+        {
+          "cityId": "dallas-usa",
+          "url": "https://data.insideairbnb.com/united-states/tx/dallas/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 442,
+          "rule": "min28",
+          "medianNightlyLocal": 109,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3270,
+          "sha256": "cf3e3dcf4702e3a7dd5b34771e1ea9da71c88b45aa297c4601d00bbe4870e40f"
+        },
+        {
+          "cityId": "ft-worth-usa",
+          "url": "https://data.insideairbnb.com/united-states/tx/fort-worth/2026-06-21/visualisations/listings.csv",
+          "snapshot": "2026-06-21",
+          "n": 369,
+          "rule": "min28",
+          "medianNightlyLocal": 126,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 3780,
+          "sha256": "33c318b27428ccea986310fcf803c0c6981d5bba049dc879dbda6515b4d6369f"
+        },
+        {
+          "cityId": "seattle-usa",
+          "url": "https://data.insideairbnb.com/united-states/wa/seattle/2026-06-15/visualisations/listings.csv",
+          "snapshot": "2026-06-15",
+          "n": 1015,
+          "rule": "min28",
+          "medianNightlyLocal": 139,
+          "fx": {
+            "year": 2025,
+            "lcuPerUsd": 1
+          },
+          "monthlyUsd": 4170,
+          "sha256": "5158743c81bc589528bc70a7248092fe9c6e6276fa7cf362c48ccbf9a9c374b0"
+        }
+      ],
+      "skipped": [
+        "australia/nsw/mid-north-coast (no matching pack city)",
+        "australia/nsw/northern-rivers (no matching pack city)",
+        "australia/sa/barossa-valley (no matching pack city)",
+        "australia/tas/tasmania (no matching pack city)",
+        "australia/vic/barwon-south-west-vic (no matching pack city)",
+        "australia/vic/mornington-peninsula (no matching pack city)",
+        "australia/wa/western-australia (no matching pack city)",
+        "belize/bz/belize (region dataset)",
+        "canada/nb/new-brunswick (no matching pack city)",
+        "france/pyrénées-atlantiques/pays-basque (region dataset)",
+        "greece/crete/crete (no matching pack city)",
+        "greece/south-aegean/south-aegean (region dataset)",
+        "italy/puglia/puglia (no matching pack city)",
+        "italy/sicilia/sicily (no matching pack city)",
+        "italy/trentino-alto-adige-südtirol/trentino (region dataset)",
+        "spain/islas-baleares/mallorca (no matching pack city)",
+        "spain/islas-baleares/menorca (no matching pack city)",
+        "spain/pv/euskadi (region dataset)",
+        "switzerland/geneva/geneva (only 0 qualifying listings)",
+        "switzerland/vd/vaud (no matching pack city)",
+        "switzerland/zürich/zurich (only 0 qualifying listings)",
+        "taiwan/northern-taiwan/taipei (no World Bank exchange rate for TWN)",
+        "united-kingdom/england/greater-manchester (region dataset)",
+        "united-states/ca/pacific-grove (no matching pack city)",
+        "united-states/ca/san-mateo-county (region dataset)",
+        "united-states/ca/santa-clara-county (region dataset)",
+        "united-states/ca/santa-cruz-county (region dataset)",
+        "united-states/fl/broward-county (region dataset)",
+        "united-states/hi/hawaii (no matching pack city)",
+        "united-states/ma/cambridge (no matching pack city)",
+        "united-states/mn/twin-cities-msa (region dataset)",
+        "united-states/mt/bozeman (no matching pack city)",
+        "united-states/nj/jersey-city (no matching pack city)",
+        "united-states/nv/clark-county-nv (region dataset)",
+        "united-states/ri/rhode-island (no matching pack city)"
+      ]
+    },
+    "housingModel": {
+      "formula": "ln(monthlyUsd) = a + b·ln(countryPriceLevel) + c·ln(max(pop, 1000)) + d·capital",
+      "coefficients": {
+        "a": 8.551,
+        "b": 1.1182,
+        "c": -0.0292,
+        "d": 0.0233
+      },
+      "fittedOn": 85,
+      "r2": 0.34,
+      "looMedianAbsPctError": 27.5,
+      "note": "Predicts monthly housing for every city without an Inside Airbnb median. Fitted on Inside Airbnb cities, which skew large and high-income."
     }
-  }
+  },
+  "anomalies": [
+    "FCRF BGR rebased to EUR (÷1.95583) to match PA.NUS.PRVT.PP",
+    "priceLevel IRN 2.109 (2023) outside 0.05-2: dropped",
+    "priceLevel LBR 0.003 (2024) outside 0.05-2: dropped",
+    "priceLevel ZWE 0.000 (2021) outside 0.05-2: dropped"
+  ]
 }

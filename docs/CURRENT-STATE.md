@@ -3776,9 +3776,10 @@ city pack.
   tile, LIFESTYLE PLANNING, opens ATLAS directly and closes once it is
   entered. Voice: `rank_cities`, `compare_cities`, `show_city_intel`,
   `plan_lifestyle`.
-- **Ranking.** `src/layers/cityIntel/scoring.js` scores 2,480 bundled cities
+- **Ranking.** `src/layers/cityIntel/scoring.js` scores 7,903 bundled cities
   on four pillars (quality of life, cost, safety, travel ease) by
-  direction-aware percentile rank; weight sliders re-rank and recolor the
+  direction-aware percentile rank; three metrics are city-level (airport
+  access, mean climate comfort, monthly housing) and seven national; weight sliders re-rank and recolor the
   globe live. A city is **ranked** only when Safety is available and at
   least 3 of 4 pillars are (`safety-unavailable` / `insufficient-pillars`
   otherwise); ineligible cities still render on the globe and in the
@@ -3793,7 +3794,8 @@ city pack.
   city, start month, length, may wrap past December) stored as a single
   `kind: 'plan'` trip in `tripStore`, drawn with the Trips arcs. Each stay
   shows fit under the current weights, cost as a ×home price-level ratio
-  then an optional dollar estimate (home spend × ratio) or a manual
+  (35 % of it from the stay/home city housing ratio when both cities have
+  housing) then an optional dollar estimate (home spend × ratio) or a manual
   override, a monthly seasonality heatmap from NASA POWER climatology,
   safety, and a visa-days-exceeded flag once a passport is set. The yearly
   rollup reports months covered, weighted fit and comfort, cost (partial
@@ -3815,25 +3817,47 @@ city pack.
   - `GET /api/city-intel/air?lat&lon` — Open-Meteo air quality, current
     PM2.5/AQI, scorecard display only, 1 h cache.
 - **Data pack** (`src/data/local_data/city_intel/{cities,countries,seasonality,source}.json`,
-  1.77 MB): 2,480 cities (population ≥ 150k) across 171 countries. Built by
-  `node scripts/build-city-intel.mjs` from Natural Earth 10m populated
-  places + 110m admin-0 (public domain), OurAirports (public domain), World
-  Bank WDI/WGI (CC BY 4.0) and NASA POWER monthly climatology 2001–2020
-  (public, acknowledgement requested); deterministic output, pinned source
-  SHAs and hashes recorded in `source.json`. See `DATA_SOURCES.md`.
+  1.97 MB uncompressed (~700 KB gzipped), fetched lazily when City Intel first loads, not in the
+  main bundle): 7,903 cities across 185 countries — GeoNames places with
+  population ≥ 50k (a place within 20 km of a more populous city in the same
+  country is dropped as its suburb; capitals, curated towns and saved ids
+  exempt), 39 curated lifestyle towns (Tulum, Kotor, Ericeira, Pai…),
+  Ubud kept as a curated town despite its 22 km to Denpasar, Canggu as a manual record, and every id of the earlier 2,480-city pack
+  (2,466 matched to GeoNames, 14 carried over as-is, so saved pins, home
+  city and plan stays still resolve). `cities.json` is compact rows and
+  `seasonality.json` is v3 (5,875 NASA POWER grid cells + city → cell map);
+  `source.js` decodes both on load. Housing: Inside Airbnb medians for 85
+  cities (entire homes, 28+ night minimum), a log-linear model elsewhere.
+  Built by `node scripts/build-city-intel.mjs` from GeoNames (CC BY 4.0,
+  download date + sha256), Natural Earth 110m admin-0 (public domain),
+  OurAirports (public domain), World Bank WDI/WGI (CC BY 4.0), NASA POWER
+  monthly climatology 2001–2020 (public, acknowledgement requested; 396
+  regional-tile calls) and Inside Airbnb (CC BY 4.0); pinned SHAs, dates and
+  hashes plus the housing model fit are recorded in `source.json`. See
+  `DATA_SOURCES.md`.
 - **Tests.** `src/layers/cityIntel/{scoring,source,panel,plan,planView,scorecard,index}.test.mjs`,
   `src/data/{cityIntelPack,cityIntelProxy}.test.mjs`, `src/ui/cityIntelMode.test.mjs`,
   `src/voice/cityIntelActions.test.mjs`, `src/travel/{geo,seasonality,citySearch,
   tripColors,tripStore,briefing}.test.mjs`, `src/layers/trips/index.test.mjs`.
-- **Known limits.** Six of eight scoring metrics are national, so most cities
-  in one country score near-identically (country grouping keeps this
-  visible; only airport access differentiates them). Zillow rent is
-  US-only. The Schengen-wide 90/180 rule is not modelled — only a flat
-  visa-free-days check per stay. The 150k population floor misses small
-  lifestyle towns not in Natural Earth at all, or below it (Tulum, Ubud,
-  Boulder, Asheville). Open-Meteo's air-quality API free tier is
-  non-commercial only; NASA POWER and Natural Earth both ask for
-  attribution, carried in `DATA_SOURCES.md` and `src/data/dataCredits.js`.
+- **Known limits.** Seven of ten scoring metrics are still national (life
+  expectancy, internet use, PM2.5, price level, homicides, political
+  stability, visa), so safe, cheap countries with many cities (Malaysia)
+  fill the top of the flat list; country grouping keeps this visible.
+  Housing is observed for only 85 cities (Airbnb mid-term prices, skewed to
+  large high-income cities); everywhere else it is a model estimate (R²
+  0.34, median leave-one-out error 28 %) that mostly follows the country
+  price level. Climate uses NASA POWER's ~55 km grid cell, not the town's
+  microclimate. Small towns are in only if GeoNames lists 50k+ people or
+  they are on the hand-curated `EXTRA_TOWNS` list (no open "destination"
+  signal exists); Canggu is a manual record with unknown population. 14
+  legacy Natural Earth records (some misplaced or duplicated upstream) are
+  kept only so their ids resolve. Zillow rent is US-only and display-only.
+  The Schengen 90/180 rule is checked across all Schengen stays on 30-day
+  months (free-movement passports exempt); bilateral agreements and
+  national long-stay visas are not modelled. Open-Meteo's air-quality API
+  free tier is non-commercial only; NASA POWER, Natural Earth, GeoNames and
+  Inside Airbnb ask for attribution, carried in `DATA_SOURCES.md` and
+  `src/data/dataCredits.js`.
 
 ### Not Currently in Runtime
 

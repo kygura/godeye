@@ -20,3 +20,8 @@
   time is interpolated between the frames whose decoded position equals a
   dump1090 fix, timed as dump1090's `now − seen_pos`. Used by the decoder's
   category, speed-check and track-accuracy tests; never loaded at runtime.
+- `city-intel-v1-ids.json` — the 2,480 city ids of the first City Intel pack
+  (Natural Earth, before the GeoNames rebuild), sorted. Users store these ids
+  in localStorage (pins, home city, plan stays), so `cityIntelPack.test.mjs`
+  asserts every one still resolves in the current `cities.json`. Never loaded
+  at runtime.

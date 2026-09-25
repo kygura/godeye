@@ -627,6 +627,15 @@ export async function planLifestyle(cityIntel, args = {}, runOptions = {}) {
             : (r.annualCost?.label ?? null),
           moves: r.moves,
           km: r.km,
+          ...(r.schengen?.applies
+            ? {
+                schengen: {
+                  maxDaysIn180: r.schengen.maxDaysIn180,
+                  limit: r.schengen.limit,
+                  exceeds: r.schengen.exceeds,
+                },
+              }
+            : {}),
         }
       : null;
 

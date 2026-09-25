@@ -239,8 +239,10 @@ There is no second store, so the Trips layer draws the plan's arcs as-is. Each n
   now covers every pack city (see below); a missing city shows as unavailable.
 - **Safety:** the safety pillar with its coverage, plus the advisory badge.
 - **Visa:** if a passport is set and the destination's visa-free days are known, a stay
-  longer than that allowance is flagged "stay exceeds visa-free days (N)". The
-  Schengen-wide 90/180 rule is out of scope for v1 and the view says so.
+  longer than that allowance is flagged "stay exceeds visa-free days (N)". Schengen stays
+  are instead checked together against 90 days in any rolling 180 (30-day months, cycle
+  wraps past December; EU/EEA/CH passports exempt), shown as a rollup row. Bilateral
+  agreements and national long-stay visas are not modelled and the view says so.
 
 **Rollup:**
 

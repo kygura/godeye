@@ -26,6 +26,61 @@ const VISA_LEVELS = {
   'no admission': 0,
 };
 const OWN_COUNTRY_LEVEL = 5;
+
+/**
+ * City-level metrics scored alongside the country indicators (ranked across
+ * cities, like airport access). `source` for housing depends on the city's
+ * data origin, see `housingSource`.
+ */
+export const CITY_METRICS = Object.freeze({
+  climate: Object.freeze({
+    pillar: 'qol',
+    direction: 'higher',
+    label: 'Climate comfort',
+    unit: 'comfort 0-100',
+    source: 'NASA POWER',
+    derived: true,
+  }),
+  housing: Object.freeze({
+    pillar: 'cost',
+    direction: 'lower',
+    label: 'Housing',
+    unit: 'USD / month',
+    source: 'Inside Airbnb',
+    derived: false,
+  }),
+});
+
+/**
+ * Where a city's housing number comes from, as the scorecard shows it.
+ * @param {{src: string, rule?: string}|null|undefined} housing
+ * @returns {string|null}
+ */
+export function housingSource(housing) {
+  if (housing?.src === 'insideairbnb')
+    return `Inside Airbnb median · entire homes · ${housing.rule === 'min7' ? '7' : '28'}+ nights`;
+  if (housing?.src === 'model')
+    return 'Estimate · country price level + city size';
+  return null;
+}
+
+/**
+ * Mean monthly comfort (0-100, one decimal) over the months with a score, or
+ * null when the row is missing or has none.
+ * @param {{months?: Array<{score: number}>}|undefined} row
+ * @returns {number|null}
+ */
+export function meanComfortScore(row) {
+  const months = row?.months;
+  if (!Array.isArray(months) || months.length !== 12) return null;
+  // Same rule as plan.js stayComfort: average the known months only.
+  const known = months
+    .map((m) => m?.score)
+    .filter((score) => Number.isFinite(score));
+  if (!known.length) return null;
+  const sum = known.reduce((total, score) => total + score, 0);
+  return Math.round((sum / known.length) * 10) / 10;
+}
 const VISA_META = {
   label: 'Visa access',
   unit: 'access level 0-5',
@@ -163,7 +218,7 @@ function compareScored(a, b) {
  * @property {string} source
  * @property {boolean} derived
  * @property {'ok'|'missing'|'stale'|'no-passport'} status
- * @property {*} detail airport record or visa requirement; null for indicators
+ * @property {*} detail airport record, visa requirement or housing record; null for indicators and climate
  */
 
 /**
@@ -181,13 +236,14 @@ function compareScored(a, b) {
  * Build a scoring index for one City Intel pack. Country and city percentiles are
  * computed here once; `score` only re-weights, so slider drags stay cheap.
  * Returned objects share frozen pillar data; do not mutate them.
- * @param {{ cities: object[], countries: { buildYear: number, maxAgeYears: number, indicators: object, countries: object } }} pack
+ * @param {{ cities: object[], countries: { buildYear: number, maxAgeYears: number, indicators: object, countries: object }, seasonality?: { cities?: Record<string, {months: Array<{score: number}>}> } }} pack
+ *   `seasonality` feeds the city-level climate metric; absent = climate missing.
  * @returns {{
  *   score: (weights: {qol: number, cost: number, safety: number, travel: number}, context?: { visa?: object|null }) => ScoredCity[],
  *   rank: (scored: ScoredCity[], options?: RankOptions) => { groups: Array<{ iso3: string, country: string, cities: ScoredCity[] }> } | { rows: ScoredCity[] },
  * }}
  */
-export function createCityIntelIndex({ cities, countries } = {}) {
+export function createCityIntelIndex({ cities, countries, seasonality } = {}) {
   if (!Array.isArray(cities)) throw new TypeError('cities must be an array');
   const {
     buildYear,
@@ -225,9 +281,9 @@ export function createCityIntelIndex({ cities, countries } = {}) {
       return [key, percentileRanks(entries, meta.direction)];
     }),
   );
-  const countryPillarCache = new Map();
-  const countryPillars = (iso3) => {
-    if (!countryPillarCache.has(iso3)) {
+  const countryMetricCache = new Map();
+  const countryMetrics = (iso3) => {
+    if (!countryMetricCache.has(iso3)) {
       const byPillar = { qol: [], cost: [], safety: [] };
       for (const [key, meta] of scored) {
         const value = readMetric(iso3, key);
@@ -242,15 +298,44 @@ export function createCityIntelIndex({ cities, countries } = {}) {
           }),
         );
       }
-      countryPillarCache.set(
-        iso3,
-        Object.fromEntries(
-          COUNTRY_PILLARS.map((p) => [p, pillar(byPillar[p])]),
-        ),
-      );
+      countryMetricCache.set(iso3, byPillar);
     }
-    return countryPillarCache.get(iso3);
+    return countryMetricCache.get(iso3);
   };
+
+  // City metrics: climate comfort (qol) and housing (cost), ranked across cities.
+  const cityMetricRows = (key, rawOf, metaOf, detailOf) => {
+    const raws = cities.map(rawOf);
+    const pcts = percentileRanks(
+      raws.flatMap((v, i) => (v === null ? [] : [[i, v]])),
+      CITY_METRICS[key].direction,
+    );
+    return cities.map((city, i) =>
+      metric(key, metaOf(city), {
+        level: 'city',
+        raw: raws[i],
+        pct: raws[i] === null ? null : pcts.get(i),
+        status: raws[i] === null ? 'missing' : 'ok',
+        detail: raws[i] === null ? null : detailOf(city),
+      }),
+    );
+  };
+  const climateMetrics = cityMetricRows(
+    'climate',
+    (city) => meanComfortScore(seasonality?.cities?.[city.id]),
+    () => CITY_METRICS.climate,
+    () => null,
+  );
+  const housingMetrics = cityMetricRows(
+    'housing',
+    (city) => (Number.isFinite(city.housing?.usd) ? city.housing.usd : null),
+    (city) => ({
+      ...CITY_METRICS.housing,
+      source: housingSource(city.housing) ?? CITY_METRICS.housing.source,
+      derived: city.housing?.src === 'model',
+    }),
+    (city) => city.housing,
+  );
 
   // City metric: airport access ranked across cities.
   const access = cities.map((city) => airportAccess(city.airport));
@@ -315,13 +400,20 @@ export function createCityIntelIndex({ cities, countries } = {}) {
     if (rows && visa === rowsVisa) return rows;
     const visaMetric = visaMetricsFor(visa);
     rows = cities.map((city, i) => {
+      const country = countryMetrics(city.iso3);
       const pillars = Object.freeze({
-        ...countryPillars(city.iso3),
+        qol: pillar([...country.qol, climateMetrics[i]]),
+        cost: pillar([...country.cost, housingMetrics[i]]),
+        safety: pillar(country.safety),
         travel: pillar([airportMetrics[i], visaMetric(city.iso3)]),
       });
       const scores = PILLARS.map((p) => pillars[p].score);
       const pillarsAvailable = scores.filter((s) => s !== null).length;
-      const cityLevelMetrics = airportMetrics[i].pct === null ? 0 : 1;
+      const cityLevelMetrics = [
+        airportMetrics[i],
+        climateMetrics[i],
+        housingMetrics[i],
+      ].filter((m) => m.pct !== null).length;
       const reason =
         pillars.safety.score === null
           ? 'safety-unavailable'

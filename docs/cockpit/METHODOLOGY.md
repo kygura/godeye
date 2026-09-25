@@ -11,18 +11,21 @@ reviewers who want to check the method. The implementation is
 
 The composite score has four pillars. Each pillar is built from the metrics below.
 
-| Pillar          | Metric                                      | Level   | Better when | Source                                          |
-| --------------- | ------------------------------------------- | ------- | ----------- | ----------------------------------------------- |
-| Quality of life | Life expectancy at birth                    | country | higher      | World Bank WDI `SP.DYN.LE00.IN`                 |
-| Quality of life | Internet users, % of population             | country | higher      | World Bank WDI `IT.NET.USER.ZS`                 |
-| Quality of life | Mean annual PM2.5 exposure                  | country | lower       | World Bank WDI `EN.ATM.PM25.MC.M3`              |
-| Cost            | Price level relative to the US (derived)    | country | lower       | World Bank WDI `PA.NUS.PRVT.PP` ÷ `PA.NUS.FCRF` |
-| Safety          | Intentional homicides per 100k              | country | lower       | World Bank WDI `VC.IHR.PSRC.P5`                 |
-| Safety          | Political stability and absence of violence | country | higher      | World Bank WGI `GOV_WGI_PV.EST`                 |
-| Travel ease     | Airport access (derived)                    | city    | higher      | OurAirports                                     |
-| Travel ease     | Visa access for your passport (derived)     | country | higher      | passport-index-dataset (live)                   |
+| Pillar          | Metric                                       | Level   | Better when | Source                                          |
+| --------------- | -------------------------------------------- | ------- | ----------- | ----------------------------------------------- |
+| Quality of life | Life expectancy at birth                     | country | higher      | World Bank WDI `SP.DYN.LE00.IN`                 |
+| Quality of life | Internet users, % of population              | country | higher      | World Bank WDI `IT.NET.USER.ZS`                 |
+| Quality of life | Mean annual PM2.5 exposure                   | country | lower       | World Bank WDI `EN.ATM.PM25.MC.M3`              |
+| Quality of life | Climate comfort, mean of 12 months (derived) | city    | higher      | NASA POWER climatology 2001–2020                |
+| Cost            | Price level relative to the US (derived)     | country | lower       | World Bank WDI `PA.NUS.PRVT.PP` ÷ `PA.NUS.FCRF` |
+| Cost            | Monthly housing, USD                         | city    | lower       | Inside Airbnb median, else a model (derived)    |
+| Safety          | Intentional homicides per 100k               | country | lower       | World Bank WDI `VC.IHR.PSRC.P5`                 |
+| Safety          | Political stability and absence of violence  | country | higher      | World Bank WGI `GOV_WGI_PV.EST`                 |
+| Travel ease     | Airport access (derived)                     | city    | higher      | OurAirports                                     |
+| Travel ease     | Visa access for your passport (derived)      | country | higher      | passport-index-dataset (live)                   |
 
-World Bank data is CC BY 4.0, OurAirports is public domain. The visa data is fetched at
+World Bank, GeoNames and Inside Airbnb data are CC BY 4.0, OurAirports and NASA POWER are
+public. The visa data is fetched at
 runtime and never bundled, because its upstream terms are unclear. "Derived" means the
 value is computed from source data rather than published as-is; the scorecard says so.
 
@@ -43,6 +46,36 @@ A city with **no** qualifying airport within 100 km scores 0. That is a fact the
 builder checked against the full OurAirports list, not a gap in the data, so it counts
 as the lowest access rather than as missing. Only a city whose airport field was never
 filled in (or holds an unknown airport type) is treated as missing.
+
+### Climate comfort
+
+Each month gets a comfort score from 0 to 100: full marks for a mean temperature of
+18–26 °C, falling off linearly to 0 at −5 °C and 40 °C, minus up to 35 points for rain
+(from 30 mm to 250 mm a month). The metric is the plain mean of the 12 monthly scores, so
+it rewards places that are pleasant most of the year. The data is NASA POWER's monthly
+climatology on its 0.5° × 0.625° grid (about 55 × 60 km at the equator); each city uses
+its grid cell, so a coastal town next to mountains gets the cell's average, not its own
+microclimate. The monthly strip in the scorecard and plan heatmap still shows every
+month, because which months suit you depends on when you stay.
+
+### Housing
+
+Housing is the monthly cost of a furnished short-stay home, in US dollars:
+
+- **Inside Airbnb median (85 cities).** The latest listings summary for the city,
+  entire homes only, minimum stay of 28 nights or more (7 or more when fewer than 30
+  listings qualify; the scorecard says which rule applied), median nightly price × 30.
+  Local prices are converted with the latest World Bank exchange rate. This is what
+  mid-term furnished rentals cost on Airbnb, not a long-term lease, and it is usually
+  higher than local rents.
+- **Estimate (every other city with a country price level).** A log-linear fit on the
+  observed cities:
+  `ln(housing) = a + b·ln(country price level) + c·ln(population) + d·capital`.
+  Fit and error are in `src/data/local_data/city_intel/source.json` (R² 0.34, median
+  leave-one-out error 28 %). In practice it is the country price level with a small
+  size and capital adjustment, so it separates cities in one country only a little,
+  and it cannot see local premiums (beach towns, tech hubs).
+- Cities in countries without a price level have no housing value.
 
 ### Visa access
 
@@ -75,7 +108,8 @@ Metrics use different units, so each one is converted to a 0 to 100 score by
 - **Country-level metrics are ranked once across countries** that have the metric, and
   that score is then copied to every city in the country. A country with 60 cities in the
   pack counts once, exactly like a country with one city.
-- **City-level metrics** (airport access) are ranked across cities.
+- **City-level metrics** (airport access, climate comfort, housing) are ranked across
+  cities.
 - Visa access is ranked across the countries that have a known requirement for your
   passport, and is re-ranked when you change passport.
 
@@ -135,14 +169,12 @@ nothing; the panel says the advisory data is unavailable.
 
 ## Shown, but not scored
 
-- **Climate comfort** is monthly comfort from NASA POWER climatology (2001–2020) for
-  every pack city. It is a seasonal signal, and whether a climate suits someone depends on
-  the months they stay, so it is not in the composite. It appears in the scorecard, the
-  Lifestyle Plan heatmap and Trips seasonality. `rank_cities` can report it for chosen
-  months.
+- **Monthly climate comfort** (the 12-month strip) is shown per month in the scorecard,
+  the Lifestyle Plan heatmap and Trips seasonality, and `rank_cities` can report it for
+  chosen months. Only its yearly mean is scored (Quality of life, above).
 - **Live air quality** is a current reading, not a long-run average. Scorecard only.
-- **Zillow rent** covers US metros only and cannot share a scale with country price
-  levels. Scorecard and comparison only.
+- **Zillow rent** covers US metros only (long-term rent index, a different measure from
+  the scored housing value). Scorecard and comparison only.
 - **US State Dept advisory level** is a badge and a filter. It largely restates the
   homicide and stability data, it has only 4 levels (so it ties heavily), and US cities
   have no US advisory.
@@ -151,9 +183,21 @@ nothing; the panel says the advisory data is unavailable.
 
 ## Known biases and limits
 
-- **Country-level dominance.** Six of the eight metrics are national, so a small town and
-  a capital in the same country look alike. Only airport access tells them apart today.
-  Country grouping keeps this visible instead of listing 40 near-identical cities.
+- **Country-level dominance.** Seven of the ten metrics are national (life expectancy,
+  internet use, PM2.5, price level, homicides, political stability, visa access). Airport access, climate comfort and housing tell cities in one
+  country apart, but modelled housing mostly follows the country price level, so safe,
+  cheap countries with many cities (Malaysia, for one) still fill the top of the flat
+  list. Country grouping keeps this visible instead of listing 40 near-identical cities.
+- **Housing is Airbnb-priced and mostly modelled.** Only 85 cities have an observed
+  median, skewed to large, high-income cities; everywhere else the number is an estimate
+  with a typical error of about ±28 %.
+- **Which towns are in the pack.** Cities come from GeoNames (population 50,000 and up;
+  a place within 20 km of a bigger city in the same country counts as part of it, so
+  real neighbouring cities such as Pasadena or Salford are folded into Los Angeles and
+  Manchester),
+  plus a hand-picked list of well-known remote-work towns below that size, because no open
+  dataset marks lifestyle destinations. A town missing from that list is missing from the
+  ranking. Canggu is entered by hand (it is in no GeoNames cities file).
 - **Missing not at random.** Handled by the eligibility rule above, at the cost of
   dropping some cities from the ranking.
 - **Percentiles hide distances.** A rank says who is ahead, not by how much. Check the
@@ -162,6 +206,20 @@ nothing; the panel says the advisory data is unavailable.
   about how safe or affordable a city is for a particular person.
 - **Source lag.** World Bank indicators often trail by one to three years; the year of
   every value is shown.
+
+## Lifestyle Plan cost estimate
+
+A plan stay's cost is your monthly spend at home times a ratio. The ratio is the stay
+country's price level over your home country's. When both the stay city and your home
+city have a housing value, 35 % of the ratio comes from their housing ratio instead:
+
+```
+ratio = 0.65 × (stay price level ÷ home price level) + 0.35 × (stay housing ÷ home housing)
+```
+
+The 35 % is a fixed assumption about how much of a budget goes to housing, the same for
+everyone. Without housing on either side the ratio is the price levels alone. Your own
+figure for a stay always replaces the estimate.
 
 ## Reproducibility
 

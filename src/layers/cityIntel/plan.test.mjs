@@ -12,6 +12,7 @@ import {
   updateStay,
   stayMetrics,
   rollup,
+  HOUSING_SHARE,
 } from './plan.js';
 
 // -- monthsOf / spanLabel ----------------------------------------------------
@@ -284,6 +285,38 @@ test('cost: ratio and estimate against the home country price level', () => {
   );
 });
 
+test('cost: blends in the stay/home city housing ratio when both cities have housing', () => {
+  const withHousing = new Map(citiesById);
+  withHousing.set('lisbon-prt', {
+    ...citiesById.get('lisbon-prt'),
+    housing: { usd: 3000, src: 'insideairbnb', n: 600, rule: 'min28' },
+  });
+  withHousing.set('nyc-usa', {
+    ...citiesById.get('nyc-usa'),
+    housing: { usd: 6000, src: 'insideairbnb', n: 9000, rule: 'min28' },
+  });
+  const m = stayMetrics(
+    { id: 's1', cityId: 'lisbon-prt', start: 1, len: 2 },
+    baseCtx({ citiesById: withHousing }),
+  );
+  assert.equal(HOUSING_SHARE, 0.35);
+  assert.equal(m.cost.basis, 'estimate', 'same result kind as before');
+  assert.equal(m.cost.housingShare, 0.35);
+  // 0.65 × 0.7 (country) + 0.35 × 3000/6000 (housing) = 0.63
+  assert.ok(Math.abs(m.cost.ratio - 0.63) < 1e-9);
+  assert.equal(m.cost.estimateUsd, 1890);
+
+  // Home city without housing: country ratio alone.
+  const homeless = new Map(withHousing);
+  homeless.set('nyc-usa', citiesById.get('nyc-usa'));
+  const plain = stayMetrics(
+    { id: 's1', cityId: 'lisbon-prt', start: 1, len: 2 },
+    baseCtx({ citiesById: homeless }),
+  );
+  assert.equal(plain.cost.housingShare, 0);
+  assert.equal(plain.cost.ratio, 0.7);
+});
+
 test('cost: manual override replaces the estimate and is labelled "your figure"', () => {
   const ctx = baseCtx({ overrides: { s1: 1500 } });
   const m = stayMetrics(
@@ -523,4 +556,84 @@ test('rollup: a single stay never closes a loop, even covering all 12 months', (
   assert.equal(r.monthsCovered, 12);
   assert.equal(r.moves, 0);
   assert.equal(r.km, 0);
+});
+
+// -- Schengen 90/180 -------------------------------------------------------------
+
+const schengenCities = new Map([
+  ...citiesById,
+  ['paris-fra', { id: 'paris-fra', iso3: 'FRA', lat: 48.86, lon: 2.35 }],
+  ['berlin-deu', { id: 'berlin-deu', iso3: 'DEU', lat: 52.52, lon: 13.4 }],
+]);
+const usPassport = {
+  passport: 'USA',
+  byDest: { USA: -1, FRA: 90, DEU: 90, PRT: 90, JPN: 'visa required' },
+};
+
+function schengenFor(stays, visa = usPassport) {
+  const ctx = baseCtx({ citiesById: schengenCities, visa });
+  return rollup(stays, metricsFor(stays, ctx), schengenCities).schengen;
+}
+
+test('schengen: two consecutive 2-month stays each pass alone but exceed 90/180 together', () => {
+  const stays = [
+    { id: 's1', cityId: 'paris-fra', start: 3, len: 2 }, // MAR-APR
+    { id: 's2', cityId: 'berlin-deu', start: 5, len: 2 }, // MAY-JUN
+  ];
+  const ctx = baseCtx({ citiesById: schengenCities, visa: usPassport });
+  // Per stay the combined rule is the authority: no flat 'exceeds' flag.
+  assert.equal(stayMetrics(stays[0], ctx).visa.status, 'schengen');
+  assert.deepEqual(schengenFor(stays), {
+    applies: true,
+    maxDaysIn180: 120,
+    limit: 90,
+    exceeds: true,
+    windowStartDay: 60, // MAR 1
+  });
+});
+
+test('schengen: stays split by a 3-month non-Schengen gap stay within 90/180', () => {
+  const s = schengenFor([
+    { id: 's1', cityId: 'paris-fra', start: 1, len: 2 }, // JAN-FEB
+    { id: 's2', cityId: 'tokyo-jpn', start: 3, len: 3 }, // MAR-MAY
+    { id: 's3', cityId: 'berlin-deu', start: 6, len: 2 }, // JUN-JUL
+  ]);
+  assert.equal(s.applies, true);
+  assert.equal(s.maxDaysIn180, 90);
+  assert.equal(s.exceeds, false);
+});
+
+test('schengen: the rolling window wraps December into January', () => {
+  const s = schengenFor([
+    { id: 's1', cityId: 'berlin-deu', start: 1, len: 2 }, // JAN-FEB
+    { id: 's2', cityId: 'paris-fra', start: 11, len: 2 }, // NOV-DEC
+  ]);
+  assert.equal(s.maxDaysIn180, 120);
+  assert.equal(s.exceeds, true);
+  assert.equal(s.windowStartDay, 300); // NOV 1
+});
+
+test('schengen: exempt passport, no passport and non-Schengen-only plans do not apply', () => {
+  const stays = [
+    { id: 's1', cityId: 'paris-fra', start: 1, len: 6 },
+    { id: 's2', cityId: 'berlin-deu', start: 7, len: 6 },
+  ];
+  const exempt = { passport: 'PRT', byDest: { FRA: 90, DEU: 'visa free' } };
+  const ctx = baseCtx({ citiesById: schengenCities, visa: exempt });
+  assert.equal(stayMetrics(stays[0], ctx).visa.status, 'ok');
+  assert.equal(stayMetrics(stays[1], ctx).visa.status, 'ok');
+  assert.equal(schengenFor(stays, exempt).applies, false);
+  assert.equal(schengenFor(stays, null).applies, false); // no passport set
+
+  const none = schengenFor([
+    { id: 's1', cityId: 'tokyo-jpn', start: 1, len: 6 },
+    { id: 's2', cityId: 'nyc-usa', start: 7, len: 6 },
+  ]);
+  assert.deepEqual(none, {
+    applies: false,
+    maxDaysIn180: 0,
+    limit: 90,
+    exceeds: false,
+    windowStartDay: null,
+  });
 });

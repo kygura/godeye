@@ -152,7 +152,16 @@ const COST_LABELS = Object.freeze({
 });
 
 /**
- * Relative and estimated cost for one stay against the home country's price level.
+ * Housing share of monthly spend used when both cities carry a housing value.
+ * ponytail: fixed share for every profile and city (35% ≈ typical rent share
+ * of a nomad budget); make it a profile setting if users' budgets differ a lot.
+ */
+export const HOUSING_SHARE = 0.35;
+
+/**
+ * Relative and estimated cost for one stay against the home country's price
+ * level, blended with the stay/home city housing ratio when both cities have
+ * a housing value (`housingShare` > 0).
  * ponytail: no exact SPEC copy for 'ratio-only'/'unavailable' basis (only
  * no-home/estimate/override are quoted verbatim in SPEC §3.5) — worded to match their tone.
  */
@@ -177,12 +186,23 @@ function stayCost(stay, iso3, ctx) {
   const homeMetric = homeIso3
     ? countries?.[homeIso3]?.metrics?.priceLevel
     : null;
-  const ratio =
+  const countryRatio =
     Number.isFinite(stayMetric?.v) &&
     Number.isFinite(homeMetric?.v) &&
     homeMetric.v !== 0
       ? stayMetric.v / homeMetric.v
       : null;
+  const stayHousing = citiesById?.get(stay.cityId)?.housing?.usd;
+  const homeHousing = homeCity?.housing?.usd;
+  const housingShare =
+    countryRatio !== null && stayHousing > 0 && homeHousing > 0
+      ? HOUSING_SHARE
+      : 0;
+  const ratio =
+    countryRatio === null
+      ? null
+      : (1 - housingShare) * countryRatio +
+        (housingShare ? housingShare * (stayHousing / homeHousing) : 0);
   // Without a home city, the stay's own price-level year is not reported
   // either — a lone ratioYears.stay with no home to compare against would
   // be a half-answer no basis actually gives.
@@ -208,6 +228,7 @@ function stayCost(stay, iso3, ctx) {
   return {
     ratio,
     ratioYears,
+    housingShare,
     estimateUsd,
     override,
     basis,
@@ -232,10 +253,26 @@ function stayComfort(stay, seasonality) {
   return { mean, months, status: mean === null ? 'unavailable' : 'ok' };
 }
 
+/** Schengen area members (ISO3) as of 2025; Cyprus and Ireland are EU but not Schengen. */
+export const SCHENGEN = new Set(
+  'AUT BEL BGR HRV CZE DNK EST FIN FRA DEU GRC HUN ISL ITA LVA LIE LTU LUX MLT NLD NOR POL PRT ROU SVK SVN ESP SWE CHE'.split(
+    ' ',
+  ),
+);
+
+/** Passports exempt from the 90/180 rule via free movement: EU27 + ISL, LIE, NOR, CHE. */
+export const FREE_MOVEMENT = new Set(
+  'AUT BEL BGR HRV CYP CZE DNK EST FIN FRA DEU GRC HUN IRL ITA LVA LTU LUX MLT NLD POL PRT ROU SVK SVN ESP SWE ISL LIE NOR CHE'.split(
+    ' ',
+  ),
+);
+
 /**
  * Visa read for a stay: numeric requirements are checked against the stay length
  * (30 days/month); category strings ('visa required', 'e-visa', ...) can't be
  * measured against a day count, so they report 'unknown' with the raw requirement.
+ * A numeric allowance into a Schengen state reports 'schengen': the 90/180 rule
+ * across all Schengen stays (see `schengenRule`) is the authority, not this stay alone.
  */
 function stayVisa(stay, iso3, visa) {
   const stayDays = stay.len * 30;
@@ -243,6 +280,9 @@ function stayVisa(stay, iso3, visa) {
 
   if (!visa) return { ...base, status: 'no-passport' };
   if (visa.offline) return { ...base, status: 'offline' };
+  // Free movement: no short-stay limit in Schengen, whatever the dataset says.
+  if (SCHENGEN.has(iso3) && FREE_MOVEMENT.has(visa.passport))
+    return { ...base, status: 'ok' };
 
   const raw = iso3 ? visa.byDest?.[iso3] : undefined;
   if (raw === undefined) return { ...base, status: 'unknown' };
@@ -251,6 +291,8 @@ function stayVisa(stay, iso3, visa) {
     typeof raw === 'string' && /^\s*-?\d+\s*$/.test(raw) ? Number(raw) : raw;
   if (typeof num === 'number' && Number.isFinite(num)) {
     if (num === -1) return { ...base, status: 'ok' };
+    if (num >= 0 && SCHENGEN.has(iso3))
+      return { ...base, allowanceDays: num, status: 'schengen' };
     if (num >= 0)
       return {
         ...base,
@@ -268,7 +310,7 @@ function stayVisa(stay, iso3, visa) {
  * @property {{mean: number|null, months: Array<{m: number, score: number|null}>, status: 'ok'|'unavailable'}} comfort
  * @property {{score: number|null, coverage: 'full'|'partial'|'unavailable'}} safety
  * @property {{level: number|null}} advisory
- * @property {{status: 'ok'|'exceeds'|'unknown'|'no-passport'|'offline', allowanceDays: number|null, stayDays: number}} visa
+ * @property {{status: 'ok'|'exceeds'|'schengen'|'unknown'|'no-passport'|'offline', allowanceDays: number|null, stayDays: number}} visa
  */
 
 /**
@@ -300,7 +342,48 @@ export function stayMetrics(stay, ctx) {
 }
 
 /**
- * Year rollup: coverage, month-weighted fit/comfort, annual cost and travel legs.
+ * Schengen 90/180 across the plan's annual cycle. Days use the same 30-day
+ * months as `stayVisa` (360-day cycle, month m = days (m-1)*30..m*30-1), and
+ * the rolling 180-day window wraps past December because the plan repeats.
+ * @param {Array<{start: number, len: number}>} stays
+ * @param {(stay: object) => boolean} inSchengen stays the rule applies to
+ * @returns {{applies: boolean, maxDaysIn180: number, limit: 90, exceeds: boolean, windowStartDay: number|null}}
+ *   windowStartDay: 0-based cycle day where the worst window starts (null if none)
+ */
+export function schengenRule(stays, inSchengen) {
+  const CYCLE = 360;
+  const WINDOW = 180;
+  const occ = new Array(CYCLE).fill(0);
+  let applies = false;
+  for (const stay of stays) {
+    if (!inSchengen(stay)) continue;
+    applies = true;
+    for (const m of monthsOf(stay)) occ.fill(1, (m - 1) * 30, m * 30);
+  }
+  let count = 0;
+  for (let d = 0; d < WINDOW; d++) count += occ[d];
+  let maxDaysIn180 = 0;
+  let windowStartDay = null;
+  for (let d = 0; d < CYCLE; d++) {
+    // The worst window always starts on a Schengen day; only those are reported.
+    if (occ[d] && count > maxDaysIn180) {
+      maxDaysIn180 = count;
+      windowStartDay = d;
+    }
+    count += occ[(d + WINDOW) % CYCLE] - occ[d];
+  }
+  return {
+    applies,
+    maxDaysIn180,
+    limit: 90,
+    exceeds: maxDaysIn180 > 90,
+    windowStartDay,
+  };
+}
+
+/**
+ * Year rollup: coverage, month-weighted fit/comfort, annual cost, travel legs
+ * and the Schengen 90/180 read.
  * The loop only closes back to the first stay once all 12 months are covered.
  * @param {Array<{id: string, cityId: string, start: number, len: number}>} stays
  * @param {Map<string, StayMetrics>} metrics stayId -> stayMetrics() result
@@ -385,5 +468,9 @@ export function rollup(stays, metrics, citiesById) {
     maxAdvisory,
     moves,
     km: Math.round(km),
+    schengen: schengenRule(
+      ordered,
+      (stay) => metrics.get(stay.id)?.visa?.status === 'schengen',
+    ),
   };
 }

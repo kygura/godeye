@@ -264,9 +264,11 @@ export const DATA_CREDITS = [
   {
     key: 'city-intel-bundled',
     html:
-      'City Intel reference data: ' +
+      'City Intel reference data: cities from ' +
+      '<a href="https://www.geonames.org" target="_blank" rel="noopener">GeoNames</a> ' +
+      '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · ' +
       '<a href="https://www.naturalearthdata.com" target="_blank" rel="noopener">Natural Earth</a> ' +
-      '(populated places, countries) · ' +
+      '(countries, earlier city records) · ' +
       '<a href="https://ourairports.com" target="_blank" rel="noopener">OurAirports</a> ' +
       '(public domain) · ' +
       '<a href="https://www.worldbank.org" target="_blank" rel="noopener">World Bank</a> ' +
@@ -274,7 +276,10 @@ export const DATA_CREDITS = [
       '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · ' +
       'seasonality from ' +
       '<a href="https://power.larc.nasa.gov/" target="_blank" rel="noopener">NASA POWER</a> ' +
-      '(public; climatology 2001–2020)',
+      '(public; climatology 2001–2020) · ' +
+      'housing medians from ' +
+      '<a href="https://insideairbnb.com" target="_blank" rel="noopener">Inside Airbnb</a> ' +
+      '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)',
   },
   {
     key: 'city-intel-advisories',

@@ -164,6 +164,8 @@ export function costCopy(cost) {
         cost.ratioYears.home !== cost.ratioYears.stay
       )
         title += ` · home country year ${cost.ratioYears.home}`;
+      if (cost.housingShare > 0)
+        title += ` · ${Math.round(cost.housingShare * 100)}% weighted to city housing (stay vs home)`;
       return {
         text: `${fmtRatio(cost.ratio)} · ≈ ${fmtUsd(cost.estimateUsd)}/mo est.`,
         title,
@@ -196,6 +198,8 @@ export function visaCopy(visa) {
         : `ok · ${visa.allowanceDays} days visa-free`;
     case 'exceeds':
       return `stay exceeds visa-free days (${visa.allowanceDays})`;
+    case 'schengen':
+      return 'Schengen · 90/180 checked across stays';
     case 'no-passport':
       return 'set your passport';
     case 'unknown':
@@ -263,6 +267,13 @@ export function rollupCopy(rollup, extra = {}) {
             : 'open (loop closes at 12/12)'
         }`;
 
+  const sch = rollup.schengen;
+  const schengen = !sch?.applies
+    ? null
+    : sch.exceeds
+      ? `exceeds · ${sch.maxDaysIn180}/${sch.limit} days in 180 from ${MONTH_ABBR[Math.floor(sch.windowStartDay / 30)]}`
+      : `ok · ${sch.maxDaysIn180}/${sch.limit} days in 180`;
+
   return {
     monthsCovered,
     fitWeighted,
@@ -270,6 +281,7 @@ export function rollupCopy(rollup, extra = {}) {
     comfortWeighted,
     highestAdvisory,
     moves,
+    schengen,
   };
 }
 
@@ -1003,6 +1015,7 @@ export function createPlanView({
       ['HIGHEST ADVISORY', copy.highestAdvisory],
       ['MOVES', copy.moves],
     ];
+    if (copy.schengen) rows.push(['SCHENGEN 90/180', copy.schengen]);
     const section = h(doc, 'div', { class: 'ci-rollup' }, [
       h(doc, 'span', { class: 'ci-section-label', text: 'ROLLUP · YEAR' }),
       ...rows.map(([label, value]) =>
@@ -1013,7 +1026,7 @@ export function createPlanView({
       ),
       h(doc, 'p', {
         class: 'ci-helper',
-        text: 'Visa flags are per stay. The Schengen 90/180-day rule across stays is not checked in v1.',
+        text: 'Schengen stays are checked together against 90 days in any 180 (30-day months); other visa flags are per stay. Bilateral agreements and national long-stay visas are not modelled.',
       }),
     ]);
     root.appendChild(section);

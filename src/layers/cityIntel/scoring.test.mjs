@@ -4,6 +4,8 @@ import {
   PILLARS,
   airportAccess,
   createCityIntelIndex,
+  housingSource,
+  meanComfortScore,
   percentileRanks,
   visaAccessLevel,
 } from './scoring.js';
@@ -449,4 +451,78 @@ test('re-scoring 3000 cities on a weight change is cheap', () => {
   const elapsed = performance.now() - start;
   assert.equal(scored.length, 3000);
   assert.ok(elapsed < 50, `re-score took ${elapsed.toFixed(2)} ms`);
+});
+
+test('city-level climate and housing separate cities inside one country', () => {
+  const months = (score) => ({
+    months: Array.from({ length: 12 }, () => ({ score })),
+  });
+  const cities = [
+    { ...city('warm', 'AAA'), housing: { usd: 900, src: 'model' } },
+    {
+      ...city('cold', 'AAA'),
+      housing: { usd: 2000, src: 'insideairbnb', n: 40, rule: 'min28' },
+    },
+    city('none', 'AAA'),
+  ];
+  const index = createCityIntelIndex({
+    ...pack({ AAA: country(70), BBB: country(80) }, cities),
+    seasonality: { cities: { warm: months(80), cold: months(20) } },
+  });
+  const s = byId(index.score(EQUAL));
+  const climate = (id) => metricOf(s.get(id), 'qol', 'climate');
+  const housing = (id) => metricOf(s.get(id), 'cost', 'housing');
+
+  assert.equal(climate('warm').raw, 80);
+  assert.equal(climate('warm').level, 'city');
+  assert.equal(climate('warm').pct, 100, 'higher comfort ranks best');
+  assert.equal(climate('cold').pct, 0);
+  assert.equal(climate('none').status, 'missing');
+  assert.equal(housing('warm').pct, 100, 'cheaper housing ranks best');
+  assert.equal(housing('cold').pct, 0);
+  assert.equal(housing('warm').derived, true, 'modelled housing is derived');
+  assert.equal(housing('cold').derived, false);
+  assert.equal(
+    housing('cold').source,
+    'Inside Airbnb median · entire homes · 28+ nights',
+  );
+  assert.deepEqual(housing('cold').detail, cities[1].housing);
+  assert.ok(s.get('warm').pillars.qol.score > s.get('cold').pillars.qol.score);
+  assert.ok(
+    s.get('warm').pillars.cost.score > s.get('cold').pillars.cost.score,
+  );
+  assert.equal(s.get('warm').coverage.cityLevelMetrics, 3);
+  assert.equal(s.get('none').coverage.cityLevelMetrics, 1, 'airport only');
+  assert.equal(s.get('none').pillars.qol.coverage, 'partial');
+});
+
+test('meanComfortScore and housingSource', () => {
+  const row = {
+    months: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 0, 0].map((score) => ({
+      score,
+    })),
+  };
+  assert.equal(meanComfortScore(row), 45.8);
+  const gappy = {
+    months: [80, null, 60, undefined, ...new Array(8).fill(70)].map(
+      (score) => ({ score }),
+    ),
+  };
+  assert.equal(meanComfortScore(gappy), 70, 'null months are skipped');
+  assert.equal(
+    meanComfortScore({ months: new Array(12).fill({ score: null }) }),
+    null,
+    'no known month -> null',
+  );
+  assert.equal(meanComfortScore({ months: [] }), null);
+  assert.equal(meanComfortScore(undefined), null);
+  assert.equal(
+    housingSource({ src: 'insideairbnb', rule: 'min7' }),
+    'Inside Airbnb median · entire homes · 7+ nights',
+  );
+  assert.equal(
+    housingSource({ src: 'model' }),
+    'Estimate · country price level + city size',
+  );
+  assert.equal(housingSource(null), null);
 });

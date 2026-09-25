@@ -233,6 +233,10 @@ test("visaCopy: every status from plan.js's stayVisa", () => {
     'no visa data for this destination',
   );
   assert.equal(visaCopy({ status: 'offline' }), 'unavailable (source offline)');
+  assert.equal(
+    visaCopy({ status: 'schengen', allowanceDays: 90 }),
+    'Schengen · 90/180 checked across stays',
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -560,4 +564,36 @@ test('markVoice: toasts the replaced-plan copy and keeps the chip visible across
   view.render();
   const chip = container.children.at(-1).children[0];
   assert.equal(chip.hidden, false);
+});
+
+test('rollupCopy: Schengen 90/180 row only when the rule applies', () => {
+  const base = {
+    monthsCovered: 4,
+    gaps: [5, 6, 7, 8, 9, 10, 11, 12],
+    fitMean: null,
+    annualCost: { usd: null, coveredMonths: 0, complete: false },
+    comfortMean: null,
+    maxAdvisory: null,
+    moves: 1,
+    km: 900,
+  };
+  assert.equal(rollupCopy(base).schengen, null);
+  const sch = {
+    applies: true,
+    limit: 90,
+    exceeds: true,
+    maxDaysIn180: 120,
+    windowStartDay: 300,
+  };
+  assert.equal(
+    rollupCopy({ ...base, schengen: sch }).schengen,
+    'exceeds · 120/90 days in 180 from NOV',
+  );
+  assert.equal(
+    rollupCopy({
+      ...base,
+      schengen: { ...sch, exceeds: false, maxDaysIn180: 90 },
+    }).schengen,
+    'ok · 90/90 days in 180',
+  );
 });

@@ -682,8 +682,11 @@ in mono 8px `--text-primary` with `text-shadow: 0 0 2px #000`. Cell `title`: "MA
 | HIGHEST ADVISORY   | `maxAdvisory` badge "L2"; "—" with the offline title                                                                                                                                                                                                                                                                                                                                  |
 | MOVES              | "2 · 1,020 km · open (loop closes at 12/12)" or "3 · 6,840 km · loop closed"; one stay: "0 · 0 km". `rollup.km` is straight great-circle between consecutive stays (plus the closing leg at 12/12); the globe's hub-routed arcs can be longer, so the row `title` says "great-circle, direct"                                                                                         |
 
-Under the rows, `.ci-helper`: "Visa flags are per stay. The Schengen 90/180-day rule across
-stays is not checked in v1." The not-advice note is the top `.ci-note`, visible in both views;
+When `rollup.schengen.applies`, a SCHENGEN 90/180 row follows: "exceeds · 120/90 days in 180
+from MAR" or "ok · 90/90 days in 180"; Schengen stay cards read "Schengen · 90/180 checked
+across stays" instead of a flat per-stay flag. Under the rows, `.ci-helper`: "Schengen stays
+are checked together against 90 days in any 180 (30-day months); other visa flags are per
+stay. Bilateral agreements and national long-stay visas are not modelled." The not-advice note is the top `.ci-note`, visible in both views;
 it is not repeated.
 
 ### 11.6 Add flow (scorecard ADD TO PLAN)

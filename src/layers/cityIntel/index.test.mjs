@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   createCityIntelLayer,
   binForScore,
@@ -103,7 +104,7 @@ test('selectLabelIds unions the top ranking, pins and the selection', () => {
   assert.deepEqual([...ids].sort(), ['a', 'b', 'c', 'd']);
 });
 
-test('selectLabelIds adds every eligible city once the camera is close', () => {
+test('selectLabelIds adds eligible cities once the camera is close', () => {
   const far = selectLabelIds({
     eligibleIds: ['a', 'b'],
     cameraHeightM: 2_000_000,
@@ -114,6 +115,18 @@ test('selectLabelIds adds every eligible city once the camera is close', () => {
     cameraHeightM: 1_000_000,
   });
   assert.deepEqual([...close].sort(), ['a', 'b']);
+});
+
+test('selectLabelIds caps close-camera eligible labels to the first 400 given', () => {
+  const eligibleIds = Array.from({ length: 1000 }, (_, i) => `c${i}`);
+  const close = selectLabelIds({
+    eligibleIds,
+    pinnedIds: ['c999'],
+    cameraHeightM: 1_000_000,
+  });
+  assert.equal(close.size, 401, '400 eligible + the pinned one');
+  assert.ok(close.has('c0') && close.has('c399') && !close.has('c400'));
+  assert.ok(close.has('c999'), 'pins are never capped');
 });
 
 // ---------------------------------------------------------------------------
@@ -163,7 +176,13 @@ test('layer contract: init/enable/disable/update/destroy/getStats', async () => 
   await layer.whenReady();
 
   const stats = layer.getStats();
-  assert.equal(stats.count, 2480, 'the full bundled city roster loads');
+  const roster = JSON.parse(
+    readFileSync(
+      new URL('../../data/local_data/city_intel/cities.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.equal(stats.count, roster.count, 'the full bundled city roster loads');
   assert.ok(stats.eligible > 0, 'the standalone Balanced-weights scoring ran');
   assert.ok(
     layer.getIndex(),

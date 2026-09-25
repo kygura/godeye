@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   loadCityIntelPack,
+  decodeCities,
+  decodeSeasonality,
   fetchAdvisories,
   fetchVisa,
   fetchRent,
@@ -17,6 +19,139 @@ test('loadCityIntelPack loads and caches the bundled cities/countries/seasonalit
   assert.ok(pack.seasonality?.cities);
   const again = await loadCityIntelPack();
   assert.equal(again, pack, 'the pack is memoized, not re-parsed');
+});
+
+test('loadCityIntelPack decodes rows and grid cells into plain objects', async () => {
+  const pack = await loadCityIntelPack();
+  const byId = new Map(pack.cities.map((c) => [c.id, c]));
+  const lisbon = byId.get('lisbon-prt');
+  assert.equal(lisbon.country, pack.countries.countries.PRT.name);
+  assert.equal(lisbon.capital, true);
+  assert.equal(lisbon.airport.iata, 'LIS');
+  assert.equal(lisbon.housing.src, 'insideairbnb');
+  assert.ok(lisbon.housing.usd > 0 && lisbon.housing.n > 0);
+  assert.equal(byId.get('canggu-idn')?.origin, 'manual');
+  const months = pack.seasonality.cities['lisbon-prt'].months;
+  assert.equal(months.length, 12);
+  assert.deepEqual(Object.keys(months[0]), ['score', 'tempC', 'precipMm']);
+});
+
+test('decodeCities / decodeSeasonality map the compact encodings', () => {
+  const countries = { countries: { PRT: { name: 'Portugal' } } };
+  const raw = {
+    fields: [
+      'id',
+      'name',
+      'iso3',
+      'admin1',
+      'lat',
+      'lon',
+      'pop',
+      'capital',
+      'airport',
+      'housing',
+      'origin',
+      'gid',
+    ],
+    cities: [
+      [
+        'a-prt',
+        'A',
+        'PRT',
+        null,
+        1,
+        2,
+        5,
+        1,
+        ['LIS', 3.5, 'large'],
+        [900, 'model'],
+        'geonames',
+        123,
+      ],
+      [
+        'b-xxx',
+        'B',
+        'XXX',
+        'R',
+        3,
+        4,
+        0,
+        0,
+        null,
+        [1200, 'insideairbnb', 40, 'min7'],
+        'manual',
+        null,
+      ],
+    ],
+  };
+  const [a, b] = decodeCities(raw, countries);
+  assert.deepEqual(a, {
+    id: 'a-prt',
+    name: 'A',
+    iso3: 'PRT',
+    country: 'Portugal',
+    admin1: null,
+    lat: 1,
+    lon: 2,
+    pop: 5,
+    capital: true,
+    airport: { iata: 'LIS', km: 3.5, type: 'large' },
+    housing: { usd: 900, src: 'model' },
+    origin: 'geonames',
+  });
+  assert.equal(b.country, 'XXX', 'unknown iso3 falls back to the code');
+  assert.equal(b.airport, null);
+  assert.deepEqual(b.housing, {
+    usd: 1200,
+    src: 'insideairbnb',
+    n: 40,
+    rule: 'min7',
+  });
+  assert.throws(() => decodeCities({ ...raw, fields: ['id'] }, countries));
+
+  const cell = Array.from({ length: 12 }, (_, m) => [
+    m,
+    m + 0.5,
+    m * 10,
+  ]).flat();
+  const v3 = {
+    version: 3,
+    cellFields: ['score', 'tempC', 'precipMm'],
+    cells: [cell],
+    cities: { x: 0, y: 0, z: 7 },
+  };
+  const season = decodeSeasonality(v3);
+  assert.equal(season.version, 3);
+  assert.deepEqual(season.cities.x.months[2], {
+    score: 2,
+    tempC: 2.5,
+    precipMm: 20,
+  });
+  assert.equal(
+    season.cities.x.months,
+    season.cities.y.months,
+    'shared per cell',
+  );
+  assert.equal(season.cities.z, undefined, 'dangling cell index dropped');
+});
+
+test('decodeSeasonality rejects an unexpected version, field list or stride', () => {
+  const cell = new Array(36).fill(1);
+  const ok = {
+    version: 3,
+    cellFields: ['score', 'tempC', 'precipMm'],
+    cells: [cell],
+    cities: { x: 0 },
+  };
+  assert.doesNotThrow(() => decodeSeasonality(ok));
+  for (const bad of [
+    { ...ok, version: 2 },
+    { ...ok, cellFields: ['score', 'tempC'] },
+    { ...ok, cells: [cell.slice(0, 24)] },
+    { ...ok, cells: undefined },
+    null,
+  ])
+    assert.throws(() => decodeSeasonality(bad), /unexpected v3 cell layout/);
 });
 
 function withStubbedFetch(impl, run) {

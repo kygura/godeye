@@ -19,6 +19,14 @@ const BALANCED_WEIGHTS = Object.freeze({
 const CLOSE_CAMERA_HEIGHT_M = 1_500_000;
 /** DESIGN §7: label count for the standalone default ranking. */
 const TOP_LABEL_COUNT = 20;
+/**
+ * Close-camera label cap: the first eligible ids in the order given (rank
+ * order standalone, pack/population order from the panel).
+ * ponytail: global cut, not per-viewport; zoomed into a region outside the
+ * first 400 some points go unlabelled. Filter by the visible hemisphere first
+ * if that matters (~12k cities would otherwise mean ~12k Cesium labels).
+ */
+const CLOSE_LABEL_CAP = 400;
 
 /** DESIGN §7 score-ramp hex literals, used until the CSS tokens are styled. */
 const FALLBACK_RAMP = Object.freeze({
@@ -86,7 +94,7 @@ export function markerStyle(
 /**
  * Which cities get a globe label (DESIGN §7): the caller's current top
  * ranking, every pinned or selected city, and — once the camera is close —
- * every eligible city. Pure.
+ * the first CLOSE_LABEL_CAP eligible ids, in the order given. Pure.
  * @param {{topRankedIds?: Iterable<string>, pinnedIds?: Iterable<string>, selectedId?: string|null, eligibleIds?: Iterable<string>, cameraHeightM?: number}} [options]
  * @returns {Set<string>}
  */
@@ -100,8 +108,13 @@ export function selectLabelIds({
   const ids = new Set(topRankedIds);
   for (const id of pinnedIds) ids.add(id);
   if (selectedId != null) ids.add(selectedId);
-  if (cameraHeightM < CLOSE_CAMERA_HEIGHT_M)
-    for (const id of eligibleIds) ids.add(id);
+  if (cameraHeightM < CLOSE_CAMERA_HEIGHT_M) {
+    let added = 0;
+    for (const id of eligibleIds) {
+      if (added++ >= CLOSE_LABEL_CAP) break;
+      ids.add(id);
+    }
+  }
   return ids;
 }
 
@@ -120,8 +133,8 @@ function readRampColors() {
 }
 
 /**
- * City Intel globe layer: one point + optional label per pack city (2,480
- * points, drawn as `PointPrimitiveCollection`/`LabelCollection`, never
+ * City Intel globe layer: one point + optional label per pack city (the
+ * whole pack, drawn as `PointPrimitiveCollection`/`LabelCollection`, never
  * Entities). Standalone (row toggled without the ATLAS mode) it scores the
  * pack itself with Balanced weights; `setScores` lets the panel take over.
  */
@@ -384,6 +397,7 @@ export function createCityIntelLayer() {
           _index = createCityIntelIndex({
             cities: pack.cities,
             countries: pack.countries,
+            seasonality: pack.seasonality,
           });
           buildPoints();
           scoreDefault();

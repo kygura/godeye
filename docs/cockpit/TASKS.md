@@ -265,7 +265,8 @@ Status key: `done`, `running`, `frontier` (open, unblocked, not yet delegated),
   from Natural Earth.
 - Trip-leg duration and cost rollup, plus keyless Google Flights deep links. Needs an
   honest cost source.
-- Schengen 90/180 zone-wide rule.
+- ~~Schengen 90/180 zone-wide rule.~~ Done (`schengenRule` in `plan.js`); bilateral
+  agreements and national long-stay visas still not modelled.
 - Keyed sources: ACLED, OpenAQ, WAQI. Also UK Police, GDACS, INFORM, Eurostat Urban Audit,
   UK Land Registry.
 - Keyless Wikipedia/Wikimedia place images for scorecards (Meridian `docs/research-apis.md`).

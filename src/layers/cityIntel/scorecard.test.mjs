@@ -131,6 +131,98 @@ test('metricRowModel: derived metric appends " · derived" and carries a title',
   assert.match(row.derivedTitle, /PA\.NUS\.PRVT\.PP/);
 });
 
+test('metricRowModel: city-level housing and climate carry value, source and CITY badge', () => {
+  const observed = metricRowModel(
+    okMetric({
+      key: 'housing',
+      label: 'Housing',
+      raw: 2499,
+      unit: 'USD / month',
+      year: null,
+      level: 'city',
+      source: 'Inside Airbnb median · entire homes · 28+ nights',
+      detail: { usd: 2499, src: 'insideairbnb', n: 3331, rule: 'min28' },
+    }),
+  );
+  assert.equal(observed.valueText, '$2,499 / mo');
+  assert.equal(
+    observed.yearSourceText,
+    '— · Inside Airbnb median · entire homes · 28+ nights',
+  );
+  assert.equal(observed.levelBadge, 'CITY');
+  assert.equal(observed.derivedTitle, null);
+
+  const modelled = metricRowModel(
+    okMetric({
+      key: 'housing',
+      raw: 1355,
+      unit: 'USD / month',
+      year: null,
+      level: 'city',
+      source: 'Estimate · country price level + city size',
+      derived: true,
+      detail: { usd: 1355, src: 'model' },
+    }),
+  );
+  assert.match(
+    modelled.yearSourceText,
+    /Estimate · country price level \+ city size · derived$/,
+  );
+  assert.match(modelled.derivedTitle, /Inside Airbnb/);
+
+  const climate = metricRowModel(
+    okMetric({
+      key: 'climate',
+      raw: 73.4,
+      unit: 'comfort 0-100',
+      derived: true,
+    }),
+  );
+  assert.equal(climate.valueText, '73 / 100');
+  assert.match(climate.derivedTitle, /12 monthly comfort/);
+  assert.equal(directionTitle('housing', {}), 'Lower raw value is better');
+  assert.equal(directionTitle('climate', {}), null);
+});
+
+test('compareRowsModel: housing cell names its origin inline and in the title', () => {
+  const housing = (usd, src) =>
+    okMetric({
+      key: 'housing',
+      label: 'Housing',
+      raw: usd,
+      unit: 'USD / month',
+      level: 'city',
+      pct: 50,
+      source:
+        src === 'model'
+          ? 'Estimate · country price level + city size'
+          : 'Inside Airbnb median · entire homes · 28+ nights',
+      detail: { usd, src },
+    });
+  const scored = (id, metric) => ({
+    id,
+    city: { id, name: id, iso3: 'PRT', country: 'Portugal' },
+    composite: 60,
+    pillars: {
+      qol: { score: 50, metrics: [] },
+      cost: { score: 50, metrics: [metric] },
+      safety: { score: 50, metrics: [] },
+      travel: { score: 50, metrics: [] },
+    },
+  });
+  const rows = compareRowsModel([
+    scored('a', housing(3729, 'insideairbnb')),
+    scored('b', housing(1500, 'model')),
+  ]);
+  const row = rows.find((r) => r.label === 'Housing');
+  assert.equal(row.cells[0].rawText, '$3,729 / mo · Inside Airbnb');
+  assert.equal(row.cells[1].rawText, '$1,500 / mo · est.');
+  assert.equal(
+    row.cells[1].sourceTitle,
+    'Estimate · country price level + city size',
+  );
+});
+
 test('metricRowModel: missing/stale -> unavailable + pack-age copy', () => {
   const row = metricRowModel(
     okMetric({ status: 'missing', pct: null, raw: undefined }),

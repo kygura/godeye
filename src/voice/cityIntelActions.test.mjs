@@ -653,6 +653,59 @@ test('plan_lifestyle: success reshapes the summary into per-stay fields, rollup 
   assert.equal(result.summary, CAVEAT);
 });
 
+function schengenPlanSummary(schengen) {
+  return {
+    stays: [],
+    rollup: {
+      monthsCovered: 4,
+      gaps: [],
+      annualCost: { usd: null, complete: false, label: 'partial' },
+      moves: 1,
+      km: 500,
+      schengen,
+    },
+  };
+}
+
+test('plan_lifestyle: a Schengen-exceeding plan reports rollup.schengen', async () => {
+  const { cityIntel } = fakeCityIntel({
+    planSummary: schengenPlanSummary({
+      applies: true,
+      maxDaysIn180: 120,
+      limit: 90,
+      exceeds: true,
+      windowStartDay: 0,
+    }),
+  });
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon', months: [1, 2, 3, 4] }],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.deepEqual(
+    result.rollup.schengen,
+    { maxDaysIn180: 120, limit: 90, exceeds: true },
+    'only the voice-facing fields, no windowStartDay',
+  );
+});
+
+test('plan_lifestyle: rollup.schengen is absent when the rule does not apply', async () => {
+  const { cityIntel } = fakeCityIntel({
+    planSummary: schengenPlanSummary({
+      applies: false,
+      maxDaysIn180: 0,
+      limit: 90,
+      exceeds: false,
+      windowStartDay: null,
+    }),
+  });
+  const result = await planLifestyle(cityIntel, {
+    stays: [{ city: 'Lisbon', months: [1, 2, 3, 4] }],
+  });
+  assert.equal(result.ok, true, result.error);
+  assert.equal('schengen' in result.rollup, false);
+  assert.equal(result.rollup.annualCost, 'partial');
+});
+
 test('plan_lifestyle: isCurrent supersedes an in-flight request', async () => {
   const { cityIntel } = fakeCityIntel();
   const result = await planLifestyle(

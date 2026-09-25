@@ -8,7 +8,7 @@
  *
  * @module layers/cityIntel/scorecard
  */
-import { PILLARS } from './scoring.js';
+import { CITY_METRICS, PILLARS } from './scoring.js';
 import { binForScore, scoreColor } from './index.js';
 import { firstFreeMonth } from './plan.js';
 import {
@@ -26,11 +26,14 @@ export const PILLAR_LABELS = Object.freeze({
 });
 
 /** DESIGN §3: derived metrics carry a `title` with their formula. Only the
- * three pack indicators marked `derived: true` (scoring.js) need one; the
- * scored metric itself carries no formula field, so this is a small fixed
- * lookup rather than a per-metric field. */
+ * metrics marked `derived: true` (scoring.js) need one; the scored metric
+ * itself carries no formula field, so this is a small fixed lookup rather
+ * than a per-metric field. Housing is derived only when modelled. */
 const DERIVED_FORMULAS = Object.freeze({
   priceLevel: 'PA.NUS.PRVT.PP ÷ PA.NUS.FCRF (consumer price level vs. US)',
+  climate: 'mean of the 12 monthly comfort scores (NASA POWER 2001-2020)',
+  housing:
+    'log-linear fit on Inside Airbnb cities: country price level, population, capital',
   airportAccess: 'distance-decayed index from the nearest scheduled airport',
   visaAccess: 'passport-index requirement, mapped to an ordinal access level',
 });
@@ -56,9 +59,11 @@ export function weightChipText(weight) {
 }
 
 // ponytail: a fixed unit->formatter table instead of a general unit-parsing
-// library; the pack has exactly six indicator units (SPEC §3.2), add a row
-// if a new one ships.
+// library; the pack has six indicator units (SPEC §3.2) plus the two
+// city-level ones (scoring.js CITY_METRICS), add a row if a new one ships.
 const UNIT_FORMATTERS = [
+  [/^comfort 0-100$/, (v) => `${Math.round(v)} / 100`],
+  [/^USD \/ month$/, (v) => `$${Math.round(v).toLocaleString('en-US')} / mo`],
   [/^years$/, (v) => `${v.toFixed(1)} yr`],
   [/% of population/, (v) => `${Math.round(v)} %`],
   [/× US/, (v) => `${v.toFixed(2)} × US`],
@@ -209,17 +214,16 @@ export function scorecardHeaderModel(
 
 /**
  * `title="Lower raw value is better"` for the metric label, or null. The
- * direction comes from the pack's own `countries.indicators[key].direction`
- * (scoring.js) rather than a hardcoded set — city-level metrics (airport/visa)
- * aren't in that pack and are always "higher is better", so a missing entry
- * correctly resolves to no title.
+ * direction comes from the pack's own `countries.indicators[key].direction`,
+ * else scoring.js `CITY_METRICS` (climate, housing); airport/visa are in
+ * neither and are always "higher is better", so they resolve to no title.
  * @param {string} metricKey
  * @param {Record<string, {direction?: 'higher'|'lower'}>} [indicators]
  */
 export function directionTitle(metricKey, indicators) {
-  return indicators?.[metricKey]?.direction === 'lower'
-    ? 'Lower raw value is better'
-    : null;
+  const direction =
+    indicators?.[metricKey]?.direction ?? CITY_METRICS[metricKey]?.direction;
+  return direction === 'lower' ? 'Lower raw value is better' : null;
 }
 
 /** Whether a city's stays cover all 12 months (plan.js has no `isFull`). */
@@ -268,7 +272,11 @@ function metricCompareCell(metric) {
     return { text: 'set passport', missing: true };
   if (metric.status !== 'ok')
     return { text: '—', missing: true, title: 'unavailable' };
-  const raw = metricValueText(metric);
+  let raw = metricValueText(metric);
+  // Housing: short origin inline, the full source label in the title.
+  if (metric.key === 'housing')
+    raw +=
+      metric.detail?.src === 'insideairbnb' ? ' · Inside Airbnb' : ' · est.';
   // DESIGN §4: percentile bold, raw value after " · " in --text-secondary,
   // and — at <=720px — percentile only, raw moved to the cell's `title`
   // (split so the responsive CSS can hide just the raw span).
@@ -276,6 +284,7 @@ function metricCompareCell(metric) {
     pctText: `P${Math.round(metric.pct)}`,
     rawText: raw,
     pct: metric.pct,
+    ...(metric.key === 'housing' ? { sourceTitle: metric.source } : {}),
   };
 }
 
@@ -717,7 +726,7 @@ function buildCompareCell(doc, cell, isBest) {
   if (cell.pctText) {
     td.append(text(doc, 'span', 'ci-compare-pct', cell.pctText));
     td.append(text(doc, 'span', 'ci-compare-raw', ` · ${cell.rawText}`));
-    td.title = `${cell.pctText} · ${cell.rawText}`;
+    td.title = `${cell.pctText} · ${cell.rawText}${cell.sourceTitle ? ` · ${cell.sourceTitle}` : ''}`;
     return td;
   }
   const span = text(doc, 'span', null, cell.text);

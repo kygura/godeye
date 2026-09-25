@@ -4,7 +4,7 @@
  * Portable: no Cesium, no DOM (see `scripts/check-import-directions.mjs`).
  * The bundled pack (cities + countries + seasonality) loads once per session
  * and is cached, following the `bundledJson`/`retryableLoad` pattern already
- * used by `src/data/naturalEarthRegions.js` and `src/travel/cities.js`. The
+ * used by `src/data/naturalEarthRegions.js`. The
  * live client hits this app's own `/api/city-intel/*` proxy
  * (`server/providers/cityIntel.js`, docs/cockpit/SPEC.md §3.3); every call
  * resolves the server's envelope (`{ ok, data, fetchedAt, stale, source }`)
@@ -48,9 +48,117 @@ const PACK_FILES = Object.freeze({
   }),
 });
 
+/** cities.json v2 row layout (scripts/build-city-intel.mjs `CITY_FIELDS`). */
+const CITY_FIELDS = Object.freeze([
+  'id',
+  'name',
+  'iso3',
+  'admin1',
+  'lat',
+  'lon',
+  'pop',
+  'capital',
+  'airport',
+  'housing',
+  'origin',
+  'gid',
+]);
+
+/**
+ * cities.json v2 compact rows -> the city objects every consumer reads
+ * (`country` comes from countries.json; airport/housing tuples -> objects).
+ * @param {{fields: string[], cities: Array<Array<*>>}} raw
+ * @param {{countries?: Record<string, {name?: string}>}} countries
+ * @returns {object[]}
+ */
+export function decodeCities(raw, countries) {
+  if (raw?.fields?.join() !== CITY_FIELDS.join())
+    throw new Error('cities.json: unexpected row layout');
+  const records = countries?.countries || {};
+  return raw.cities.map(
+    ([
+      id,
+      name,
+      iso3,
+      admin1,
+      lat,
+      lon,
+      pop,
+      capital,
+      airport,
+      housing,
+      origin,
+    ]) => ({
+      id,
+      name,
+      iso3,
+      country: records[iso3]?.name ?? iso3,
+      admin1,
+      lat,
+      lon,
+      pop,
+      capital: capital === 1,
+      airport: airport && {
+        iata: airport[0],
+        km: airport[1],
+        type: airport[2],
+      },
+      housing:
+        housing &&
+        (housing[1] === 'insideairbnb'
+          ? {
+              usd: housing[0],
+              src: housing[1],
+              n: housing[2],
+              rule: housing[3],
+            }
+          : { usd: housing[0], src: housing[1] }),
+      origin,
+    }),
+  );
+}
+
+/** seasonality.json v3 per-month values, in cell order (build `cellFields`). */
+const SEASONALITY_CELL_FIELDS = Object.freeze(['score', 'tempC', 'precipMm']);
+
+/**
+ * seasonality.json v3 (grid cells + city -> cell index) -> the v2 shape every
+ * consumer reads: `{cities: {id: {months: [{score, tempC, precipMm}]}}}`.
+ * Cities in one cell share the same frozen months array.
+ * @param {{cells: number[][], cities: Record<string, number>}} raw
+ */
+export function decodeSeasonality(raw) {
+  if (
+    raw?.version !== 3 ||
+    raw.cellFields?.join() !== SEASONALITY_CELL_FIELDS.join() ||
+    !Array.isArray(raw.cells) ||
+    raw.cells.some(
+      (cell) => cell?.length !== 12 * SEASONALITY_CELL_FIELDS.length,
+    )
+  )
+    throw new Error('seasonality.json: unexpected v3 cell layout');
+  const { cells, cities, ...meta } = raw;
+  const months = cells.map((flat) =>
+    Object.freeze(
+      Array.from({ length: 12 }, (_, m) =>
+        Object.freeze({
+          score: flat[m * 3],
+          tempC: flat[m * 3 + 1],
+          precipMm: flat[m * 3 + 2],
+        }),
+      ),
+    ),
+  );
+  const out = {};
+  for (const [id, index] of Object.entries(cities))
+    if (months[index]) out[id] = { months: months[index] };
+  return { ...meta, cities: out };
+}
+
 /**
  * Load the City Intel bundled pack (lazy, cached, retryable): the city
- * roster, the per-country indicator set, and the seasonality seed.
+ * roster, the per-country indicator set, and the seasonality seed, decoded
+ * from their compact on-disk encodings.
  * @returns {Promise<{cities: object[], countries: object, seasonality: object}>}
  */
 export const loadCityIntelPack = createRetryableLoader(async () => {
@@ -59,7 +167,11 @@ export const loadCityIntelPack = createRetryableLoader(async () => {
       loadBundledJson(file.url, file.importJson),
     ),
   );
-  return { cities: cities.cities, countries, seasonality };
+  return {
+    cities: decodeCities(cities, countries),
+    countries,
+    seasonality: decodeSeasonality(seasonality),
+  };
 });
 
 // ---------------------------------------------------------------------------
