@@ -232,6 +232,33 @@ While recording, call out anything in these areas — this is the feedback I mos
   the annotation tests and skip the voice-only ones (§2).
 
 
+## Voice mic end-to-end (credentialed)
+
+`node scripts/qa-voice-mic.mjs` drives the real GEV MIC path in headless
+Chromium with a synthesized utterance played through Chromium's fake
+microphone, and prints a pass/fail checklist: ephemeral token, getUserMedia,
+WebRTC and data channel, server VAD, the tool call, its UI effect, and
+teardown (exit code 1 on any failed check).
+
+It needs a running dev server (`PORT=4189 ./scripts/dev-fresh.sh`) and an
+`OPENAI_API_KEY` with **active OpenAI billing**: each run opens one Realtime
+session (default tier `mini`) and, with `--utterance`, one TTS call — real
+spend.
+
+```
+node scripts/qa-voice-mic.mjs                          # default utterance, http://localhost:4189
+node scripts/qa-voice-mic.mjs http://localhost:4189 \
+  --utterance "Compare Lisbon and Valencia" --expect-tool compare_cities
+node scripts/qa-voice-mic.mjs --wav my-recording.wav   # 16-bit PCM WAV instead of TTS
+node scripts/qa-voice-mic.mjs --tier standard --timeout 90 --lead-ms 4000
+```
+
+What it does not prove: the audio is clean TTS (or your WAV) injected as a
+fake device, so it says nothing about a physical mic, OS/browser permission
+prompts, device selection, echo cancellation, background noise, accents or
+real speech timing and barge-in. Run a manual GEV MIC session on real
+hardware for those.
+
 ## Browser harness renderers
 
 The first-run, view-target prewarm, cockpit-plates and floor-hold harnesses
