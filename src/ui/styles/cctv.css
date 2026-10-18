@@ -14,13 +14,7 @@
 #cctv-panel .panel-glow {
   position: absolute;
   inset: -18px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 212, 255, 0.16) 0%,
-    transparent 65%
-  );
-  filter: blur(16px);
-  opacity: 0.25;
+  display: none;
   pointer-events: none;
 }
 
@@ -36,13 +30,7 @@
   max-height: calc(100vh - 24px);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 212, 255, 0.46) rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  scrollbar-color: var(--rule-strong) transparent;
 }
 
 .cctv-panel-inner::-webkit-scrollbar {
@@ -50,18 +38,14 @@
 }
 
 .cctv-panel-inner::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 999px;
+  background: var(--surface-1);
+  border-radius: 0;
 }
 
 .cctv-panel-inner::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    180deg,
-    rgba(0, 212, 255, 0.6),
-    rgba(0, 212, 255, 0.28)
-  );
-  border: 1px solid rgba(0, 212, 255, 0.4);
-  border-radius: 999px;
+  background: var(--rule-strong);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
 }
 
 .cctv-controls {
@@ -71,10 +55,10 @@
 }
 
 .cctv-calibration-block {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
   padding: 8px 9px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-1);
 }
 
 .cctv-calibration-header {
@@ -100,11 +84,11 @@
 .cctv-cal-value {
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.7px;
-  color: #91edff;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 7px;
+  letter-spacing: 0.07em;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   padding: 4px 7px;
   cursor: text;
   transition:
@@ -113,19 +97,19 @@
 }
 
 .cctv-cal-value:hover:not(:disabled) {
-  border-color: rgba(0, 212, 255, 0.45);
-  background: rgba(0, 212, 255, 0.08);
+  border-color: var(--rule-strong);
+  background: var(--surface-1);
 }
 
 .cctv-cal-input {
   width: 58px;
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.07em;
   color: var(--text-primary);
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid rgba(0, 212, 255, 0.5);
-  border-radius: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
   padding: 1px 3px;
   outline: none;
   -moz-appearance: textfield;
@@ -150,9 +134,9 @@
 #cctv-camera-select {
   flex: 1;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 7px;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   color: var(--text-primary);
   padding: 6px 8px;
   font-family: var(--font-sans);
@@ -175,7 +159,7 @@
 #cctv-projection-btn.active {
   color: var(--accent);
   border-color: var(--accent);
-  background: rgba(0, 212, 255, 0.14);
+  background: var(--surface-1);
 }
 
 #cctv-quality-chip {
@@ -184,13 +168,13 @@
   justify-content: center;
   min-width: 90px;
   padding: 6px 8px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 1px;
-  color: #8fe7ff;
-  background: rgba(0, 212, 255, 0.08);
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  background: var(--surface-1);
   text-transform: uppercase;
 }
 
@@ -218,16 +202,10 @@
 
 .cctv-frame-wrap {
   position: relative;
-  border-radius: 10px;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background:
-    radial-gradient(
-      circle at 20% 20%,
-      rgba(0, 244, 255, 0.09),
-      transparent 44%
-    ),
-    linear-gradient(180deg, rgba(8, 14, 19, 0.88), rgba(4, 7, 11, 0.96));
+  border: 1px solid var(--rule);
+  background: var(--surface-0);
   min-height: 150px;
   /* .cctv-panel-inner is a scrolling column flex container, so the default
      flex-shrink:1 squeezed this wrap down to its 150px floor while the 16:9
@@ -244,9 +222,9 @@
   background: linear-gradient(
     100deg,
     transparent 24%,
-    rgba(0, 212, 255, 0.08) 44%,
-    rgba(170, 244, 255, 0.14) 50%,
-    rgba(0, 212, 255, 0.08) 56%,
+    rgba(230, 231, 232, 0.06) 44%,
+    rgba(230, 231, 232, 0.12) 50%,
+    rgba(230, 231, 232, 0.06) 56%,
     transparent 76%
   );
   transform: translateX(-100%);
@@ -270,8 +248,8 @@
   justify-content: center;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 2.2px;
-  color: rgba(145, 237, 255, 0.62);
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -321,19 +299,19 @@
 #cctv-meta {
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   color: var(--text-secondary);
 }
 
 #cctv-source-badge {
   align-self: flex-start;
-  border: 1px solid rgba(0, 212, 255, 0.32);
-  border-radius: 999px;
-  background: rgba(0, 212, 255, 0.09);
-  color: #9defff;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--surface-1);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1.3px;
+  letter-spacing: 0.12em;
   padding: 4px 8px;
 }
 
@@ -352,7 +330,7 @@
 .cctv-summary-label {
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1.7px;
+  letter-spacing: 0.12em;
   color: var(--text-dim);
 }
 
@@ -360,8 +338,7 @@
   min-height: 38px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.08em;
   line-height: 1.45;
-  color: #a8f7ff;
-  text-shadow: 0 0 10px rgba(0, 212, 255, 0.18);
+  color: var(--text-primary);
 }
