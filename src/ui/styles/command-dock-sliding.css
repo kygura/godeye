@@ -33,15 +33,9 @@
   padding: 1.55rem 0.6rem 0.6rem;
   visibility: hidden;
   opacity: 0;
-  background: rgba(8, 20, 30, 0.94);
-  border: 1px solid rgba(123, 189, 211, 0.32);
-  border-radius: 0.42rem;
-  box-shadow:
-    0 0.9rem 2.4rem rgba(0, 0, 0, 0.58),
-    0 0 1.5rem rgba(0, 212, 255, 0.08),
-    0 0 0 1px rgba(255, 255, 255, 0.025) inset;
-  backdrop-filter: blur(28px) saturate(1.3);
-  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  background: var(--surface-0);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
   pointer-events: none;
   transform: translateY(0.55rem) scale(0.985);
   transform-origin: bottom left;
@@ -86,9 +80,9 @@
   left: 1.65rem;
   width: 0.6rem;
   height: 0.6rem;
-  background: rgba(8, 20, 30, 0.96);
-  border-right: 1px solid rgba(123, 189, 211, 0.28);
-  border-bottom: 1px solid rgba(123, 189, 211, 0.28);
+  background: var(--surface-0);
+  border-right: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
   transform: rotate(45deg);
 }
 
@@ -116,13 +110,13 @@
   min-width: 1.65rem;
   height: 1rem;
   padding: 0 0.28rem;
-  color: rgba(190, 221, 230, 0.5);
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(123, 189, 211, 0.2);
-  border-radius: 0.2rem;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 0.35rem;
-  letter-spacing: 0.04rem;
+  letter-spacing: 0.08em;
   cursor: pointer;
 }
 
@@ -131,12 +125,16 @@
   display: block;
 }
 
-#command-dock .dock-pin-btn:hover,
+#command-dock .dock-pin-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--rule-strong);
+}
+
+/* Pinned = selected: inverted. */
 #command-dock .dock-pin-btn[aria-pressed='true'] {
-  color: var(--accent);
-  border-color: rgba(0, 212, 255, 0.62);
-  background: rgba(0, 212, 255, 0.1);
-  box-shadow: 0 0 0.55rem rgba(0, 212, 255, 0.12);
+  color: var(--ink-inverse);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
 }
 
 #command-dock .panel-divider {
@@ -320,9 +318,7 @@
   height: 2.05rem;
   margin: 0;
   padding: 0;
-  border-radius: 50%;
-  background: rgba(8, 24, 34, 0.96);
-  box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.5);
+  border-radius: 0;
   transform: none;
 }
 
@@ -344,6 +340,13 @@
 #command-dock .dock-pin-btn img {
   width: 1.15rem;
   height: 1.15rem;
+  /* pin.svg strokes currentColor, which an <img> paints black: lift it to
+     light ink on the dark key, and drop the lift on the inverted (pinned) key. */
+  filter: invert(1);
+}
+
+#command-dock .dock-pin-btn[aria-pressed='true'] img {
+  filter: none;
 }
 
 /* Five-pixel standby baseline; live microphone analysis sets --audio-level. */
@@ -374,15 +377,14 @@
 #command-dock
   #gev-voice-control[data-speaker='user']
   :is(#gev-voice-status, #gev-voice-detail) {
-  color: #ffbf69;
+  color: var(--signal);
 }
 
 #command-dock
   #gev-voice-control[data-speaker='user']
   .gev-voice-visualizer
   span {
-  background: linear-gradient(to top, #d98a35, #ffcf8a);
-  box-shadow: 0 0 0.35rem rgba(255, 191, 105, 0.32);
+  background: var(--signal);
 }
 
 #command-dock
@@ -392,8 +394,7 @@
 }
 
 #command-dock #gev-voice-control[data-speaker='ai'] .gev-voice-visualizer span {
-  background: linear-gradient(to top, #28b9db, #71eaff);
-  box-shadow: 0 0 0.35rem rgba(54, 220, 255, 0.28);
+  background: var(--text-primary);
 }
 
 /* Center every slide-up tray on the complete unified dock, not its side wing. */
@@ -457,17 +458,14 @@
   transform: none;
 }
 
-/* Keep the microphone neutral at rest; cyan signals hover and live states. */
+/* The mic is a dial: round, neutral at rest, --signal only while live. */
 #command-dock .gev-mic-orbit {
-  background: rgba(232, 234, 237, 0.04);
-  border-color: rgba(232, 234, 237, 0.36);
-  box-shadow:
-    0 0 0 0.18rem rgba(232, 234, 237, 0.04),
-    0 0 0.75rem rgba(232, 234, 237, 0.08);
+  background: var(--surface-1);
+  border-color: var(--rule-strong);
+  box-shadow: none;
   transition:
     background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
+    border-color var(--transition-fast);
 }
 
 #command-dock .gev-mic-orbit img {
@@ -478,7 +476,10 @@
     opacity var(--transition-fast);
 }
 
-#command-dock #gev-voice-button:hover .gev-mic-orbit,
+#command-dock #gev-voice-button:hover .gev-mic-orbit {
+  border-color: var(--text-primary);
+}
+
 #command-dock
   #gev-voice-control:is(
     [data-status='connecting'],
@@ -486,11 +487,8 @@
     [data-status='executing']
   )
   .gev-mic-orbit {
-  background: rgba(0, 212, 255, 0.06);
-  border-color: rgba(0, 212, 255, 0.48);
-  box-shadow:
-    0 0 0 0.18rem rgba(0, 212, 255, 0.06),
-    0 0 0.9rem rgba(0, 212, 255, 0.12);
+  background: var(--signal-dim);
+  border-color: var(--signal);
 }
 
 #command-dock #gev-voice-button:hover .gev-mic-orbit img,
@@ -502,41 +500,31 @@
   )
   .gev-mic-orbit
   img {
-  filter: none;
   opacity: 1;
 }
 
-/* Match compact dock wings to the glass treatment used by left-panel buttons. */
+/* Dock wings + voice module read as one opaque bezel strip. */
 #command-dock > #location-bar,
 #command-dock > #control-panel {
   box-sizing: border-box;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--surface-0);
+  border: 1px solid var(--rule);
   border-radius: var(--panel-radius);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: none;
   transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    box-shadow 160ms ease;
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 #command-dock > :is(#location-bar, #control-panel):hover {
-  background: var(--glass-bg);
-  border-color: var(--glass-border-hover);
+  background: var(--surface-0);
+  border-color: var(--rule-strong);
   color: var(--accent);
 }
 
 #command-dock > :is(#location-bar, #control-panel).dock-pinned {
-  border-color: rgba(0, 212, 255, 0.55);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 212, 255, 0.08) inset,
-    0 0 1rem rgba(0, 212, 255, 0.12);
+  border-color: var(--text-primary);
+  box-shadow: none;
 }
 
 #command-dock #location-bar .location-toolbar {
@@ -565,15 +553,19 @@
   text-align: right;
 }
 
-/* These must follow the shared wing skin so the visible borders stay joined. */
+/* These must follow the shared wing skin so the visible borders stay joined.
+   The inner edge is painted out so the voice module's own 1px border is the
+   single divider between sections (width unchanged). */
 #command-dock > #location-bar {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+  border-right-color: transparent;
 }
 
 #command-dock > #control-panel {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+  border-left-color: transparent;
 }
 
 #command-dock #location-bar .location-toolbar,
@@ -614,15 +606,10 @@
   padding: 0.62rem 0.72rem;
   visibility: hidden;
   opacity: 0;
-  color: rgba(223, 245, 250, 0.92);
-  background: rgba(7, 22, 31, 0.96);
-  border: 1px solid rgba(54, 220, 255, 0.34);
-  border-radius: 0.38rem;
-  box-shadow:
-    0 0.85rem 2rem rgba(0, 0, 0, 0.58),
-    0 0 1.2rem rgba(0, 212, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.3);
-  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  color: var(--text-primary);
+  background: var(--surface-0);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
   pointer-events: none;
   transform: translate(-50%, 0.65rem) scale(0.985);
   transform-origin: bottom center;
@@ -633,11 +620,11 @@
 }
 
 #gev-voice-control .gev-voice-help-kicker {
-  color: rgba(54, 220, 255, 0.72);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.46rem;
   font-weight: 600;
-  letter-spacing: 0.1rem;
+  letter-spacing: 0.08em;
 }
 
 #gev-voice-control .gev-voice-help-detail {
@@ -681,18 +668,108 @@
   pointer-events: none;
 }
 
-#command-dock #location-bar .location-toolbar::after {
-  background: linear-gradient(
-    90deg,
-    rgba(232, 234, 237, 0.24),
-    rgba(232, 234, 237, 0)
-  );
+#command-dock #location-bar .location-toolbar::after,
+#command-dock #control-panel .panel-header::after {
+  background: var(--rule);
 }
 
-#command-dock #control-panel .panel-header::after {
-  background: linear-gradient(
-    90deg,
-    rgba(232, 234, 237, 0),
-    rgba(232, 234, 237, 0.24)
-  );
+/* ── Operator skin: preset tiles and map source as segmented cells ──────
+   Square cells that share their 1px borders (negative margin collapses the
+   seam; flex/grid tracks still size the cells). Selected = inverted. Scoped
+   off the Cyber layout, which keeps its own tile skin. */
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  :is(.button-grid, .map-stack-chip-row) {
+  gap: 0;
+  padding-left: 1px;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  :is(.style-btn, .map-stack-chip) {
+  margin: 0 0 -1px -1px;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .map-stack-chip-row {
+  padding-bottom: 1px;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .style-btn::before {
+  display: none;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  :is(.style-btn, .map-stack-chip):is(:hover, :focus-visible) {
+  z-index: 1;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border-color: var(--rule-strong);
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  :is(.style-btn, .map-stack-chip).active {
+  z-index: 2;
+  color: var(--ink-inverse);
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  box-shadow: none;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .style-btn.active
+  :is(.btn-icon, .btn-label, .btn-key, .map-stack-chip-req) {
+  color: var(--ink-inverse);
+  text-shadow: none;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .map-stack-chip.active
+  .map-stack-chip-req {
+  color: var(--ink-inverse);
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .map-stack-chip:is(.unavailable, [aria-disabled='true']) {
+  z-index: 0;
+  color: var(--text-dim);
+  background: var(--surface-1);
+  border-color: var(--rule);
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .map-source-section {
+  border-top-color: var(--rule);
+}
+
+:root:not([data-ui-theme='cyber'])
+  #command-dock
+  .dock-popover-content
+  .map-source-heading {
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
 }

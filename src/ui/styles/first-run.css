@@ -18,17 +18,9 @@
   padding: 1.15rem;
   overflow: hidden;
   color: var(--text-primary);
-  background:
-    linear-gradient(145deg, rgba(10, 27, 37, 0.97), rgba(7, 13, 22, 0.95)),
-    rgba(7, 17, 25, 0.96);
-  border: 1px solid rgba(54, 220, 255, 0.42);
-  border-radius: 0.65rem;
-  box-shadow:
-    0 1.4rem 4.5rem rgba(0, 0, 0, 0.72),
-    0 0 2.5rem rgba(0, 212, 255, 0.09),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
-  backdrop-filter: blur(28px) saturate(1.25);
-  -webkit-backdrop-filter: blur(28px) saturate(1.25);
+  background: var(--surface-0);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
   opacity: 0;
   transform: translate(-50%, calc(-50% + 0.8rem)) scale(0.985);
   transition:
@@ -57,13 +49,8 @@
   position: absolute;
   inset: 0 0 auto;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(54, 220, 255, 0.8),
-    transparent
-  );
-  box-shadow: 0 0 1rem rgba(54, 220, 255, 0.45);
+  /* Decoration retired; element kept for markup stability. */
+  display: none;
   pointer-events: none;
 }
 
@@ -73,37 +60,39 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  color: rgba(171, 210, 220, 0.6);
+  color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 0.58rem;
-  letter-spacing: 0.1rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .first-run-kicker {
-  color: rgba(54, 220, 255, 0.86);
+  color: var(--text-secondary);
 }
 
 #first-run-launcher h2 {
   margin-top: 0.6rem;
-  font-family: var(--font-mono);
-  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  font-family: var(--font-sans);
+  font-size: 1.2rem;
   font-weight: 500;
-  letter-spacing: -0.045rem;
+  letter-spacing: -0.01em;
 }
 
 #first-run-description {
   max-width: 29rem;
   margin-top: 0.3rem;
-  color: rgba(215, 231, 235, 0.66);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: 0.78rem;
   line-height: 1.5;
 }
 
 .first-run-choices {
   display: grid;
-  gap: 0.42rem;
+  gap: 0;
   margin-top: 1rem;
+  border-top: 1px solid var(--rule);
   /* The one part of the card allowed to scroll when the viewport is too short.
      min-height:0 is what actually lets this flex child shrink below its content. */
   min-height: 0;
@@ -112,7 +101,7 @@
   scroll-behavior: smooth;
   /* A visible, non-overlaying affordance that the list continues. */
   scrollbar-width: thin;
-  scrollbar-color: rgba(54, 220, 255, 0.45) transparent;
+  scrollbar-color: var(--rule-strong) transparent;
   scrollbar-gutter: stable;
 }
 
@@ -120,8 +109,8 @@
   width: 6px;
 }
 .first-run-choices::-webkit-scrollbar-thumb {
-  background: rgba(54, 220, 255, 0.45);
-  border-radius: 3px;
+  background: var(--rule-strong);
+  border-radius: 0;
 }
 
 .first-run-choices button {
@@ -132,24 +121,19 @@
   width: 100%;
   min-height: 3.55rem;
   padding: 0.6rem 0.7rem;
-  color: rgba(225, 244, 248, 0.92);
+  color: var(--text-primary);
   text-align: left;
-  background: rgba(29, 69, 81, 0.18);
-  border: 1px solid rgba(100, 200, 220, 0.18);
-  border-radius: 0.42rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
   cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast);
+  transition: background var(--transition-fast);
 }
 
 .first-run-choices button:hover,
 .first-run-choices button:focus-visible {
-  background: rgba(25, 151, 178, 0.16);
-  border-color: rgba(54, 220, 255, 0.62);
-  outline: none;
-  transform: translateX(2px);
+  background: var(--surface-1);
 }
 
 /* aria-disabled, not :disabled — the JS keeps the buttons focusable while a
@@ -157,12 +141,11 @@
 .first-run-choices button[aria-disabled='true'] {
   cursor: wait;
   opacity: 0.48;
-  transform: none;
   pointer-events: none;
 }
 
 .first-run-choices button > .material-symbols-outlined:first-child {
-  color: #55dff5;
+  color: var(--text-secondary);
   font-size: 1.35rem;
 }
 
@@ -176,47 +159,45 @@
   font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.08rem;
+  letter-spacing: 0.06em;
 }
 
 .first-run-choices small {
-  color: rgba(198, 220, 226, 0.55);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
   font-size: 0.66rem;
 }
 
 .first-run-arrow {
-  color: rgba(54, 220, 255, 0.4);
+  color: var(--text-dim);
   font-size: 1rem;
-  transition:
-    transform var(--transition-fast),
-    color var(--transition-fast);
+  transition: color var(--transition-fast);
 }
 
 .first-run-choices button:hover .first-run-arrow,
 .first-run-choices button:focus-visible .first-run-arrow {
-  color: rgba(54, 220, 255, 0.9);
-  transform: translateX(2px);
+  color: var(--text-primary);
 }
 
 /* Ordered after the shared button rule rather than shouting !important at it. */
 .first-run-choices button.first-run-explore {
-  background: rgba(255, 255, 255, 0.025);
+  background: transparent;
 }
 
 .first-run-footer {
   margin-top: 0.85rem;
   font-size: 0.48rem;
-  letter-spacing: 0.055rem;
+  letter-spacing: 0.06em;
 }
 
 .first-run-suppress {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: rgba(199, 225, 231, 0.66);
+  color: var(--text-secondary);
   text-transform: none;
   font-size: 0.62rem;
-  letter-spacing: 0.02rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
 
@@ -224,12 +205,12 @@
   width: 0.82rem;
   height: 0.82rem;
   margin: 0;
-  accent-color: #36dcff;
+  accent-color: var(--text-primary);
   cursor: pointer;
 }
 
 .first-run-suppress:hover {
-  color: rgba(225, 244, 248, 0.92);
+  color: var(--text-primary);
 }
 
 /* The live region carries mission progress and failures, so it owns a full row
@@ -237,14 +218,14 @@
 .first-run-note {
   min-height: 1.1rem;
   margin-top: 0.5rem;
-  color: rgba(199, 225, 231, 0.62);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.62rem;
   line-height: 1.35;
 }
 
 #first-run-launcher[data-state='loading'] .first-run-note {
-  color: rgba(54, 220, 255, 0.85);
+  color: var(--signal);
 }
 
 /* Every surface that claims the screen hides the launcher. This list is the CSS
