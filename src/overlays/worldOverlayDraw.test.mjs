@@ -109,8 +109,8 @@ test('an ambient detection callout paints its backing plate under its text', () 
     label: 'rgba(200, 250, 255, 0.97)',
     primary: 'JA23NF',
     micro: 'FL017',
-    font: '10px JetBrains Mono, monospace',
-    microFont: '9px JetBrains Mono, monospace',
+    font: '10px "IBM Plex Mono", monospace',
+    microFont: '9px "IBM Plex Mono", monospace',
   }, 1);
 
   const names = ctx.calls.map(([name]) => name);
@@ -573,8 +573,8 @@ const CALLOUT_FIXTURE = Object.freeze({
   label: 'rgba(200, 250, 255, 0.97)',
   primary: 'JA23NF',
   micro: 'FL017',
-  font: '10px JetBrains Mono, monospace',
-  microFont: '9px JetBrains Mono, monospace',
+  font: '10px "IBM Plex Mono", monospace',
+  microFont: '9px "IBM Plex Mono", monospace',
 });
 
 test('a sky-backed callout feathers its PLATE and nothing else', () => {

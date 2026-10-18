@@ -66,7 +66,7 @@ export function buildSyntheticCctvSvg({ cameraId, label, city, status }) {
     <line x1="70" y1="270" x2="890" y2="270" />
     <line x1="480" y1="80" x2="480" y2="460" />
   </g>
-  <g fill="#9cefff" font-family="JetBrains Mono, monospace" text-transform="uppercase">
+  <g fill="#9cefff" font-family=""IBM Plex Mono", monospace" text-transform="uppercase">
     <text x="74" y="54" font-size="16" letter-spacing="2">CCTV FEED PLACEHOLDER</text>
     <text x="74" y="512" font-size="14" letter-spacing="1.5">${safeLabel} · ${safeCity}</text>
     <text x="646" y="512" font-size="13" letter-spacing="1.2">${safeId}</text>
