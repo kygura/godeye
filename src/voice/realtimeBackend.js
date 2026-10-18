@@ -83,8 +83,13 @@ export function createRealtimeBackend({
       signal.throwIfAborted();
       if (!response.ok) {
         // OpenAI's body tells a real rate limit apart from e.g. billing_not_active (both 429).
-        const code = await response.json().then((b) => b?.error?.code, () => null);
-        throw new Error(`Realtime SDP failed: HTTP ${response.status}${code ? ` (${code})` : ''}`);
+        const code = await response.json().then(
+          (b) => b?.error?.code,
+          () => null,
+        );
+        throw new Error(
+          `Realtime SDP failed: HTTP ${response.status}${code ? ` (${code})` : ''}`,
+        );
       }
       const answer = await response.text();
       signal.throwIfAborted();

@@ -49,6 +49,9 @@ ATLAS needs no keys. Methodology and known limits:
 
 ## Layers
 
+Nineteen layers and map sources. **Seventeen have a keyless path.** ATLAS
+adds a twentieth, also keyless.
+
 🟢 no key · 🟡 free key · 🔴 metered
 
 | Layer                | What it shows                                                           | Source                           | Key                                         |
@@ -76,6 +79,8 @@ ATLAS needs no keys. Methodology and known limits:
 
 Bundled static layers: datacenters, dams and submarine cables.
 
+- **Sits on the real ground.** Entity heights are aligned to work with Google 3D tiles, so aircraft park on aprons and cameras stand on street corners instead of floating.
+
 ## Controls
 
 `1`–`7` visual styles (CRT, NVG, FLIR and others) · `H` HUD · `D` detection ·
@@ -83,6 +88,9 @@ Bundled static layers: datacenters, dams and submarine cables.
 
 Click any aircraft, ship or satellite to track it. **COCKPIT** rides a tracked
 aircraft in first person.
+
+DISPLAY ▸ **Draw**: pick Area, Line or Pin, click the vertices on the real
+world, double-click to finish, label it.
 
 ## Voice
 

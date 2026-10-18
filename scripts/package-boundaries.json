@@ -20,7 +20,7 @@
   },
   "viewer": {
     "exports": ["./application/viewer"],
-    "modules": ["src/app/viewer.js"],
+    "modules": ["src/app/viewer.js", "src/app/atmosphereCompat.js"],
     "external": ["cesium"]
   },
   "vite-build": {
@@ -1072,6 +1072,7 @@
       "src/layers/cctv/geometry.js",
       "src/layers/cctv/geometryQueue.js",
       "src/layers/cctv/ground.js",
+      "src/layers/cctv/headingConfidence.js",
       "src/layers/cctv/health.js",
       "src/layers/cctv/hover.js",
       "src/layers/cctv/index.js",
@@ -1334,6 +1335,7 @@
       "src/data/local_data/city_intel/countries.json",
       "src/data/local_data/city_intel/seasonality.json",
       "src/layers/trips/index.js",
+      "src/app/atmosphereCompat.js",
       "src/bloom.js",
       "src/camera.js",
       "src/cameraVerbs.js",
@@ -1508,6 +1510,7 @@
       "src/layers/cctv/geometry.js",
       "src/layers/cctv/geometryQueue.js",
       "src/layers/cctv/ground.js",
+      "src/layers/cctv/headingConfidence.js",
       "src/layers/cctv/health.js",
       "src/layers/cctv/hover.js",
       "src/layers/cctv/index.js",
@@ -2162,6 +2165,7 @@
       "src/layers/cctv/geometry.js",
       "src/layers/cctv/geometryQueue.js",
       "src/layers/cctv/ground.js",
+      "src/layers/cctv/headingConfidence.js",
       "src/layers/cctv/health.js",
       "src/layers/cctv/hover.js",
       "src/layers/cctv/index.js",
