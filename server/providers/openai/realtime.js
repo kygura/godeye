@@ -103,6 +103,9 @@ function createRealtimeTokenHandler({
         audio: {
           input: {
             noise_reduction: { type: 'near_field' },
+            // Feeds the user-transcript handler in src/voice/realtimeEvents.js.
+            // ponytail: billed per ASR-model rate outside voiceCost's spend guard (~$0.003/min); count it there if it grows.
+            transcription: { model: 'gpt-4o-mini-transcribe' },
             turn_detection: {
               type: 'semantic_vad',
               eagerness: 'low',

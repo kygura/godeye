@@ -1,0 +1,264 @@
+import * as Cesium from 'cesium';
+import { flightPath, estimateFlightHours } from '../../travel/geo.js';
+import { spanLabel } from '../cityIntel/plan.js';
+
+/** Connecting hubs for legs beyond nonstop range. */
+export const FLIGHT_HUBS = Object.freeze([
+  { label: 'LAX', coord: [-118.41, 33.94] },
+  { label: 'JFK', coord: [-73.78, 40.64] },
+  { label: 'LHR', coord: [-0.45, 51.47] },
+  { label: 'IST', coord: [28.75, 41.28] },
+  { label: 'DXB', coord: [55.36, 25.25] },
+  { label: 'DOH', coord: [51.61, 25.27] },
+  { label: 'SIN', coord: [103.99, 1.36] },
+  { label: 'HKG', coord: [113.91, 22.31] },
+  { label: 'NRT', coord: [140.39, 35.77] },
+  { label: 'JNB', coord: [28.24, -26.14] },
+  { label: 'SYD', coord: [151.18, -33.95] },
+]);
+
+/** Pure: legs of a trip with distance, estimate and drawn segments. */
+export function tripLegs(trip, hubs = FLIGHT_HUBS) {
+  const nodes = trip?.nodes || [];
+  // A Lifestyle Plan (DESIGN §10) only closes its loop back to the first
+  // stay once every month is spoken for; the store never holds overlaps,
+  // so a len sum of 12 is exactly "fully covered". Appending the first stop
+  // once here lets a single pass over consecutive pairs cover both the
+  // open and the closed itinerary.
+  const complete =
+    trip?.kind === 'plan' &&
+    nodes.reduce((sum, n) => sum + (n.len || 0), 0) === 12;
+  const stops = complete && nodes.length > 1 ? [...nodes, nodes[0]] : nodes;
+  const legs = [];
+  for (let i = 1; i < stops.length; i++) {
+    const a = [stops[i - 1].lng, stops[i - 1].lat];
+    const b = [stops[i].lng, stops[i].lat];
+    const path = flightPath(a, b, hubs);
+    legs.push({
+      from: stops[i - 1],
+      to: stops[i],
+      ...path,
+      hours: estimateFlightHours(path.distanceKm),
+    });
+  }
+  return legs;
+}
+
+/**
+ * Pure: the label drawn at a trip stop. Plan trips (DESIGN §10) show the
+ * stay's month span ("NOV–FEB LIS") instead of a running index ("1 LIS").
+ */
+export function nodeLabelText(trip, node, index) {
+  if (trip?.kind === 'plan') {
+    const span = spanLabel(node).split(' · ')[0];
+    return `${span} ${node.iata || node.name}`;
+  }
+  return `${index + 1} ${node.iata || node.name}`;
+}
+
+/** Pure row chips for the Trips row. */
+export function tripsRowControls({ trip, flying }) {
+  const nodes = trip?.nodes?.length || 0;
+  return {
+    chips: [
+      {
+        id: 'fly',
+        label: flying ? 'FLYING' : 'FLY',
+        disabled: nodes < 2,
+        busy: flying,
+        active: flying,
+        state: flying ? 'loading' : 'idle',
+        title:
+          nodes < 2
+            ? 'Add two or more stops first'
+            : 'Fly the camera along the trip',
+        params: { fly: true },
+      },
+      {
+        id: 'clear',
+        label: 'CLEAR',
+        disabled: nodes === 0,
+        state: 'idle',
+        title: 'Remove every stop from the active trip',
+        params: { clear: true },
+      },
+    ],
+    legend: trip ? [{ label: trip.name, color: trip.color, count: nodes }] : [],
+  };
+}
+
+/**
+ * Draw the active trip as great-circle legs and stop pins. Reads the trip
+ * store; the store owns persistence, this layer only mirrors it.
+ * @param {{store: object, camera?: object}} deps
+ */
+export function createTripsLayer({ store, camera = null } = {}) {
+  if (typeof store?.subscribe !== 'function')
+    throw new TypeError('Trips require a trip store');
+  let _viewer = null;
+  let _dataSource = null;
+  let _enabled = false;
+  let _unsubscribe = null;
+  let _listener = null;
+  let _seams = null;
+  let _flying = false;
+
+  const repaintRow = () => _listener?.();
+
+  function redraw() {
+    if (!_dataSource) return;
+    _dataSource.entities.removeAll();
+    const trip = store.getActiveTrip();
+    if (!trip) return;
+    const color = Cesium.Color.fromCssColorString(trip.color || '#f59e0b');
+    for (const leg of tripLegs(trip)) {
+      for (const seg of leg.segments) {
+        _dataSource.entities.add({
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArray(seg.flat()),
+            width: 2.5,
+            material: new Cesium.PolylineDashMaterialProperty({
+              color,
+              dashLength: 12,
+            }),
+            clampToGround: true,
+          },
+        });
+      }
+    }
+    trip.nodes.forEach((n, i) => {
+      _dataSource.entities.add({
+        id: `trips:${trip.id}:${i}`,
+        position: Cesium.Cartesian3.fromDegrees(n.lng, n.lat),
+        point: {
+          pixelSize: 9,
+          color,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: nodeLabelText(trip, n, i),
+          font: '12px JetBrains Mono, monospace',
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(0, -16),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    });
+    repaintRow();
+  }
+
+  function fly() {
+    const trip = store.getActiveTrip();
+    if (!camera?.flyRoute || !_viewer || !trip || trip.nodes.length < 2)
+      return false;
+    camera.initCameraVerbs?.(_viewer);
+    const path = tripLegs(trip)
+      .flatMap((leg) => leg.segments.flat())
+      .map(([lon, lat]) => ({ lon, lat, height: 0 }));
+    const result = camera.flyRoute(
+      [{ type: 'route', label: trip.name, path }],
+      { speed: 'fast' },
+      _seams?.floorFn || null,
+      _seams?.runNavigation || null,
+      _seams?.warmFn || null,
+    );
+    if (result?.ok !== true) {
+      _seams?.showToast?.(result?.error || 'Could not fly the trip');
+      return false;
+    }
+    _flying = true;
+    repaintRow();
+    const done = () => {
+      _flying = false;
+      repaintRow();
+    };
+    setTimeout(done, Math.max(1000, (result.durationS || 0) * 1000));
+    return true;
+  }
+
+  return {
+    id: 'trips',
+    name: 'Trips',
+    icon: '🧳',
+    source: 'Local',
+    updateInterval: 0,
+
+    init(viewer) {
+      if (_viewer) throw new Error('Trips layer is already initialized');
+      _viewer = viewer;
+      _dataSource = new Cesium.CustomDataSource('trips');
+      _dataSource.show = false;
+      viewer.dataSources.add(_dataSource);
+      _unsubscribe = store.subscribe(() => redraw());
+      redraw();
+    },
+    enable() {
+      _enabled = true;
+      if (_dataSource) _dataSource.show = true;
+    },
+    disable() {
+      _enabled = false;
+      if (_dataSource) _dataSource.show = false;
+    },
+    async update() {
+      // No periodic refresh: the DataManager's enable() flow calls update()
+      // once immediately after enabling and treats a `false` return as a
+      // failed transition (src/data/lifecycle.js), which made this
+      // always-off-the-shelf-`false` layer un-enableable. `true` reports the
+      // (trivial) update as having succeeded.
+      return true;
+    },
+    destroy(viewer = _viewer) {
+      _unsubscribe?.();
+      _unsubscribe = null;
+      if (_dataSource && viewer) viewer.dataSources.remove(_dataSource, true);
+      _dataSource = null;
+      _viewer = null;
+      _enabled = false;
+      _listener = null;
+      _seams = null;
+    },
+    getStats() {
+      const trip = store.getActiveTrip();
+      const legs = trip ? tripLegs(trip) : [];
+      const km = Math.round(legs.reduce((s, l) => s + l.distanceKm, 0));
+      return {
+        count: trip?.nodes.length || 0,
+        enabled: _enabled,
+        distanceKm: km,
+        detail: trip
+          ? `${trip.name} · ${km.toLocaleString()} km`
+          : 'No active trip',
+      };
+    },
+    getRowControls() {
+      return tripsRowControls({ trip: store.getActiveTrip(), flying: _flying });
+    },
+    setRowControlsListener(listener) {
+      _listener = typeof listener === 'function' ? listener : null;
+    },
+    setParams(params = {}) {
+      if (params.fly) fly();
+      if (params.clear) {
+        const trip = store.getActiveTrip();
+        if (!trip) return;
+        // The Lifestyle Plan is the single kind:'plan' trip (DESIGN §10):
+        // CLEAR empties its stays, it never deletes the plan itself.
+        if (trip.kind === 'plan') store.clearTrip(trip.id);
+        else store.removeTrip(trip.id);
+      }
+    },
+    getParams() {
+      return {};
+    },
+    attachShellServices(services) {
+      _seams = services || null;
+    },
+  };
+}

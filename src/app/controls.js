@@ -1,6 +1,7 @@
 import { catalogControlServices } from './catalog.js';
 import { StyleManager } from '../ui/composition.js';
 import { flyToAustin } from '../camera.js';
+import { parseTravelParams } from '../travel/briefing.js';
 import { initCockpitCloudEffects } from '../cockpitCloudEffects.js';
 
 /** Construct the existing controls and camera presentation. */
@@ -39,8 +40,13 @@ export function createApplicationControls({
   });
   defer(() => cockpitCloudEffects?.destroy());
 
-  // If no share link state, do default fly-to Austin
-  if (!styleManager.hasShareState) {
+  // If no share link state, do default fly-to Austin. A Travel destination
+  // link flies to its destination instead (src/travel/controller.js reads
+  // the same `?mode=travel&dest=` params once Travel Mode wires up).
+  const travel = parseTravelParams(location.search);
+  if (travel.active && travel.dest) {
+    loaderStatus.textContent = `Flying to ${travel.dest}...`;
+  } else if (!styleManager.hasShareState) {
     loaderStatus.textContent = 'Flying to Austin, TX...';
     defer(flyToAustin(viewer));
   } else {

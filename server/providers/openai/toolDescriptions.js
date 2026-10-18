@@ -599,4 +599,86 @@ export const ACTION_DESCRIPTIONS = {
       'Predict the next pass in 24 hours for one satellite in the loaded catalog, identified by exact NORAD ID or name. Ambiguous names return candidates: ask for a choice rather than selecting one. Defaults to geometric passes; visibleOnly requires estimated illumination and a dark observer sky, which does not guarantee naked-eye visibility. Uses camera location unless coordinates are supplied.',
     $position: 1,
   },
+  rank_cities: {
+    description:
+      'Rank cities in the City Intel cockpit (where should I live next) by quality of life, cost, safety and travel ease, and re-render the panel and globe. Enters City Intel mode first if it is off. Map qualitative asks to weights (0-10 each) rather than leaving them unset: "safest affordable" -> {safety:9, cost:8, qol:3, travel:3}; "best quality of life" -> {qol:9, cost:3, safety:5, travel:3}; "easiest to travel from" -> {travel:9, qol:3, cost:3, safety:3}. Omit a weight to leave it unchanged from the panel\'s current value. Returns the top-ranked cities and their coverage; the result always carries a caveat that this is mostly country-level public statistics, not relocation advice. Optionally add months to also report each result\'s seasonal comfort — this NEVER changes the ranking or weights, it is report-only. Months are calendar months 1-12: Northern-hemisphere winter (Europe, North America, most of Asia) is [12,1,2], summer is [6,7,8]; Southern-hemisphere seasons (South America, southern Africa, Oceania) are the reverse. Example: "cheapest safe winter base in Europe" -> region "Europe", weights {cost:9, safety:8, qol:4, travel:3}, months [12,1,2] — then look at the returned comfort values yourself, pick the best one, and tell the user comfort was reported for their pick, not scored into the ranking.',
+    $position: 1,
+    parameters: {
+      properties: {
+        region: {
+          description: 'Restrict ranking to one continent.',
+          $position: 1,
+        },
+        weights: {
+          description:
+            'Pillar weights 0-10; only the provided keys change, others keep their current panel value.',
+          $position: 2,
+        },
+        limit: {
+          description: 'How many top cities to return. Default 5.',
+          $position: 3,
+        },
+        months: {
+          description:
+            "Optional calendar months (1-12) to report each result's mean seasonal comfort from static climate data. Report-only: never changes ranking or weights. E.g. winter in Europe = [12,1,2].",
+          $position: 4,
+        },
+      },
+    },
+  },
+  compare_cities: {
+    description:
+      'Compare 2 to 4 cities side by side in the City Intel cockpit: resolves each name to a city (ambiguous names like "San Jose" or "Springfield" are resolved by population and any country hint, and the pick is reported), pins them, and opens the compare view. Names that cannot be resolved are reported, never silently dropped. Enters City Intel mode first if it is off. The result carries a caveat that scores are mostly country-level public statistics, not relocation advice.',
+    $position: 1,
+    parameters: {
+      properties: {
+        cities: {
+          description:
+            '2 to 4 city names, e.g. ["Lisbon", "Valencia, Spain", "San Jose Costa Rica"]. Include the country when the user says it or it is obvious from context (e.g. "Valencia, Spain") — an ambiguous name with no country given is resolved automatically, but a hint you already have avoids a wrong pick.',
+          $position: 1,
+        },
+      },
+    },
+  },
+  show_city_intel: {
+    description:
+      'Open the scorecard for one city in the City Intel cockpit: resolves the name, flies to it, and returns the composite score, per-pillar scores, and a few headline metrics with their source/year/level. If the city is ineligible for ranking (missing safety or too few pillars), says why. Enters City Intel mode first if it is off. The result carries a caveat that scores are mostly country-level public statistics, not relocation advice.',
+    $position: 1,
+    parameters: {
+      properties: {
+        city: {
+          description:
+            'City name. Include the country when the user says it or it is obvious from context (e.g. "Montevideo" or "Valencia, Spain") to avoid a wrong pick on an ambiguous name.',
+          $position: 1,
+        },
+      },
+    },
+  },
+  plan_lifestyle: {
+    description:
+      "Build or replace the WHOLE year-long Lifestyle Plan in the City Intel cockpit: an ordered list of stays (city + optional months) covering some or all of the year. This REPLACES the entire existing plan atomically — it is not additive. Enters City Intel mode first if it is off. If no stay in the call specifies months, the year is split evenly across the stays in the order given. If some stays specify months and others do not, the unspecified ones are filled evenly across whatever months are left over, in order. Given months must form one contiguous run and may wrap past December, e.g. [11,12,1,2] for Nov-Feb. An unresolved city name, non-contiguous months, or an overlap between stays fails honestly and changes nothing. Returns each stay's fit, cost, comfort and visa read plus a year rollup (months covered, gaps, annual cost, moves and distance), with a caveat that this is mostly country-level public statistics, not relocation advice.",
+    $position: 1,
+    parameters: {
+      properties: {
+        stays: {
+          description:
+            '1 to 6 stays, in the order they should occupy the year. Each needs a city name (include the country for an ambiguous name, e.g. "Valencia, Spain"); months is optional per stay and is filled in automatically when omitted.',
+          $position: 1,
+          items: {
+            properties: {
+              city: {
+                description: 'City name, e.g. "Lisbon" or "Valencia, Spain".',
+                $position: 1,
+              },
+              months: {
+                description:
+                  "Optional contiguous run of months (1-12) this stay covers; may wrap past December, e.g. [11,12,1,2] for Nov-Feb. Omit to have this stay's months assigned automatically.",
+                $position: 2,
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 };

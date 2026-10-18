@@ -112,6 +112,17 @@ for (const tag of ['INPUT', 'SELECT', 'TEXTAREA']) {
   });
 }
 
+test('Travel mode suppresses every application shortcut until it exits', () => {
+  const f = shortcuts();
+  const classes = new Set(['travel-mode']);
+  f.documentRef.body = { classList: { contains: (name) => classes.has(name) } };
+  for (const key of ['1', 'h', 'o', 'v', 'f', 'd', 'c', 'Escape']) f.press(key);
+  assert.deepEqual(f.calls, []);
+  classes.clear();
+  f.press('h');
+  assert.deepEqual(f.calls, [['toggleHud']]);
+});
+
 test('the supplied search target retains editing even without form markup', () => {
   const f = shortcuts();
   f.press('1', f.searchInput);

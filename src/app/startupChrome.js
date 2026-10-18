@@ -6,6 +6,7 @@ export function startApplicationChrome({
   styleManager,
   dataManager,
   signal,
+  readCityIntel,
   initializeWelcome = initFirstRunExperience,
   initializeSettings,
 }) {
@@ -17,9 +18,18 @@ export function startApplicationChrome({
     resolveDelay = resolve;
   });
   const delayTimer = setTimeout(resolveDelay, 1000);
+  // tools.js constructs the ATLAS handle AFTER calling startChrome, so
+  // `readCityIntel` is a lazy reader, not the handle (docs/UI-OWNERSHIP.md
+  // "Readers resolve a replaceable collaborator at use time"). This wrapper
+  // is only ever invoked from a mission click, long after that handle exists.
+  const enterAtlas = async () => {
+    const cityIntel = readCityIntel?.();
+    if (!cityIntel?.mode?.enter) throw new Error('City Intel unavailable');
+    await cityIntel.mode.enter();
+  };
   const revealFirstRun = () => {
     if (disposed || signal.aborted || firstRun) return;
-    firstRun = initializeWelcome?.({ styleManager, dataManager });
+    firstRun = initializeWelcome?.({ styleManager, dataManager, enterAtlas });
     clearTimeout(revealTimer);
     loadingScreen.removeEventListener('transitionend', revealFirstRun);
   };

@@ -289,6 +289,7 @@ export class PanelChrome {
       'weather-panel',
       'recent-imagery-panel',
       'global-context-panel',
+      'city-intel-panel',
     ].includes(panelEl?.id);
     const collapsed = panelEl.classList.contains('collapsed');
     panelEl

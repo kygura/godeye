@@ -130,3 +130,32 @@ test('controller lifetime stops pending transport and releases resources through
   assert.equal(controller.stream, null);
   assert.equal(controller.isActive(), false);
 });
+
+test('SDP failures surface the upstream error code', async () => {
+  const backend = createRealtimeBackend({
+    tokenTransport: async () => tokenReply(),
+    connectionTransport: async () =>
+      Response.json({ error: { code: 'billing_not_active' } }, { status: 429 }),
+  });
+  const credential = await backend.requestToken();
+  await assert.rejects(
+    backend.negotiate({ credential, offerSdp: 'offer' }),
+    /HTTP 429 \(billing_not_active\)/,
+  );
+});
+
+test('a non-JSON (HTML) SDP error body still yields a plain HTTP failure', async () => {
+  const backend = createRealtimeBackend({
+    tokenTransport: async () => tokenReply(),
+    connectionTransport: async () =>
+      new Response('<html><body>502 Bad Gateway</body></html>', {
+        status: 502,
+        headers: { 'content-type': 'text/html' },
+      }),
+  });
+  const credential = await backend.requestToken();
+  await assert.rejects(
+    backend.negotiate({ credential, offerSdp: 'offer' }),
+    (error) => error.message === 'Realtime SDP failed: HTTP 502',
+  );
+});

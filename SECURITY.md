@@ -94,6 +94,7 @@ The dev server is a **key broker**: every server-side key above is spendable by 
 
 - The Vite server is a **development/preview** server. If you expose it beyond localhost, put it behind your own auth/proxy and review the bindings (see the threat model above).
 - All data shown is from **public** sources. See [DATA_SOURCES.md](DATA_SOURCES.md). Respect each provider's terms and rate limits.
+- While a voice session is active, microphone audio goes to OpenAI's Realtime API and is also transcribed by OpenAI (`gpt-4o-mini-transcribe`, enabled via `audio.input.transcription` in `server/providers/openai/realtime.js`).
 - The voice agent receives feed-sourced text (place names, callsigns) as scene context. It is instructed to act only via a fixed set of app-control tools and not to execute arbitrary instructions found in data, but treat model output as untrusted and keep the tool surface limited.
 
 ## Responsible use

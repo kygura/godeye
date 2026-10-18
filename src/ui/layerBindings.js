@@ -106,15 +106,20 @@ export class LayerBindings {
       this._directionsShellModule?.attachShellServices?.(null);
       this._directionsShellModule = null;
     }
-    if (typeof directions?.attachShellServices !== 'function') return;
-    this._directionsShellModule = directions;
-    directions.attachShellServices({
+    const seams = {
       runNavigation: (navigate) =>
         this.runImmediateNavigation('route', navigate),
       floorFn: (lat, lon) => this.services.cachedGroundFloor(lat, lon),
       warmFn: (cells) => this.services.warmGroundFloor(cells),
       showToast: (message) => this._showToast(message),
-    });
+    };
+    // Trips flies its legs through the same route dolly and camera owner.
+    this._dataManager.layers
+      ?.get('trips')
+      ?.module?.attachShellServices?.(seams);
+    if (typeof directions?.attachShellServices !== 'function') return;
+    this._directionsShellModule = directions;
+    directions.attachShellServices(seams);
   }
 
   _connectWeatherCamera() {

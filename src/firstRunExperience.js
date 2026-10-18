@@ -117,6 +117,13 @@ export const FIRST_RUN_MISSIONS = Object.freeze({
     layerIds: Object.freeze(['earthquakes', 'local-firms']),
     busyText: 'Scanning active events…',
   }),
+  atlas: Object.freeze({
+    // ATLAS (`src/ui/cityIntelMode.js`, docs/cockpit/SPEC.md §1) is its own
+    // mode, not a layer/context toggle, so this mission carries no layerIds
+    // or contextMode of its own — enterAtlas() below owns the whole flow.
+    kind: 'atlas',
+    busyText: 'Opening ATLAS…',
+  }),
   explore: Object.freeze({ kind: 'none' }),
 });
 
@@ -258,11 +265,13 @@ export function rememberFirstRunSessionDismissed(sessionStorageRef) {
  * @param {(mode: string) => Promise<object>} deps.setContextMode
  * @param {(layerId: string) => Promise<boolean>} deps.setLayerEnabled
  * @param {() => Promise<any>} deps.flyToGlobe
+ * @param {() => Promise<void>} deps.enterAtlas Resolves once ATLAS is active;
+ *   throws/rejects if the handle is missing or entry fails.
  * @returns {Promise<{ok: boolean, choice: string, result?: object, failedLayerIds?: string[]}>}
  */
 export async function runFirstRunChoice(
   choice,
-  { setContextMode, setLayerEnabled, flyToGlobe },
+  { setContextMode, setLayerEnabled, flyToGlobe, enterAtlas },
 ) {
   const mission = FIRST_RUN_MISSIONS[choice];
   if (!mission) return { ok: false, choice };
@@ -270,6 +279,16 @@ export async function runFirstRunChoice(
   if (mission.kind === 'context') {
     const result = await setContextMode(mission.contextMode);
     return { ok: Boolean(result?.ok), choice, result };
+  }
+  if (mission.kind === 'atlas') {
+    // A missing handle and a thrown/rejected enter() collapse to the same
+    // failure shape — the mission stays open, exactly like every other kind.
+    try {
+      await enterAtlas();
+      return { ok: true, choice };
+    } catch {
+      return { ok: false, choice };
+    }
   }
   // Globe missions: start the pull-out and the layer work together so the
   // camera is already moving while the feeds spin up. The flight is framing,
@@ -321,6 +340,7 @@ export function exclusiveSurfaceActive(documentRef = globalThis.document) {
  * @param {object} input
  * @param {object} input.styleManager Initialized StyleManager.
  * @param {object} [input.dataManager] DataManager, for the globe missions' layers.
+ * @param {() => Promise<void>} [input.enterAtlas] Enters ATLAS (`src/app/startupChrome.js`).
  * @param {Document} [input.documentRef]
  * @param {Storage} [input.storage]
  * @param {Storage} [input.sessionStorageRef]
@@ -330,6 +350,7 @@ export function exclusiveSurfaceActive(documentRef = globalThis.document) {
 export function initFirstRunExperience({
   styleManager,
   dataManager = styleManager?._dataManager,
+  enterAtlas,
   documentRef = globalThis.document,
   storage,
   sessionStorageRef,
@@ -472,6 +493,7 @@ export function initFirstRunExperience({
         setLayerEnabled: (layerId) =>
           dataManager.setEnabled(layerId, true, { origin: 'user' }),
         flyToGlobe: () => styleManager.resetToGlobeView(),
+        enterAtlas,
       });
     } catch (error) {
       // A thrown mission is a real defect worth seeing in a bug report; the
@@ -604,6 +626,16 @@ export function initFirstRunExperience({
    */
   const syncToExclusiveSurfaces = () => {
     if (closing) return;
+    // ATLAS (`body.city-intel-mode`, docs/cockpit/SPEC.md §1) does NOT own the
+    // screen — it is deliberately not in EXCLUSIVE_SURFACE_CLASSES, and no CSS
+    // hides this card for it — but taking it, whether from its own mission
+    // tile or the toggle pill clicked directly while this card is still open,
+    // is a real choice, same as Explore. Close outright; never the silent
+    // yieldToExclusiveSurface() step-aside those classes get.
+    if (documentRef?.body?.classList.contains('city-intel-mode')) {
+      if (revealed) dismiss();
+      return;
+    }
     const blocked = exclusiveSurfaceActive(documentRef);
     if (revealed && blocked) yieldToExclusiveSurface();
     else if (!revealed && !blocked) reveal();

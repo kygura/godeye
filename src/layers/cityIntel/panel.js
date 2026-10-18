@@ -1,0 +1,1462 @@
+/**
+ * @file ATLAS (City Intel) right-rail panel: ranking, scorecard, compare and
+ * the RANK/PLAN mode wiring. docs/cockpit/DESIGN.md §2-4, §7-9, §11.
+ *
+ * Pure helpers (preset/weight math, row view models, pagination, pin cap,
+ * persistence, roving-focus index math) are exported for node:test and used
+ * unchanged by the DOM factory `createCityIntelPanel` below.
+ *
+ * @module layers/cityIntel/panel
+ */
+import { PILLARS } from './scoring.js';
+import { loadCityIntelPack, fetchAdvisories, fetchVisa } from './source.js';
+import { selectLabelIds, binForScore, scoreColor } from './index.js';
+import { spanLabel } from './plan.js';
+import { createPlanView } from './planView.js';
+import {
+  formatPopulation,
+  advisoryBadgeText,
+  isPlanFull,
+  createScorecardView,
+  createCompareOverlay,
+  loadRentMap,
+} from './scorecard.js';
+import { createSurfaceKeyboard } from '../../ui/surfaceKeyboard.js';
+import { tripStore as defaultTripStore } from '../../travel/tripStore.js';
+
+const STORAGE_KEY = 'gev:city-intel:v1';
+export const PAGE_SIZE = 100;
+export const PIN_MAX = 4;
+/** DESIGN §2: row click flies the camera but never zooms in below this. */
+export const MIN_FLY_HEIGHT_M = 800_000;
+/** The scorecard's own FLY TO / a PLAN stay's fly-to: closer than a row click's MIN_FLY_HEIGHT_M. */
+export const SCORECARD_FLY_HEIGHT_M = 600_000;
+const TOP_LABEL_COUNT = 20;
+
+/** DESIGN §2: the four weighting presets (CUSTOM has no fixed weights). */
+export const PRESET_WEIGHTS = Object.freeze({
+  BALANCED: Object.freeze({ qol: 5, cost: 5, safety: 5, travel: 5 }),
+  BUDGET: Object.freeze({ qol: 3, cost: 8, safety: 5, travel: 3 }),
+  SAFETY: Object.freeze({ qol: 4, cost: 3, safety: 9, travel: 3 }),
+});
+
+const DEFAULT_WEIGHTS = PRESET_WEIGHTS.BALANCED;
+const DEFAULT_FILTERS = Object.freeze({
+  continent: null,
+  minPop: 0,
+  hideAdvisoryLevelAtLeast: null,
+  includeIneligible: false,
+});
+// ---------------------------------------------------------------------------
+// Pure helpers (node:test coverage lives in panel.test.mjs)
+// ---------------------------------------------------------------------------
+
+/** Clamp to an integer 0-10 (slider domain); non-finite input becomes 0. */
+export function clampWeight(value) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(10, Math.max(0, n));
+}
+
+/** Which preset (if any) these weights match exactly; else 'CUSTOM'. */
+export function matchPreset(weights) {
+  for (const [name, preset] of Object.entries(PRESET_WEIGHTS)) {
+    if (PILLARS.every((p) => weights[p] === preset[p])) return name;
+  }
+  return 'CUSTOM';
+}
+
+/** DESIGN §2: all four weights at 0 means "ignore everything". */
+export function isAllZero(weights) {
+  return PILLARS.every((p) => weights[p] === 0);
+}
+
+/** 1-based rank per city id, in the given (already sorted/filtered) order. */
+export function rankIndexMap(flatRows) {
+  const map = new Map();
+  flatRows.forEach((s, i) => map.set(s.id, i + 1));
+  return map;
+}
+
+/** Flat view row models: one per city, depth 0. */
+export function flatRowModels(flatRows, rankMap) {
+  return flatRows.map((s) => ({
+    kind: 'city',
+    depth: 0,
+    rank: rankMap.get(s.id) ?? null,
+    scored: s,
+  }));
+}
+
+/**
+ * Grouped view row models: one 'group' row per country (its best city),
+ * followed by 'child' rows (depth 1) for the rest when that country is
+ * expanded. Group order follows `groups` (best-city rank ascending).
+ */
+export function groupedRowModels(groups, rankMap, expandedIso3 = new Set()) {
+  const out = [];
+  for (const group of groups) {
+    const [best, ...rest] = group.cities;
+    if (!best) continue;
+    out.push({
+      kind: 'group',
+      depth: 0,
+      rank: rankMap.get(best.id) ?? null,
+      scored: best,
+      iso3: group.iso3,
+      moreCount: rest.length,
+      expanded: expandedIso3.has(group.iso3),
+    });
+    if (rest.length && expandedIso3.has(group.iso3)) {
+      for (const child of rest) {
+        out.push({
+          kind: 'child',
+          depth: 1,
+          rank: rankMap.get(child.id) ?? null,
+          scored: child,
+          iso3: group.iso3,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * First `pageCount` top-level rows (depth 0), keeping every expanded child
+ * that follows one of them. In grouped view a "row" for paging purposes is a
+ * country group, matching DESIGN §2 ("the count applies to country groups").
+ */
+export function paginateModels(models, pageCount) {
+  const out = [];
+  let topCount = 0;
+  for (const model of models) {
+    if (model.depth === 0) {
+      if (topCount >= pageCount) break;
+      topCount++;
+    }
+    out.push(model);
+  }
+  return out;
+}
+
+/** Whether more top-level rows exist beyond `pageCount`. */
+export function hasMoreModels(models, pageCount) {
+  return models.filter((m) => m.depth === 0).length > pageCount;
+}
+
+/** Toggle one pin, refusing a 5th (DESIGN §2/§8). */
+export function togglePin(pinnedIds, id, max = PIN_MAX) {
+  const set = new Set(pinnedIds);
+  if (set.has(id)) {
+    set.delete(id);
+    return { pinned: [...set], refused: false };
+  }
+  if (set.size >= max) return { pinned: [...pinnedIds], refused: true };
+  set.add(id);
+  return { pinned: [...set], refused: false };
+}
+
+/** Bulk pin replacement (API contract `setPins`): caps at `max`, dedup. */
+export function applyPinSet(ids, max = PIN_MAX) {
+  const seen = new Set();
+  const pinned = [];
+  const refused = [];
+  for (const id of ids || []) {
+    if (typeof id !== 'string' || seen.has(id)) continue;
+    seen.add(id);
+    if (pinned.length < max) pinned.push(id);
+    else refused.push(id);
+  }
+  return { pinned, refused };
+}
+
+/** Next focus index for a roving-tabindex list (Arrow/Home/End); -1 if empty. */
+export function nextRovingIndex(current, key, count) {
+  if (count <= 0) return -1;
+  if (key === 'ArrowDown') return (current + 1 + count) % count;
+  if (key === 'ArrowUp') return (current - 1 + count) % count;
+  if (key === 'Home') return 0;
+  if (key === 'End') return count - 1;
+  return current;
+}
+
+/** Next index for a horizontal radiogroup (Arrow Left/Right/Up/Down). */
+export function stepRadioIndex(current, key, count) {
+  const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[key];
+  if (!step || count <= 0) return current;
+  return (current + step + count) % count;
+}
+
+/** Drop non-string keys / non-finite values ({stayId: usd}, DESIGN §11.1). */
+export function sanitizeOverrides(raw) {
+  const out = {};
+  if (raw && typeof raw === 'object') {
+    for (const [key, value] of Object.entries(raw)) {
+      if (typeof key === 'string' && Number.isFinite(value)) out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * Serialize the persisted slice of state (DESIGN §0: `gev:city-intel:v1`).
+ * `state` always holds exactly this module's persisted keys (the DOM
+ * factory's `state` object is only ever built/reassigned by
+ * `parsePersistedState`/its own field setters), so a spread is enough.
+ */
+export function serializePersistedState(state) {
+  return JSON.stringify({ v: 1, ...state });
+}
+
+/** Parse persisted JSON, falling back to defaults on anything unexpected. */
+export function parsePersistedState(raw) {
+  if (typeof raw !== 'string' || !raw) return parsePersistedState('{}');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return parsePersistedState('{}');
+  }
+  if (!parsed || typeof parsed !== 'object') return parsePersistedState('{}');
+  const weights = {
+    qol: clampWeight(parsed.weights?.qol ?? DEFAULT_WEIGHTS.qol),
+    cost: clampWeight(parsed.weights?.cost ?? DEFAULT_WEIGHTS.cost),
+    safety: clampWeight(parsed.weights?.safety ?? DEFAULT_WEIGHTS.safety),
+    travel: clampWeight(parsed.weights?.travel ?? DEFAULT_WEIGHTS.travel),
+  };
+  const minPop = Number(parsed.filters?.minPop);
+  return {
+    weights,
+    preset: matchPreset(weights),
+    passport:
+      typeof parsed.passport === 'string' && parsed.passport
+        ? parsed.passport
+        : null,
+    filters: {
+      continent:
+        typeof parsed.filters?.continent === 'string'
+          ? parsed.filters.continent
+          : null,
+      minPop: Number.isFinite(minPop) && minPop > 0 ? minPop : 0,
+      hideAdvisoryLevelAtLeast:
+        parsed.filters?.hideAdvisoryLevelAtLeast === 3 ? 3 : null,
+      includeIneligible: parsed.filters?.includeIneligible === true,
+    },
+    pins: Array.isArray(parsed.pins)
+      ? parsed.pins.filter((id) => typeof id === 'string').slice(0, PIN_MAX)
+      : [],
+    view: parsed.view === 'flat' ? 'flat' : 'grouped',
+    mode: parsed.mode === 'plan' ? 'plan' : 'rank',
+    homeCityId:
+      typeof parsed.homeCityId === 'string' && parsed.homeCityId
+        ? parsed.homeCityId
+        : null,
+    monthlySpendUsd:
+      Number.isFinite(parsed.monthlySpendUsd) && parsed.monthlySpendUsd >= 0
+        ? parsed.monthlySpendUsd
+        : null,
+    overrides: sanitizeOverrides(parsed.overrides),
+    refineOpen: parsed.refineOpen === true,
+  };
+}
+
+/** Load persisted state from a Storage-like object; never throws. */
+export function loadPersisted(storage) {
+  try {
+    return parsePersistedState(storage?.getItem?.(STORAGE_KEY));
+  } catch {
+    return parsePersistedState('{}');
+  }
+}
+
+/** Save persisted state to a Storage-like object; never throws. */
+export function savePersisted(storage, state) {
+  try {
+    storage?.setItem?.(STORAGE_KEY, serializePersistedState(state));
+  } catch {
+    /* private browsing / quota / no storage: session-only, not fatal */
+  }
+}
+
+/**
+ * Layout compaction (planner decision, §5 of the T6b brief — not in
+ * DESIGN.md): the `<details class="ci-refine">` summary's short active-state
+ * text, e.g. "PRT · Europe · hide L3–4", or "none" when nothing is set.
+ * @param {{passport: string|null, filters: {continent: string|null, minPop: number, hideAdvisoryLevelAtLeast: number|null}}} state
+ */
+export function refineSummaryText({ passport, filters }) {
+  const parts = [];
+  if (passport) parts.push(passport);
+  if (filters?.continent) parts.push(filters.continent);
+  if (filters?.minPop) parts.push(`${formatPopulation(filters.minPop)}+`);
+  if (filters?.hideAdvisoryLevelAtLeast) parts.push('hide L3–4');
+  return parts.length ? parts.join(' · ') : 'none';
+}
+
+// ---------------------------------------------------------------------------
+// DOM factory
+// ---------------------------------------------------------------------------
+
+/**
+ * ATLAS panel: weights, passport, filters, ranking, scorecard and compare,
+ * plus the RANK/PLAN mode scaffolding (DESIGN §11.1).
+ * @param {{layer: object, flyTo?: (lat:number, lon:number, range?:number)=>void, showToast?: (msg:string)=>void, travelMode?: {openTravelBriefing: (place: {name:string, lat:number, lon:number}) => Promise<void>}|null, planView?: {show:Function, hide:Function, render:Function, addStay:Function, getStays:Function}|null, store?: object, storage?: Storage, doc?: Document}} options
+ */
+export function createCityIntelPanel({
+  layer,
+  flyTo = () => {},
+  showToast = () => {},
+  travelMode = null,
+  planView = null,
+  // The Lifestyle Plan trip lives in the shared trip store (T10/T12);
+  // injectable so tests can substitute a fake without touching localStorage.
+  store = defaultTripStore,
+  storage = typeof localStorage === 'undefined' ? null : localStorage,
+  doc = typeof document === 'undefined' ? null : document,
+} = {}) {
+  const root = doc?.getElementById?.('city-intel-panel');
+  if (!layer || !root) {
+    // No DOM / no layer (e.g. a non-browser test importing this module):
+    // degrade to an inert panel rather than throwing during app boot.
+    return {
+      ready: async () => {},
+      setWeights() {},
+      setFilters() {},
+      getTopRanked: () => [],
+      getScored: () => null,
+      select() {},
+      setPins: () => ({ pinned: [], refused: [] }),
+      openCompare() {},
+      markVoice() {},
+      getPrefs: () => ({
+        mode: 'rank',
+        homeCityId: null,
+        monthlySpendUsd: null,
+        overrides: {},
+      }),
+      setPrefs() {},
+      onModeExit() {},
+      // voice/cityIntelActions.js's plan_lifestyle checks `!cityIntel.plan`
+      // before touching it; explicit null keeps that contract honest instead
+      // of relying on an absent property also being falsy.
+      plan: null,
+    };
+  }
+
+  const el = (tag, className) => {
+    const node = doc.createElement(tag);
+    if (className) node.className = className;
+    return node;
+  };
+
+  const els = {
+    status: doc.getElementById('ci-status'),
+    voiceChip: doc.getElementById('ci-voice-chip'),
+    presetSeg: doc.getElementById('ci-preset-seg'),
+    passport: doc.getElementById('ci-passport'),
+    passportHelper: doc.getElementById('ci-passport-helper'),
+    region: doc.getElementById('ci-filter-region'),
+    minPop: doc.getElementById('ci-filter-min-pop'),
+    hideAdvisory: doc.getElementById('ci-filter-hide-advisory'),
+    hideAdvisoryHelper: doc.getElementById('ci-filter-hide-advisory-helper'),
+    includeIneligible: doc.getElementById('ci-filter-include-ineligible'),
+    rankingCount: doc.getElementById('ci-ranking-count'),
+    viewSeg: doc.getElementById('ci-view-seg'),
+    list: doc.getElementById('ci-list'),
+    showMore: doc.getElementById('ci-show-more'),
+    pinsTray: doc.getElementById('ci-pins-tray'),
+    compareBtn: doc.getElementById('ci-compare-btn'),
+    modeSeg: doc.getElementById('ci-mode-seg'),
+    rankingView: doc.getElementById('ci-ranking-view'),
+    scorecardView: doc.getElementById('ci-scorecard-view'),
+    planView: doc.getElementById('ci-plan-view'),
+    refine: doc.getElementById('ci-refine'),
+    refineActive: doc.getElementById('ci-refine-active'),
+    controlsSummary: doc.getElementById('ci-scorecard-controls-summary'),
+    controlsSummaryText: doc.getElementById('ci-controls-summary-text'),
+    controlsExpandBtn: doc.getElementById('ci-controls-expand-btn'),
+    compareMount: doc.getElementById('city-intel-compare'),
+    methodologyLink: doc.getElementById('ci-methodology-link'),
+  };
+  // The built app has no /docs/ (root-relative would 404); resolve it as a
+  // Vite asset URL instead, same pattern as src/data/bundledJson.js.
+  if (els.methodologyLink)
+    els.methodologyLink.href = new URL(
+      '../../../docs/cockpit/METHODOLOGY.md',
+      import.meta.url,
+    ).href;
+  const weightInputs = {
+    qol: doc.getElementById('ci-weight-qol'),
+    cost: doc.getElementById('ci-weight-cost'),
+    safety: doc.getElementById('ci-weight-safety'),
+    travel: doc.getElementById('ci-weight-travel'),
+  };
+  const weightOutputs = {
+    qol: doc.getElementById('ci-weight-qol-value'),
+    cost: doc.getElementById('ci-weight-cost-value'),
+    safety: doc.getElementById('ci-weight-safety-value'),
+    travel: doc.getElementById('ci-weight-travel-value'),
+  };
+
+  let index = null;
+  let countries = null; // pack.countries.countries, ISO3 -> record
+  let countryIndicators = null; // pack.countries.indicators, key -> { direction, ... }
+  let packCities = [];
+  let seasonalityCities = null; // pack.seasonality.cities, cityId -> { months }
+  let advisoriesByIso3 = null;
+  let advisoriesOffline = false;
+
+  const state = loadPersisted(storage);
+  let visaContext = null; // { byDest, year } | null
+  let scoredById = new Map();
+  let fullRankMap = new Map(); // unfiltered rank, for the scorecard's "rank r of N"
+  let fullRankTotal = 0;
+  let selectedId = null;
+  let pageCount = PAGE_SIZE;
+  const expandedIso3 = new Set();
+  let voiceChipTimer = null;
+  let compareVoiceTimer = null;
+  let compareVoiceActive = false;
+  // DESIGN §11.1: the trip active before entering PLAN, restored on leaving
+  // it; `undefined` means "not currently in PLAN with something to restore".
+  let rememberedTripId;
+
+  /** 'ranking' | 'scorecard': which RANK-mode section is showing (DESIGN §3). */
+  let viewMode = 'ranking';
+  let compareOpen = false;
+  // T12b planner polish: legend/weights/refine collapse to one summary row
+  // while the scorecard is open; EDIT expands them back. Session-only, reset
+  // whenever the scorecard closes — never persisted.
+  let controlsExpanded = false;
+
+  const scorecardView = els.scorecardView
+    ? createScorecardView({ doc, mount: els.scorecardView })
+    : null;
+  const compareOverlay = els.compareMount
+    ? createCompareOverlay({ doc, mount: els.compareMount })
+    : null;
+
+  // DESIGN §9 Escape order: compare overlay first, else scorecard-to-ranking,
+  // else fall through to the panel's own collapse-on-Escape. Both instances
+  // stay permanently bound; `isActive` alone decides which (if either) fires,
+  // so registration order never matters (src/ui/surfaceKeyboard.js).
+  const compareKeyboard = els.compareMount
+    ? createSurfaceKeyboard({
+        root: els.compareMount,
+        documentRef: doc,
+        isActive: () => compareOpen,
+        onEscape: () => closeCompare(),
+        fallbackFocus: () => els.compareBtn,
+      })
+    : null;
+  const scorecardKeyboard = els.scorecardView
+    ? createSurfaceKeyboard({
+        root: els.scorecardView,
+        documentRef: doc,
+        isActive: () => viewMode === 'scorecard' && !compareOpen,
+        onEscape: () => backToRanking(),
+        fallbackFocus: () => els.list,
+      })
+    : null;
+
+  const persist = () => savePersisted(storage, state);
+
+  function announce(message) {
+    if (els.status) els.status.textContent = message;
+  }
+
+  /** Toggle .active/aria-checked on a radiogroup's buttons (preset/view/mode segments). */
+  function syncRadioSeg(seg, selector, datasetKey, value) {
+    for (const btn of seg?.querySelectorAll(selector) || []) {
+      const active = btn.dataset[datasetKey] === value;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+
+  function syncWeightsUi() {
+    for (const p of PILLARS) {
+      if (weightInputs[p]) weightInputs[p].value = String(state.weights[p]);
+      if (weightOutputs[p])
+        weightOutputs[p].textContent = String(state.weights[p]);
+    }
+    syncRadioSeg(els.presetSeg, '[data-preset]', 'preset', state.preset);
+  }
+
+  function syncFiltersUi() {
+    if (els.region) els.region.value = state.filters.continent || '';
+    if (els.minPop) els.minPop.value = String(state.filters.minPop || 0);
+    if (els.hideAdvisory)
+      els.hideAdvisory.checked = state.filters.hideAdvisoryLevelAtLeast === 3;
+    if (els.includeIneligible)
+      els.includeIneligible.checked = state.filters.includeIneligible === true;
+  }
+
+  function syncViewUi() {
+    syncRadioSeg(els.viewSeg, '[data-view]', 'view', state.view);
+  }
+
+  function syncPassportHelper() {
+    if (!els.passportHelper) return;
+    els.passportHelper.textContent = state.passport
+      ? `Visa access from ${state.passport} counted in Travel ease.`
+      : 'Visa access counts toward Travel ease once set.';
+  }
+
+  /** Layout compaction (§5): `<details class="ci-refine">` open state + summary. */
+  function syncRefineUi() {
+    if (els.refine) els.refine.open = state.refineOpen === true;
+    if (els.refineActive)
+      els.refineActive.textContent = refineSummaryText(state);
+  }
+
+  function syncModeSegUi() {
+    syncRadioSeg(els.modeSeg, '[data-mode]', 'mode', state.mode);
+  }
+
+  // -- Ranking -------------------------------------------------------------
+
+  function computeFilterOptions() {
+    return {
+      continent: state.filters.continent || undefined,
+      minPop: state.filters.minPop || undefined,
+      hideAdvisoryLevelAtLeast:
+        state.filters.hideAdvisoryLevelAtLeast || undefined,
+      advisories: advisoriesByIso3 || undefined,
+      includeIneligible: state.filters.includeIneligible,
+    };
+  }
+
+  function renderRows() {
+    syncControlsSummary();
+    if (!index) return;
+    if (isAllZero(state.weights)) {
+      // DESIGN §8: every marker falls back to the neutral "no weights" style,
+      // in whichever RANK-mode view (ranking or scorecard) is currently shown.
+      layer.setScores([], {});
+      if (viewMode === 'scorecard') {
+        scorecardView?.destroy();
+        if (els.scorecardView)
+          els.scorecardView.replaceChildren(
+            textNode('Set at least one weight above 0.'),
+          );
+        return;
+      }
+      if (!els.list) return;
+      els.list.replaceChildren(textNode('Set at least one weight above 0.'));
+      updateRankingCount(0);
+      updateShowMore(false);
+      return;
+    }
+    const scored = index.score(state.weights, { visa: visaContext });
+    scoredById = new Map(scored.map((s) => [s.id, s]));
+    // Unfiltered rank, for the scorecard's "rank r of N" (DESIGN §3) — the
+    // ranking list below applies the user's filters, but the scorecard's rank
+    // is always the global one.
+    const fullRanked = index.rank(scored, { groupByCountry: false }).rows;
+    fullRankMap = rankIndexMap(fullRanked);
+    fullRankTotal = fullRanked.length;
+    if (viewMode === 'scorecard') {
+      renderScorecard();
+      return;
+    }
+    if (!els.list) return;
+    els.list.replaceChildren();
+    const filterOptions = computeFilterOptions();
+    const flat = index.rank(scored, {
+      ...filterOptions,
+      groupByCountry: false,
+    }).rows;
+    const rankMap = rankIndexMap(flat);
+    const grouped =
+      state.view === 'grouped'
+        ? index.rank(scored, { ...filterOptions, groupByCountry: true }).groups
+        : null;
+    const models = grouped
+      ? groupedRowModels(grouped, rankMap, expandedIso3)
+      : flatRowModels(flat, rankMap);
+
+    updateRankingCount(flat.length);
+
+    // Globe: DESIGN §7. rankedIds = every eligible city, regardless of the
+    // current filters; filteredOutIds = eligible cities the filters hid, so
+    // the map keeps them visible (dimmed) instead of removing them.
+    const allEligibleIds = scored.filter((s) => s.eligible).map((s) => s.id);
+    const filteredIds = new Set(flat.map((s) => s.id));
+    const filteredOutIds = allEligibleIds.filter((id) => !filteredIds.has(id));
+    // DESIGN §11.1: PLAN drops the top-20 ranking labels entirely (only
+    // pinned/selected city-intel labels can remain), so the trips layer's own
+    // per-stay label is never fought for the same marker.
+    const topIds =
+      state.mode === 'plan'
+        ? []
+        : grouped
+          ? grouped.slice(0, TOP_LABEL_COUNT).map((g) => g.cities[0]?.id)
+          : flat.slice(0, TOP_LABEL_COUNT).map((s) => s.id);
+    const labelIds = selectLabelIds({
+      topRankedIds: topIds.filter(Boolean),
+      pinnedIds: state.pins,
+      selectedId,
+    });
+    if (state.mode === 'plan') {
+      // A pinned/selected city that's also a plan stay would otherwise carry
+      // both labels 2px apart (city-intel pixelOffset -14, trips -16); the
+      // trips label wins for any city already in the plan.
+      for (const stay of planView?.getStays?.() ?? [])
+        labelIds.delete(stay.cityId);
+    }
+    layer.setScores(scored, {
+      rankedIds: allEligibleIds,
+      filteredOutIds,
+      labelIds,
+    });
+
+    if (!flat.length) {
+      const reset = el('button', 'scene-btn');
+      reset.type = 'button';
+      reset.textContent = 'RESET FILTERS';
+      reset.addEventListener('click', () => {
+        state.filters = { ...DEFAULT_FILTERS };
+        syncFiltersUi();
+        persist();
+        rerank();
+      });
+      const wrap = el('div', 'ci-list-empty');
+      wrap.append(textInline('No cities match. Loosen the filters.'), reset);
+      els.list.append(wrap);
+      updateShowMore(false);
+      return;
+    }
+
+    const page = paginateModels(models, pageCount);
+    for (const model of page) els.list.append(buildRow(model));
+    updateShowMore(hasMoreModels(models, pageCount));
+  }
+
+  function textNode(message) {
+    const p = el('div', 'ci-list-empty');
+    p.textContent = message;
+    return p;
+  }
+
+  function updateRankingCount(count) {
+    if (!els.rankingCount) return;
+    const noun = count === 1 ? 'city' : 'cities';
+    els.rankingCount.textContent = `RANKING · ${count} ${noun}`;
+  }
+
+  function updateShowMore(hasMore) {
+    if (els.showMore) els.showMore.hidden = !hasMore;
+  }
+
+  function buildRow(model) {
+    const { scored, kind, depth, rank } = model;
+    const city = scored.city;
+    const button = el(
+      'button',
+      `ci-row${depth ? ' ci-row-child' : ''}${selectedId === scored.id ? ' ci-row-selected' : ''}`,
+    );
+    button.type = 'button';
+    button.dataset.cityId = scored.id;
+    button.setAttribute('role', 'listitem');
+    button.tabIndex = -1;
+
+    const rankEl = el('span', 'ci-row-rank');
+    rankEl.textContent = rank == null ? '—' : String(rank);
+
+    const nameEl = el('span', 'ci-row-name');
+    nameEl.textContent = city.name;
+    if (kind !== 'child') {
+      const countrySpan = el('span', 'ci-row-country');
+      countrySpan.textContent = ` · ${city.country}`;
+      nameEl.append(countrySpan);
+    }
+
+    const bin = binForScore(scored.composite);
+    const scoreEl = el('span', 'ci-row-score');
+    scoreEl.textContent =
+      scored.composite == null ? '—' : String(Math.round(scored.composite));
+    scoreEl.style.color = scoreColor(bin);
+
+    const barEl = el('span', 'ci-row-bar');
+    const fillEl = el('span', 'ci-row-bar-fill');
+    fillEl.style.width = `${Math.max(0, Math.min(100, scored.composite ?? 0))}%`;
+    fillEl.style.background = scoreColor(bin);
+    barEl.append(fillEl);
+
+    const coverageEl = el('span', 'ci-row-coverage');
+    coverageEl.textContent = `${scored.coverage.pillarsAvailable}/4`;
+    coverageEl.title = scored.coverage.text;
+
+    const level = advisoriesByIso3?.[city.iso3]?.level ?? null;
+    const advisoryEl = el('span', 'ci-row-advisory');
+    advisoryEl.textContent = advisoriesOffline ? '—' : advisoryBadgeText(level);
+    if (!advisoriesOffline && level) advisoryEl.dataset.level = String(level);
+    advisoryEl.title = advisoriesOffline
+      ? 'Advisory unavailable (source offline)'
+      : level
+        ? `Level ${level}`
+        : 'Advisory unavailable';
+
+    const pinBtn = el('button', 'ci-row-pin');
+    pinBtn.type = 'button';
+    const pinned = state.pins.includes(scored.id);
+    pinBtn.textContent = pinned ? '★' : '☆';
+    pinBtn.setAttribute('aria-pressed', String(pinned));
+    pinBtn.setAttribute('aria-label', `Pin ${city.name} for comparison`);
+    pinBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      pinRow(scored.id, city.name);
+    });
+
+    button.append(
+      rankEl,
+      nameEl,
+      scoreEl,
+      barEl,
+      coverageEl,
+      advisoryEl,
+      pinBtn,
+    );
+
+    if (kind === 'group' && model.moreCount > 0) {
+      const expander = el('button', 'ci-row-expander');
+      expander.type = 'button';
+      expander.setAttribute('aria-expanded', String(model.expanded));
+      expander.setAttribute(
+        'aria-label',
+        `${model.expanded ? 'Hide' : 'Show'} ${model.moreCount} more ${city.country} cities`,
+      );
+      expander.textContent = model.expanded ? '−' : `+${model.moreCount}`;
+      expander.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (expandedIso3.has(model.iso3)) expandedIso3.delete(model.iso3);
+        else expandedIso3.add(model.iso3);
+        renderRows();
+      });
+      button.append(expander);
+    } else {
+      button.append(el('span', 'ci-row-expander'));
+    }
+
+    button.addEventListener('click', () => select(scored.id));
+    return button;
+  }
+
+  function renderPins() {
+    if (els.pinsTray) {
+      els.pinsTray.replaceChildren();
+      if (!state.pins.length) {
+        els.pinsTray.append(textInline('Pin 2–4 cities to compare.'));
+      } else if (state.pins.length === 1) {
+        appendPinChips();
+        els.pinsTray.append(textInline(' Pin one more to compare.'));
+      } else {
+        appendPinChips();
+      }
+    }
+    if (els.compareBtn) {
+      els.compareBtn.textContent = `COMPARE (${state.pins.length})`;
+      els.compareBtn.disabled = state.pins.length < 2;
+    }
+  }
+
+  function textInline(message) {
+    const span = el('span');
+    span.textContent = message;
+    return span;
+  }
+
+  function appendPinChips() {
+    for (const id of state.pins) {
+      const s = scoredById.get(id);
+      const chip = el('span', 'ci-pin-chip');
+      const label = el('span');
+      label.textContent = s ? s.city.name : id;
+      const remove = el('button');
+      remove.type = 'button';
+      remove.textContent = '✕';
+      remove.setAttribute('aria-label', `Unpin ${s ? s.city.name : id}`);
+      remove.addEventListener('click', () => pinRow(id, s?.city.name || id));
+      chip.append(label, remove);
+      els.pinsTray.append(chip);
+    }
+  }
+
+  function pinRow(id, name) {
+    const { pinned, refused } = togglePin(state.pins, id, PIN_MAX);
+    if (refused) {
+      showToast('Compare holds 4 cities. Unpin one first.');
+      return;
+    }
+    state.pins = pinned;
+    persist();
+    layer.setPinned(state.pins);
+    const nowPinned = state.pins.includes(id);
+    announce(
+      `${name} ${nowPinned ? 'pinned' : 'unpinned'}, ${state.pins.length} of ${PIN_MAX}`,
+    );
+    renderPins();
+    renderRows();
+  }
+
+  function rerank() {
+    renderRows();
+    renderPins();
+    syncRefineUi();
+  }
+
+  /** DESIGN §3: row click / globe pick opens the scorecard. */
+  function select(id) {
+    selectedId = id;
+    const wasScorecard = viewMode === 'scorecard';
+    viewMode = 'scorecard';
+    syncViewModeVisibility();
+    layer.setSelected(id);
+    const s = scoredById.get(id);
+    if (s) flyTo(s.city.lat, s.city.lon, MIN_FLY_HEIGHT_M);
+    if (!wasScorecard) scorecardKeyboard?.activate();
+    renderRows();
+  }
+
+  /** DESIGN §3 '‹ RANKING' link / §9 Escape (2nd tier). */
+  function backToRanking() {
+    viewMode = 'ranking';
+    syncViewModeVisibility();
+    scorecardView?.destroy();
+    scorecardKeyboard?.deactivate({ restoreFocus: true });
+    renderRows();
+  }
+
+  function syncViewModeVisibility() {
+    if (els.rankingView) els.rankingView.hidden = viewMode !== 'ranking';
+    if (els.scorecardView) els.scorecardView.hidden = viewMode !== 'scorecard';
+    if (viewMode !== 'scorecard') controlsExpanded = false;
+    syncControlsSummary();
+  }
+
+  /** T12b planner polish: "WEIGHTS 5·5·5·5 · <refine summary>" + EDIT/DONE. */
+  function syncControlsSummary() {
+    if (els.controlsSummaryText)
+      els.controlsSummaryText.textContent = `WEIGHTS ${PILLARS.map((p) => state.weights[p]).join('·')} · ${refineSummaryText(state)}`;
+    if (els.controlsExpandBtn)
+      els.controlsExpandBtn.textContent = controlsExpanded ? 'DONE' : 'EDIT';
+    if (root) {
+      root.dataset.ciView = viewMode;
+      root.dataset.ciControlsExpanded = String(controlsExpanded);
+    }
+  }
+
+  function bindControlsExpand() {
+    els.controlsExpandBtn?.addEventListener('click', () => {
+      controlsExpanded = !controlsExpanded;
+      syncControlsSummary();
+    });
+  }
+
+  /**
+   * ADD TO PLAN (DESIGN §3/§11.6): routes to the injected `planView`. When
+   * nothing is active yet, makes the plan trip active so the Trips layer
+   * draws its arcs immediately (DESIGN §11.1) instead of only once PLAN is
+   * opened — `addStay` already called `ensurePlanTrip()` by the time this runs.
+   */
+  function addToPlan(id, name) {
+    if (!planView) return;
+    const result = planView.addStay(id);
+    if (result?.message) showToast(result.message);
+    else
+      showToast(
+        result?.ok ? `Added ${name} to plan.` : 'Could not add to plan.',
+      );
+    if (result?.ok && !store.getActiveTrip?.()) {
+      const planTrip = store.getPlanTrip?.();
+      if (planTrip) store.setActive?.(planTrip.id);
+    }
+    renderScorecard();
+  }
+
+  function renderScorecard() {
+    if (!selectedId || !scorecardView) return;
+    const scored = scoredById.get(selectedId);
+    if (!scored) return;
+    const stays = planView?.getStays?.() ?? [];
+    const cityStays = stays.filter((s) => s.cityId === selectedId);
+    const full = isPlanFull(stays);
+    scorecardView.render(scored, {
+      rank: fullRankMap.get(selectedId) ?? null,
+      totalCount: fullRankTotal,
+      weights: state.weights,
+      advisoryLevel: advisoriesByIso3?.[scored.city.iso3]?.level ?? null,
+      advisoriesByIso3,
+      advisoriesOffline,
+      seasonalityCities,
+      allCities: packCities,
+      indicators: countryIndicators,
+      pinned: state.pins.includes(selectedId),
+      // DESIGN §11: "In plan:" helper uses planView.getStays() + plan.js spanLabel.
+      inPlanText: cityStays.length
+        ? `In plan: ${cityStays.map(spanLabel).join(', ')}`
+        : null,
+      // ADD TO PLAN is disabled only when the plan is full (DESIGN §3);
+      // planView has no isFull() of its own, so it's derived here from
+      // plan.js's own month coverage instead of duplicating that logic.
+      planDisabled: !planView || full,
+      planTitle: !planView
+        ? 'Plan view loading'
+        : full
+          ? 'Plan is full (12/12). Remove or shorten a stay in PLAN.'
+          : '',
+      onBack: backToRanking,
+      onPin: () => pinRow(selectedId, scored.city.name),
+      onAddToPlan: () => addToPlan(selectedId, scored.city.name),
+      onBriefMe: () =>
+        travelMode?.openTravelBriefing?.({
+          name: scored.city.name,
+          lat: scored.city.lat,
+          lon: scored.city.lon,
+        }),
+      onFlyTo: () =>
+        flyTo(scored.city.lat, scored.city.lon, SCORECARD_FLY_HEIGHT_M),
+      onFocusPassport: () => els.passport?.focus(),
+    });
+  }
+
+  // -- Compare ---------------------------------------------------------------
+
+  let compareRentByCity = new Map();
+  let rentMapRequested = false;
+
+  /** DESIGN §4/§11.3 rent row: loaded once lazily, shared by compare and PLAN. */
+  function ensureRentMap(onLoaded) {
+    if (rentMapRequested) return;
+    rentMapRequested = true;
+    loadRentMap(packCities).then((map) => {
+      compareRentByCity = map;
+      onLoaded();
+    });
+  }
+
+  function currentPinnedScored() {
+    return state.pins.map((id) => scoredById.get(id)).filter(Boolean);
+  }
+
+  function renderCompare() {
+    if (!compareOpen || !compareOverlay) return;
+    const pinnedScored = currentPinnedScored();
+    if (pinnedScored.length < 2) return closeCompare();
+    compareOverlay.render(pinnedScored, {
+      advisoriesByIso3,
+      rentByCity: compareRentByCity,
+      voiceChip: compareVoiceActive,
+      onUnpin: (id) => compareUnpin(id),
+      onClearPins: () => clearPins(),
+      onClose: () => closeCompare(),
+      // SPEC flow 5 / DESIGN §2: ADD TO PLAN from the compare column, same
+      // path a scorecard's own ADD TO PLAN button uses.
+      onAddToPlan: (id) => addToPlan(id, scoredById.get(id)?.city.name || id),
+    });
+  }
+
+  function openCompare() {
+    if (currentPinnedScored().length < 2) return;
+    compareOpen = true;
+    compareKeyboard?.activate();
+    renderCompare();
+    ensureRentMap(renderCompare);
+  }
+
+  function closeCompare() {
+    if (!compareOpen) return;
+    compareOpen = false;
+    compareOverlay?.clear();
+    compareKeyboard?.deactivate({ restoreFocus: true });
+  }
+
+  /** Unpinning from compare is always a removal (the id is already pinned to be shown here). */
+  function compareUnpin(id) {
+    pinRow(id, scoredById.get(id)?.city.name || id);
+    if (state.pins.length < 2) closeCompare();
+    else renderCompare();
+  }
+
+  function clearPins() {
+    state.pins = [];
+    persist();
+    layer.setPinned([]);
+    renderPins();
+    renderRows();
+    closeCompare();
+  }
+
+  // -- Wiring ----------------------------------------------------------------
+
+  function bindWeightSlider(pillar) {
+    const input = weightInputs[pillar];
+    if (!input) return;
+    input.addEventListener('input', () => {
+      state.weights = { ...state.weights, [pillar]: clampWeight(input.value) };
+      state.preset = matchPreset(state.weights);
+      if (weightOutputs[pillar])
+        weightOutputs[pillar].textContent = String(state.weights[pillar]);
+      syncWeightsUi();
+      persist();
+      rerank();
+    });
+    input.addEventListener('change', () => {
+      announce(`${pillar} weight ${state.weights[pillar]}`);
+    });
+  }
+
+  /** Arrow-key roving nav shared by the preset/view/mode radiogroup segments. */
+  function bindRadioKeydown(seg, selector) {
+    seg?.addEventListener('keydown', (event) => {
+      const buttons = [...(seg.querySelectorAll(selector) || [])];
+      const current = buttons.findIndex((b) => b === doc.activeElement);
+      const next = stepRadioIndex(current, event.key, buttons.length);
+      if (next === current || current < 0) return;
+      event.preventDefault();
+      buttons[next].focus();
+      buttons[next].click();
+    });
+  }
+
+  function bindPresetSeg() {
+    els.presetSeg?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-preset]');
+      if (!btn) return;
+      const name = btn.dataset.preset;
+      if (name !== 'CUSTOM' && PRESET_WEIGHTS[name]) {
+        state.weights = { ...PRESET_WEIGHTS[name] };
+      }
+      state.preset = name === 'CUSTOM' ? matchPreset(state.weights) : name;
+      syncWeightsUi();
+      persist();
+      rerank();
+      announce(`Weighting preset ${state.preset}`);
+    });
+    bindRadioKeydown(els.presetSeg, '[data-preset]');
+  }
+
+  function bindViewSeg() {
+    els.viewSeg?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-view]');
+      if (!btn) return;
+      state.view = btn.dataset.view === 'flat' ? 'flat' : 'grouped';
+      syncViewUi();
+      persist();
+      pageCount = PAGE_SIZE;
+      rerank();
+    });
+    bindRadioKeydown(els.viewSeg, '[data-view]');
+  }
+
+  function bindFilters() {
+    els.region?.addEventListener('change', () => {
+      state.filters = { ...state.filters, continent: els.region.value || null };
+      persist();
+      rerank();
+    });
+    els.minPop?.addEventListener('change', () => {
+      state.filters = {
+        ...state.filters,
+        minPop: Number(els.minPop.value) || 0,
+      };
+      persist();
+      rerank();
+    });
+    els.hideAdvisory?.addEventListener('change', () => {
+      state.filters = {
+        ...state.filters,
+        hideAdvisoryLevelAtLeast: els.hideAdvisory.checked ? 3 : null,
+      };
+      persist();
+      rerank();
+    });
+    els.includeIneligible?.addEventListener('change', () => {
+      state.filters = {
+        ...state.filters,
+        includeIneligible: els.includeIneligible.checked === true,
+      };
+      persist();
+      rerank();
+    });
+  }
+
+  function bindPassport() {
+    els.passport?.addEventListener('change', async () => {
+      const iso3 = els.passport.value || null;
+      state.passport = iso3;
+      syncPassportHelper();
+      persist();
+      visaContext = await loadVisaContext(iso3);
+      rerank();
+    });
+  }
+
+  async function loadVisaContext(iso3) {
+    if (!iso3) return null;
+    // getJson (source.js) never rejects: a network/parse failure resolves
+    // { ok: false } already, so there's nothing for a .catch to guard here.
+    const result = await fetchVisa(iso3);
+    return result?.ok ? result.data : null;
+  }
+
+  function bindList() {
+    els.list?.addEventListener('keydown', (event) => {
+      const rows = [...(els.list.querySelectorAll('.ci-row') || [])];
+      if (!rows.length) return;
+      const current = rows.findIndex((r) => r === doc.activeElement);
+      let next;
+      if (current < 0) {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key))
+          return;
+        next =
+          event.key === 'ArrowUp' || event.key === 'End' ? rows.length - 1 : 0;
+      } else {
+        next = nextRovingIndex(current, event.key, rows.length);
+        if (next === current) return;
+      }
+      event.preventDefault();
+      rows.forEach((r, i) => (r.tabIndex = i === next ? 0 : -1));
+      rows[next].focus();
+    });
+    els.showMore?.addEventListener('click', () => {
+      pageCount += PAGE_SIZE;
+      renderRows();
+    });
+  }
+
+  function bindCompare() {
+    els.compareBtn?.addEventListener('click', () => openCompare());
+  }
+
+  /**
+   * DESIGN §11.1: entering PLAN remembers whichever trip was active and
+   * makes the plan trip active instead, so the Trips layer draws it (the
+   * layer is already enabled for the whole mode by cityIntelMode.js).
+   * Leaving PLAN restores that remembered trip, if it still exists.
+   */
+  function enterPlanSubmode() {
+    if (els.planView) els.planView.hidden = false;
+    planView?.show();
+    if (planView?.planTripId) {
+      rememberedTripId = store.getActiveTrip?.()?.id ?? null;
+      store.setActive?.(planView.planTripId);
+    }
+    ensureRentMap(() => planView?.render());
+  }
+  function leavePlanSubmode() {
+    if (els.planView) els.planView.hidden = true;
+    planView?.hide();
+    if (rememberedTripId === undefined) return;
+    const target = rememberedTripId;
+    rememberedTripId = undefined;
+    const stillExists =
+      target === null ||
+      store.getState?.()?.trips?.some((t) => t.id === target);
+    store.setActive?.(stillExists ? target : null);
+  }
+
+  /** DESIGN §11.1: RANK/PLAN segment. Switching calls `planView.show()/hide()`. */
+  function switchMode(mode) {
+    const next = mode === 'plan' ? 'plan' : 'rank';
+    if (state.mode === next) return;
+    state.mode = next;
+    persist();
+    root.dataset.ciMode = next;
+    syncModeSegUi();
+    if (next === 'plan') {
+      closeCompare();
+      enterPlanSubmode();
+    } else {
+      leavePlanSubmode();
+    }
+    // Refresh the globe's labelling for the new mode (DESIGN §11.1: PLAN
+    // drops the top-20 ranking labels; RANK restores them on the way back).
+    renderRows();
+  }
+
+  function bindModeSeg() {
+    els.modeSeg?.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-mode]');
+      if (btn) switchMode(btn.dataset.mode);
+    });
+    bindRadioKeydown(els.modeSeg, '[data-mode]');
+  }
+
+  /** Layout compaction (§5): persist the `<details>` open state. */
+  function bindRefineDetails() {
+    els.refine?.addEventListener('toggle', () => {
+      state.refineOpen = els.refine.open;
+      persist();
+    });
+  }
+
+  async function populatePassportOptions() {
+    if (!els.passport || !countries) return;
+    const options = Object.entries(countries)
+      .map(([iso3, record]) => ({ iso3, name: record?.name || iso3 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    els.passport.replaceChildren();
+    const unset = el('option');
+    unset.value = '';
+    unset.textContent = 'Not set';
+    els.passport.append(unset);
+    for (const { iso3, name } of options) {
+      const opt = el('option');
+      opt.value = iso3;
+      opt.textContent = `${name} · ${iso3}`;
+      els.passport.append(opt);
+    }
+    els.passport.value = state.passport || '';
+  }
+
+  async function loadAdvisories() {
+    // getJson (source.js) never rejects; see loadVisaContext above.
+    const result = await fetchAdvisories();
+    advisoriesOffline = !result?.ok;
+    advisoriesByIso3 = result?.ok ? result.data?.byIso3 || {} : null;
+    if (els.hideAdvisory) els.hideAdvisory.disabled = advisoriesOffline;
+    if (els.hideAdvisoryHelper)
+      els.hideAdvisoryHelper.hidden = !advisoriesOffline;
+  }
+
+  function setDisabled(disabled) {
+    for (const node of [
+      ...Object.values(weightInputs),
+      els.passport,
+      els.region,
+      els.minPop,
+      els.hideAdvisory,
+      els.includeIneligible,
+    ])
+      if (node) node.disabled = disabled;
+  }
+
+  let readyPromise = null;
+
+  function showPackUnavailable() {
+    if (els.list)
+      els.list.replaceChildren(
+        textNode('CITY PACK UNAVAILABLE'),
+        textNode('Reload the page to retry.'),
+      );
+  }
+
+  async function init() {
+    setDisabled(true);
+    if (els.list) els.list.replaceChildren(textNode('LOADING CITY PACK…'));
+    let pack;
+    try {
+      [pack] = await Promise.all([loadCityIntelPack(), layer.whenReady()]);
+    } catch {
+      showPackUnavailable();
+      return;
+    }
+    index = layer.getIndex();
+    if (!index) {
+      showPackUnavailable();
+      return;
+    }
+    countries = pack.countries?.countries || {};
+    countryIndicators = pack.countries?.indicators || {};
+    packCities = pack.cities || [];
+    seasonalityCities = pack.seasonality?.cities || {};
+    // T12b: construct the real Lifestyle Plan view now the pack is ready,
+    // unless a test (or a future caller) already injected one.
+    if (!planView && els.planView) {
+      planView = createPlanView({
+        doc,
+        container: els.planView,
+        store,
+        pack: {
+          cities: packCities,
+          citiesById: new Map(packCities.map((c) => [c.id, c])),
+          countries,
+          seasonality: pack.seasonality || { cities: {} },
+        },
+        getCtx: () => ({
+          scoredById,
+          advisories: advisoriesByIso3
+            ? { byIso3: advisoriesByIso3 }
+            : undefined,
+          visa: visaContext ?? undefined,
+          rentByCity: compareRentByCity,
+        }),
+        getPrefs: () => api.getPrefs(),
+        setPrefs: (partial) => api.setPrefs(partial),
+        showToast,
+        announce,
+        flyTo: (stay) => flyTo(stay.lat, stay.lng, SCORECARD_FLY_HEIGHT_M),
+        switchMode,
+      });
+    }
+    await populatePassportOptions();
+    setDisabled(false);
+    syncWeightsUi();
+    syncFiltersUi();
+    syncViewUi();
+    syncPassportHelper();
+    syncRefineUi();
+    syncModeSegUi();
+    syncViewModeVisibility();
+    // DESIGN §11.1: data-ci-mode drives the .ci-rank-only / #ci-plan-view CSS.
+    root.dataset.ciMode = state.mode;
+    if (state.mode === 'plan') enterPlanSubmode();
+    await loadAdvisories();
+    if (state.passport) visaContext = await loadVisaContext(state.passport);
+    layer.onPick((id) => select(id));
+    bindPresetSeg();
+    bindViewSeg();
+    bindFilters();
+    bindPassport();
+    bindList();
+    bindCompare();
+    bindModeSeg();
+    bindRefineDetails();
+    bindControlsExpand();
+    for (const p of PILLARS) bindWeightSlider(p);
+    layer.setPinned(state.pins);
+    rerank();
+  }
+
+  const api = {
+    ready() {
+      if (!readyPromise) readyPromise = init();
+      return readyPromise;
+    },
+    setWeights(partial = {}) {
+      state.weights = {
+        ...state.weights,
+        ...Object.fromEntries(
+          Object.entries(partial)
+            .filter(([p]) => PILLARS.includes(p))
+            .map(([p, v]) => [p, clampWeight(v)]),
+        ),
+      };
+      state.preset = matchPreset(state.weights);
+      syncWeightsUi();
+      persist();
+      rerank();
+    },
+    setFilters(partial = {}) {
+      state.filters = { ...state.filters, ...partial };
+      syncFiltersUi();
+      persist();
+      rerank();
+    },
+    getTopRanked(n) {
+      if (!index || isAllZero(state.weights)) return [];
+      const scored = index.score(state.weights, { visa: visaContext });
+      const flat = index.rank(scored, {
+        ...computeFilterOptions(),
+        groupByCountry: false,
+      }).rows;
+      return flat.slice(0, n).map((s, i) => ({
+        rank: i + 1,
+        id: s.id,
+        name: s.city.name,
+        country: s.city.country,
+        composite: s.composite,
+        coverageText: s.coverage.text,
+        eligible: s.eligible,
+      }));
+    },
+    getScored(id) {
+      return scoredById.get(id) || null;
+    },
+    select,
+    setPins(ids) {
+      const { pinned, refused } = applyPinSet(ids, PIN_MAX);
+      state.pins = pinned;
+      persist();
+      layer.setPinned(pinned);
+      renderPins();
+      renderRows();
+      if (refused.length) showToast('Compare holds 4 cities. Unpin one first.');
+      return { pinned, refused };
+    },
+    openCompare,
+    markVoice(surface) {
+      if (surface === 'panel' && els.voiceChip) {
+        els.voiceChip.hidden = false;
+        clearTimeout(voiceChipTimer);
+        voiceChipTimer = setTimeout(() => {
+          els.voiceChip.hidden = true;
+        }, 4000);
+        // Drift fix: announce the re-ranked top 3 (voice's only caller of
+        // this surface is rank_cities, right after setWeights/setFilters).
+        const top3 = api.getTopRanked(3);
+        if (top3.length)
+          announce(
+            `Ranking updated by voice: ${top3.map((c) => `${c.rank} ${c.name}`).join(', ')}.`,
+          );
+        return;
+      }
+      if (surface === 'compare') {
+        compareVoiceActive = true;
+        renderCompare();
+        clearTimeout(compareVoiceTimer);
+        compareVoiceTimer = setTimeout(() => {
+          compareVoiceActive = false;
+          renderCompare();
+        }, 4000);
+        return;
+      }
+      if (surface === 'plan') planView?.markVoice();
+    },
+    getPrefs() {
+      return {
+        mode: state.mode,
+        homeCityId: state.homeCityId,
+        monthlySpendUsd: state.monthlySpendUsd,
+        overrides: { ...state.overrides },
+      };
+    },
+    setPrefs(partial = {}) {
+      if (partial.mode === 'rank' || partial.mode === 'plan')
+        switchMode(partial.mode);
+      const touchesPlanProfile =
+        'homeCityId' in partial ||
+        'monthlySpendUsd' in partial ||
+        'overrides' in partial;
+      if ('homeCityId' in partial)
+        state.homeCityId =
+          typeof partial.homeCityId === 'string' ? partial.homeCityId : null;
+      if ('monthlySpendUsd' in partial)
+        state.monthlySpendUsd = Number.isFinite(partial.monthlySpendUsd)
+          ? partial.monthlySpendUsd
+          : null;
+      if ('overrides' in partial)
+        state.overrides = sanitizeOverrides(partial.overrides);
+      persist();
+      if (viewMode === 'scorecard') renderScorecard();
+      // PLAN's cost/comfort rows read the same home/spend/overrides profile;
+      // a code-driven setPrefs (voice, tests) must refresh it too, not just
+      // the scorecard.
+      if (touchesPlanProfile) planView?.render();
+    },
+    /**
+     * cityIntelMode.js calls this on exit() so leaving ATLAS while PLAN is
+     * showing restores whichever trip was active before PLAN took over,
+     * instead of stranding the plan trip as "active" forever.
+     */
+    onModeExit() {
+      if (state.mode === 'plan') leavePlanSubmode();
+    },
+    // T12b: the `plan_lifestyle` voice tool's contract (src/voice/cityIntelActions.js).
+    plan: {
+      ready: () => api.ready(),
+      show: () => switchMode('plan'),
+      getStays: () => planView?.getStays() ?? [],
+      replaceStays: (list) =>
+        planView?.replacePlan(list) ?? {
+          ok: false,
+          error: 'lifestyle-plan-unavailable',
+        },
+      getSummary: () => planView?.getSummary() ?? { stays: [], rollup: null },
+    },
+  };
+  return api;
+}
