@@ -658,3 +658,21 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   margin-top: 4px;
   transition: color var(--transition-smooth);
 }
+
+/* Brand mark in operator greys; Cyber recolours it with higher specificity. */
+.brand-logo img {
+  filter: grayscale(1) brightness(1.4);
+}
+#title-bar .title-logo :is(#outer_eye, #inner_eye) {
+  fill: var(--bg-dark);
+  stroke: var(--text-secondary);
+}
+#title-bar .title-logo #globe {
+  fill: var(--surface-2);
+  stroke: var(--text-primary);
+}
+#title-bar .title-logo #globe_cage {
+  fill: var(--text-primary);
+  stroke: var(--bg-dark);
+  opacity: 0.72;
+}

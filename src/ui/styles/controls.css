@@ -202,6 +202,7 @@
 .btn-icon {
   font-size: 20px;
   line-height: 1;
+  font-variant-emoji: text;
   color: var(--text-secondary);
   transition: color var(--transition-fast);
 }

@@ -427,14 +427,22 @@
   z-index: 1;
   opacity: 0;
   background:
-    linear-gradient(var(--text-primary), var(--text-primary)) left top / 9px 1px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) left top / 1px 9px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) right top / 9px 1px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) right top / 1px 9px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) left bottom / 9px 1px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) left bottom / 1px 9px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) right bottom / 9px 1px no-repeat,
-    linear-gradient(var(--text-primary), var(--text-primary)) right bottom / 1px 9px no-repeat;
+    linear-gradient(var(--text-primary), var(--text-primary)) left top / 9px 1px
+      no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) left top / 1px 9px
+      no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) right top / 9px
+      1px no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) right top / 1px
+      9px no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) left bottom / 9px
+      1px no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) left bottom / 1px
+      9px no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) right bottom / 9px
+      1px no-repeat,
+    linear-gradient(var(--text-primary), var(--text-primary)) right bottom / 1px
+      9px no-repeat;
   pointer-events: none;
   transition: opacity 0.12s ease;
 }

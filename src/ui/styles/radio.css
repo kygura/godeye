@@ -118,16 +118,15 @@
   overflow: hidden;
   contain: paint;
   border-block: 1px solid var(--rule);
-  background:
-    linear-gradient(
-      180deg,
-      transparent 23px,
-      var(--text-secondary) 24px,
-      transparent 25px,
-      transparent 28px,
-      var(--rule-strong) 29px,
-      transparent 30px
-    );
+  background: linear-gradient(
+    180deg,
+    transparent 23px,
+    var(--text-secondary) 24px,
+    transparent 25px,
+    transparent 28px,
+    var(--rule-strong) 29px,
+    transparent 30px
+  );
 }
 .radio-tuner-scale {
   position: absolute;

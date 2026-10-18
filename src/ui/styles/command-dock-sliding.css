@@ -340,13 +340,13 @@
 #command-dock .dock-pin-btn img {
   width: 1.15rem;
   height: 1.15rem;
-  /* pin.svg strokes currentColor, which an <img> paints black: lift it to
-     light ink on the dark key, and drop the lift on the inverted (pinned) key. */
-  filter: invert(1);
+  /* pin.svg strokes a fixed cyan: grey it to light ink on the dark key and
+     to dark ink on the inverted (pinned) key. */
+  filter: grayscale(1) brightness(1.8);
 }
 
 #command-dock .dock-pin-btn[aria-pressed='true'] img {
-  filter: none;
+  filter: grayscale(1) brightness(0);
 }
 
 /* Five-pixel standby baseline; live microphone analysis sets --audio-level. */
