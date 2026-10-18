@@ -27,9 +27,10 @@ body.travel-mode {
   gap: 6px;
   padding: 0 14px 0 11px;
   border-radius: 0;
-  font-family: var(--font-sans);
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 #travel-toggle .travel-toggle-label {
@@ -37,9 +38,9 @@ body.travel-mode {
 }
 
 #top-center-actions #travel-toggle[aria-pressed='true'] {
-  border-color: var(--travel-accent);
-  color: var(--travel-text);
-  background: var(--travel-surface);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--ink-inverse);
 }
 
 body.travel-mode #title-bar,

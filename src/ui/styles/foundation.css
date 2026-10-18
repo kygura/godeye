@@ -1,27 +1,36 @@
-/* ═══════════════════════════════════════════════
-   GOD'S EYE VIEW — Dark Sci-Fi UI
-   Apple meets Blade Runner
-   ═══════════════════════════════════════════════ */
+/* God's Eye View: operator console skin. Design brief: docs/OPERATOR-DESIGN.md */
 
 :root {
-  --bg-dark: #0a0a0f;
-  --glass-bg: rgba(12, 12, 20, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.15);
-  --accent: #00d4ff;
-  --accent-dim: rgba(0, 212, 255, 0.15);
-  --accent-glow: rgba(0, 212, 255, 0.4);
-  --text-primary: #e8eaed;
-  --text-secondary: rgba(232, 234, 237, 0.5);
-  --text-dim: rgba(232, 234, 237, 0.3);
+  /* Operator palette: opaque surfaces, hairline rules, grey ink. Colour is
+     reserved for signal (live/armed), ok and warn. See docs/OPERATOR-DESIGN.md. */
+  --bg-dark: #070808;
+  --surface-0: #0c0d0e;
+  --surface-1: #131516;
+  --surface-2: #1b1d1f;
+  --rule: #26292b;
+  --rule-strong: #3a3e41;
+  --glass-bg: rgba(10, 11, 12, 0.94);
+  --glass-border: var(--rule);
+  --glass-border-hover: var(--rule-strong);
+  --accent: #e6e7e8;
+  --accent-dim: rgba(230, 231, 232, 0.08);
+  --accent-glow: rgba(230, 231, 232, 0.22);
+  --signal: #ffb020;
+  --signal-dim: rgba(255, 176, 32, 0.14);
+  --ok: #5fbf6a;
+  --warn: #ff5a4e;
+  --text-primary: #e6e7e8;
+  --text-secondary: #9a9fa3;
+  --text-dim: #62676b;
+  --ink-inverse: #070808;
   /* Opaque surface for browser-painted menus, which cannot use --glass-bg. */
-  --menu-bg: #12121c;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --panel-radius: 16px;
-  --btn-radius: 10px;
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --menu-bg: #0c0d0e;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --panel-radius: 0;
+  --btn-radius: 0;
+  --transition-fast: 90ms linear;
+  --transition-smooth: 160ms cubic-bezier(0.2, 0, 0, 1);
   --left-stack-x: 52px;
   --right-rail-x: 52px;
   --left-stack-top: 26vh;
@@ -233,7 +242,7 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 .celestial-ring-outline {
   position: absolute;
   box-sizing: border-box;
-  border: 0.8px solid rgba(151, 218, 232, 0.095);
+  border: 0.8px solid rgba(230, 231, 232, 0.095);
   border-radius: 50%;
   will-change: width, height;
 }
@@ -258,16 +267,12 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 
 .celestial-sun {
   color: rgba(231, 194, 72, 0.92);
-  text-shadow:
-    0 0 7px rgba(231, 194, 72, 0.72),
-    0 0 18px rgba(231, 194, 72, 0.3);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
 }
 
 .celestial-moon {
-  color: rgba(55, 211, 239, 0.84);
-  text-shadow:
-    0 0 7px rgba(55, 211, 239, 0.65),
-    0 0 17px rgba(55, 211, 239, 0.25);
+  color: rgba(230, 231, 232, 0.84);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
 }
 
 #celestial-toggle:disabled {
@@ -308,7 +313,7 @@ body.cockpit-mode #cockpit-cloud-effects.active {
   font-family: var(--font-mono);
   font-size: 10px;
   color: rgba(232, 234, 237, 0.55);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
 }
 #cesium-credits .cesium-credit-logoContainer,
 #cesium-credits .cesium-credit-textContainer,
@@ -410,14 +415,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   color: var(--text-primary);
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 0 20px rgba(0, 212, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-radius: var(--panel-radius);
   font-family: var(--font-mono);
   pointer-events: auto;
 }
@@ -426,9 +424,9 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   width: 72px;
   height: 34px;
   flex: 0 0 auto;
-  color: var(--accent);
-  background: rgba(0, 212, 255, 0.06);
-  border: 1px solid rgba(0, 212, 255, 0.28);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
   border-radius: var(--btn-radius);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -437,9 +435,8 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #gev-voice-button:hover {
-  color: #ffffff;
-  border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.22);
+  color: var(--text-primary);
+  border-color: var(--rule-strong);
 }
 
 .gev-voice-readout {
@@ -450,7 +447,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #gev-voice-status {
   font-size: 10px;
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 #gev-voice-detail {
@@ -464,31 +461,31 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #gev-voice-control[data-status='listening'] {
-  border-color: rgba(92, 255, 198, 0.45);
+  border-color: var(--signal);
 }
 
 #gev-voice-control[data-status='listening'] #gev-voice-status {
-  color: #5cffc6;
+  color: var(--signal);
 }
 
 #gev-voice-control[data-status='executing'] {
-  border-color: rgba(255, 220, 120, 0.55);
+  border-color: var(--signal);
 }
 
 #gev-voice-control[data-status='executing'] #gev-voice-status {
-  color: #ffdc78;
+  color: var(--signal);
 }
 
 #gev-voice-control[data-status='error'] {
   align-items: flex-start;
   width: min(440px, calc(100vw - 72px));
-  border-color: rgba(255, 92, 110, 0.6);
+  border-color: var(--warn);
   /* Multi-line error block reads as a panel, not a capsule */
   border-radius: var(--panel-radius);
 }
 
 #gev-voice-control[data-status='error'] #gev-voice-status {
-  color: #ff5c6e;
+  color: var(--warn);
 }
 
 #gev-voice-control[data-status='error'] .gev-voice-readout {
@@ -499,7 +496,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 #gev-voice-control[data-status='error'] #gev-voice-detail {
   max-width: none;
   overflow: visible;
-  color: #ffb4bd;
+  color: var(--text-primary);
   line-height: 1.45;
   text-overflow: clip;
   white-space: pre-wrap;
@@ -518,14 +515,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #title-bar .title-glow {
-  position: absolute;
-  top: -20px;
-  left: -20px;
-  width: 200px;
-  height: 80px;
-  background: radial-gradient(ellipse, var(--accent-dim) 0%, transparent 70%);
-  filter: blur(20px);
-  opacity: 0.6;
+  display: none;
 }
 
 #title-bar h1 {
@@ -533,11 +523,10 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   align-items: center;
   gap: 12px;
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 8px;
+  letter-spacing: 0.12em;
   color: var(--text-primary);
-  text-shadow: 0 0 30px var(--accent-glow);
   position: relative;
 }
 
@@ -546,7 +535,6 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   display: block;
   width: 52px;
   height: auto;
-  filter: drop-shadow(0 0 12px rgba(0, 246, 255, 0.5));
 }
 
 #title-bar .title-logo::before,
@@ -559,7 +547,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   top: -9px;
   width: 13px;
   height: 7px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--signal);
   border-bottom: 0;
   border-radius: 999px 999px 0 0;
   opacity: 0;
@@ -578,22 +566,20 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 #title-bar.radio-broadcasting .title-logo::before,
 #title-bar.radio-broadcasting .title-logo::after {
   opacity: var(--radio-broadcast-opacity);
-  animation: title-radio-broadcast 1.8s ease-in-out infinite;
+  animation: title-radio-broadcast 1s steps(1) infinite;
 }
 
 #title-bar.radio-broadcasting .title-logo::after {
-  animation-delay: 0.28s;
+  animation-delay: 0.5s;
 }
 
+/* Live-state blink: hard 1Hz step, no breathing fade (OPERATOR-DESIGN §2). */
 @keyframes title-radio-broadcast {
-  0%,
-  100% {
-    opacity: calc(var(--radio-broadcast-opacity) * 0.55);
-    transform: translateX(-50%) scale(0.94);
+  0% {
+    opacity: var(--radio-broadcast-opacity);
   }
   50% {
-    opacity: var(--radio-broadcast-opacity);
-    transform: translateX(-50%) scale(1);
+    opacity: 0;
   }
 }
 
@@ -619,14 +605,15 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #title-bar .title-accent,
 .loader-content .title-accent {
-  color: var(--accent);
+  color: var(--text-secondary);
   font-weight: 300;
 }
 
 #title-bar .subtitle {
+  display: none;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 5px;
+  letter-spacing: 0.1em;
   color: var(--text-dim);
   margin-top: 8px;
   text-transform: uppercase;
@@ -637,8 +624,8 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;
-  color: var(--accent);
+  letter-spacing: 0;
+  color: var(--text-secondary);
 }
 
 /* ── Style Indicator ──────────────────────────── */
@@ -656,7 +643,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   display: block;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 3px;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
   text-transform: uppercase;
 }
@@ -666,9 +653,8 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 500;
-  letter-spacing: 5px;
-  color: var(--accent);
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
   margin-top: 4px;
-  text-shadow: 0 0 20px var(--accent-glow);
-  transition: var(--transition-smooth);
+  transition: color var(--transition-smooth);
 }
