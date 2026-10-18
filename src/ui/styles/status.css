@@ -13,34 +13,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 50%;
+  background: var(--surface-0);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   color: var(--text-secondary);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     color var(--transition-fast),
-    opacity var(--transition-fast),
-    transform var(--transition-fast);
+    opacity var(--transition-fast);
   outline: none;
 }
 
 #top-center-actions button:hover,
 #top-center-actions button:focus-visible {
-  border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
-  transform: scale(1.1);
+  border-color: var(--rule-strong);
+  background: var(--surface-1);
+  color: var(--text-primary);
 }
 
 #top-center-actions button:active {
-  transform: scale(0.95);
+  background: var(--surface-2);
 }
 
 #top-center-actions button:disabled {
@@ -54,9 +56,9 @@
 }
 
 #tilt-map-view[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--ink-inverse);
 }
 
 #north-up-view {
@@ -67,7 +69,7 @@
 .camera-compass-n {
   position: absolute;
   top: 2px;
-  color: var(--accent);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 700;
@@ -90,35 +92,30 @@
   gap: 10px;
   max-width: calc(100vw - 32px);
   padding: 6px 10px;
-  border-radius: 7px;
-  border: 1px solid rgba(0, 212, 255, 0.24);
-  background: rgba(3, 10, 18, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  color: rgba(170, 252, 255, 0.92);
+  border-radius: 0;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-0);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1.35px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   transform: translateX(-50%);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.34),
-    0 0 14px rgba(0, 212, 255, 0.08);
   pointer-events: none;
 }
 #global-loading-status[hidden] {
   display: none;
 }
 #global-loading-label {
-  color: rgba(184, 244, 255, 0.92);
+  color: var(--text-secondary);
 }
 #global-loading-detail {
   min-width: 34px;
   max-width: min(220px, 38vw);
   overflow: hidden;
-  color: #00e1ff;
+  color: var(--text-primary);
   font-weight: 600;
-  letter-spacing: 1.6px;
+  letter-spacing: 0;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -140,36 +137,33 @@
   display: none;
 }
 #global-loading-status[data-state='error'] {
-  border-color: rgba(255, 98, 82, 0.55);
-  color: #ff9b8e;
+  border-color: var(--warn);
+  color: var(--warn);
 }
 #global-loading-status[data-state='error'] #global-loading-label,
 #global-loading-status[data-state='error'] #global-loading-detail {
-  color: #ff9b8e;
+  color: var(--warn);
 }
 #global-loading-status[data-state='cancelled'] {
-  color: #ffd488;
+  color: var(--text-dim);
 }
 #global-loading-status[data-state='retry'] {
-  border-color: rgba(255, 212, 136, 0.55);
+  border-color: var(--signal);
 }
 #global-loading-status[data-state='retry'] #global-loading-label,
 #global-loading-status[data-state='retry'] #global-loading-detail {
-  color: #ffd488;
+  color: var(--signal);
 }
 #global-loading-status[data-state='cancelled'] #global-loading-label,
 #global-loading-status[data-state='cancelled'] #global-loading-detail {
-  color: #ffd488;
+  color: var(--text-dim);
 }
 #global-loading-status[data-state='acquiring'] {
-  border-color: rgba(0, 212, 255, 0.42);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.34),
-    0 0 18px rgba(0, 212, 255, 0.12);
+  border-color: var(--signal);
 }
 
 .share-icon {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -184,24 +178,19 @@
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
-  border-radius: 7px;
-  border: 1px solid rgba(0, 212, 255, 0.24);
-  background: rgba(3, 10, 18, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  color: rgba(170, 252, 255, 0.92);
+  border-radius: 0;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-0);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1.35px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0;
   pointer-events: none;
   transition:
     opacity 0.22s ease,
     transform 0.22s ease;
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.34),
-    0 0 14px rgba(0, 212, 255, 0.08);
 }
 
 /* Stacked below the traffic chip so both can show at once */
@@ -217,14 +206,14 @@
 
 #traffic-sync-label,
 #cctv-sync-label {
-  color: rgba(184, 244, 255, 0.92);
+  color: var(--text-secondary);
 }
 
 #traffic-sync-progress,
 #cctv-sync-progress {
-  color: #00e1ff;
+  color: var(--text-primary);
   font-weight: 600;
-  letter-spacing: 1.6px;
+  letter-spacing: 0;
   min-width: 34px;
   text-align: right;
 }
@@ -390,16 +379,13 @@
   transform: translateX(-50%) translateY(20px);
   z-index: 200;
   padding: 10px 24px;
-  background: var(--glass-bg);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--accent);
-  text-transform: uppercase;
+  background: var(--surface-0);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--text-primary);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -407,7 +393,6 @@
     opacity 0.3s ease,
     visibility 0.3s ease,
     transform 0.3s ease;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
 }
 
 #toast.visible {

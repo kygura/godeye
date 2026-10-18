@@ -94,35 +94,17 @@
 }
 
 #left-panel-stack > [data-panel-id]:not(.collapsed) .panel-divider {
-  background: linear-gradient(
-    90deg,
-    rgb(0 212 255 / 28%),
-    rgba(0, 212, 255, 0.18) 58%,
-    transparent
-  );
-  box-shadow: 0 0 7px rgba(0, 212, 255, 0.22);
+  background: var(--rule);
 }
 
 #right-context-rail [data-panel-id]:not(.collapsed) .panel-divider {
-  background: linear-gradient(
-    90deg,
-    rgb(0 212 255 / 28%),
-    rgba(0, 212, 255, 0.18) 58%,
-    transparent
-  );
-  box-shadow: 0 0 7px rgba(0, 212, 255, 0.22);
+  background: var(--rule);
 }
 
 #scene-panel .panel-glow {
   position: absolute;
   inset: -18px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 212, 255, 0.16) 0%,
-    transparent 65%
-  );
-  filter: blur(16px);
-  opacity: 0.25;
+  display: none;
   pointer-events: none;
 }
 
@@ -135,12 +117,6 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 24px);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
 .scene-controls {
@@ -153,9 +129,9 @@
 #scene-select {
   flex: 1;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 7px;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   color: var(--text-primary);
   padding: 6px 8px;
   font-family: var(--font-sans);
@@ -164,13 +140,13 @@
 }
 
 .scene-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 7px;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.12em;
   padding: 6px 9px;
   cursor: pointer;
   transition:
@@ -206,26 +182,26 @@
 }
 
 .scene-shot-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
+  background: var(--rule-strong);
+  border-radius: 0;
 }
 
 .scene-shot-empty {
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+  border: 1px dashed var(--rule);
+  border-radius: 0;
   padding: 10px 8px;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   color: var(--text-dim);
 }
 
 .scene-shot-row {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9px;
+  border: 1px solid var(--rule);
+  border-radius: 0;
   padding: 7px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-1);
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast);
@@ -233,7 +209,7 @@
 
 .scene-shot-row.active {
   border-color: var(--accent);
-  background: rgba(0, 212, 255, 0.08);
+  background: var(--surface-1);
 }
 
 .scene-shot-top {
@@ -248,7 +224,7 @@
   flex: 1;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   color: var(--text-primary);
 }
 
@@ -258,15 +234,15 @@
   box-sizing: border-box;
   font: inherit;
   color: var(--text-primary);
-  background: var(--bg-panel, #101820);
-  border: 1px solid var(--accent, #00d4ff);
+  background: var(--bg-panel, var(--surface-0));
+  border: 1px solid var(--accent, var(--rule-strong));
 }
 
 .scene-shot-meta {
   margin-top: 4px;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
 }
 
@@ -276,13 +252,13 @@
 }
 
 .scene-shot-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--surface-1);
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.08em;
   padding: 4px 6px;
   cursor: pointer;
   transition:
@@ -304,7 +280,7 @@
 .scene-btn:hover:not(:disabled) {
   color: var(--accent);
   border-color: var(--accent);
-  background: rgba(0, 212, 255, 0.14);
+  background: var(--surface-1);
 }
 
 .scene-btn:disabled {
@@ -322,37 +298,32 @@
   margin-top: 8px;
   width: 100%;
   height: 18px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
   overflow: hidden;
 }
 
 #scene-progress-fill {
   width: 0%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 212, 255, 0.2),
-    rgba(0, 212, 255, 0.75)
-  );
-  color: #d5f7ff;
+  background: var(--text-primary);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-right: 6px;
   transition: width 100ms linear;
-  text-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
 }
 
 #scene-status {
   margin-top: 8px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 1px;
+  letter-spacing: 0.1em;
   color: var(--text-secondary);
 }
 
@@ -369,13 +340,12 @@
     visibility 180ms ease;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 2px;
-  color: #bff4ff;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
   background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(0, 212, 255, 0.36);
-  border-radius: 999px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
   padding: 6px 14px;
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.55);
   pointer-events: none;
 }
 
@@ -428,7 +398,7 @@
 #radio-panel.collapsed .panel-title,
 #scene-panel.collapsed .panel-title {
   font-size: 8px;
-  letter-spacing: 1.8px;
+  letter-spacing: 0.12em;
 }
 
 #control-panel.collapsed .panel-inner,
@@ -452,5 +422,5 @@
 }
 
 .director-sharing-dialog::backdrop {
-  background: rgba(0, 8, 14, 0.65);
+  background: var(--glass-bg);
 }

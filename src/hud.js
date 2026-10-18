@@ -166,8 +166,8 @@ export class IntelHUD {
     };
 
     // Session-consistent pseudorandom identifiers (generated once at construction)
-    this._missionId = `KH11-${4000 + Math.floor(Math.random() * 200)}`;
-    this._sensorId = `OPS-${4100 + Math.floor(Math.random() * 100)}`;
+    this._missionId = `SESSION ${4000 + Math.floor(Math.random() * 200)}`;
+    this._sensorId = `SENSOR ${4100 + Math.floor(Math.random() * 100)}`;
     this._orbitNum = 47000 + Math.floor(Math.random() * 1000);
     this._passNum = 100 + Math.floor(Math.random() * 200);
 
@@ -189,7 +189,7 @@ export class IntelHUD {
       <div class="hud-sonar" aria-hidden="true"></div>
 
       <div class="hud-top-bar">
-        <span class="hud-top-bar-left">TOP SECRET // SI-TK // NOFORN</span>
+        <span class="hud-top-bar-left">OPEN SOURCE // PUBLIC FEEDS</span>
         <span class="hud-top-bar-center">${this._missionId}</span>
         <span class="hud-top-bar-right">PAGE 1/1</span>
       </div>
@@ -197,7 +197,7 @@ export class IntelHUD {
       <div class="hud-corner hud-top-left">
         <div class="hud-bracket">┌</div>
         <div class="hud-content">
-          <div class="hud-classification">TOP SECRET // SI-TK // NOFORN</div>
+          <div class="hud-classification">OPEN SOURCE // PUBLIC FEEDS</div>
           <div class="hud-system">${this._missionId}  ${this._sensorId}</div>
           <div class="hud-mode" id="hud-mode">NORMAL</div>
           <div class="hud-summary-wrap">
@@ -262,13 +262,13 @@ export class IntelHUD {
       if (el) el.textContent = this._formatUTC();
     }, 1000);
 
-    // REC blink — every 800ms
+    // REC blink — hard 1Hz (500ms on / 500ms off)
     this._recBlinkInterval = setInterval(() => {
       this._recBlinkState = !this._recBlinkState;
       const dot = document.getElementById('hud-rec-dot');
       if (dot)
         dot.style.visibility = this._recBlinkState ? 'visible' : 'hidden';
-    }, 800);
+    }, 500);
 
     // Camera-derived data — 4 updates/second (250ms)
     this._updateInterval = setInterval(() => {

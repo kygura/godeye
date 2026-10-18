@@ -233,7 +233,7 @@ export function createCityIntelLayer() {
             id: city.id,
             position: point.position,
             text: city.name,
-            font: '11px JetBrains Mono, monospace',
+            font: '11px "IBM Plex Mono", monospace',
             fillColor: Cesium.Color.WHITE,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 3,

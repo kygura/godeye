@@ -1,11 +1,11 @@
 /* ── Travel Mode ──────────────────────────────── */
 body.travel-mode {
-  --travel-surface: rgba(18, 21, 27, 0.9);
-  --travel-surface-raised: rgba(255, 255, 255, 0.04);
-  --travel-border: rgba(255, 255, 255, 0.1);
-  --travel-text: #e9edf2;
-  --travel-text-muted: #a9b2be;
-  --travel-accent: #8fb8ff;
+  --travel-surface: var(--surface-0);
+  --travel-surface-raised: var(--surface-1);
+  --travel-border: var(--rule);
+  --travel-text: var(--text-primary);
+  --travel-text-muted: var(--text-secondary);
+  --travel-accent: var(--text-primary);
   --travel-status-low: #6fcf97;
   --travel-status-moderate: #e8c15a;
   --travel-status-elevated: #f39c4d;
@@ -26,10 +26,11 @@ body.travel-mode {
   width: auto;
   gap: 6px;
   padding: 0 14px 0 11px;
-  border-radius: 18px;
-  font-family: var(--font-sans);
-  font-size: 13px;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 #travel-toggle .travel-toggle-label {
@@ -37,9 +38,9 @@ body.travel-mode {
 }
 
 #top-center-actions #travel-toggle[aria-pressed='true'] {
-  border-color: var(--travel-accent);
-  color: var(--travel-text);
-  background: var(--travel-surface);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--ink-inverse);
 }
 
 body.travel-mode #title-bar,
@@ -93,11 +94,8 @@ body.travel-mode #gev-voice-control {
   overflow-y: auto;
   overscroll-behavior: contain;
   background: var(--travel-surface);
-  border: 1px solid var(--travel-border);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--panel-radius);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
   color: var(--travel-text);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -147,7 +145,7 @@ body.travel-mode #gev-voice-control {
   gap: 4px;
   min-height: 32px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: none;
   color: var(--travel-text-muted);
   font: inherit;
@@ -183,7 +181,7 @@ body.travel-mode #gev-voice-control {
   gap: 6px;
   padding: 2px 2px 2px 12px;
   border: 1px solid var(--travel-border);
-  border-radius: 10px;
+  border-radius: 0;
   background: var(--travel-surface-raised);
 }
 
@@ -243,7 +241,7 @@ body.travel-mode #gev-voice-control {
   width: 100%;
   padding: 10px 4px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: none;
   color: var(--travel-text);
   font: inherit;
@@ -294,7 +292,7 @@ body.travel-mode #gev-voice-control {
   gap: 4px;
   padding: 2px 8px 2px 6px;
   border: 1px solid color-mix(in srgb, var(--travel-status) 45%, transparent);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--travel-status) 14%, transparent);
   color: var(--travel-status);
   font-size: 13px;

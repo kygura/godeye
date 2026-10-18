@@ -19,9 +19,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 212, 255, 0.06);
-  border: 1px solid rgba(0, 212, 255, 0.34);
-  border-radius: 0.18rem;
+  background: var(--surface-1);
+  border: 1px solid var(--rule);
+  border-radius: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.4rem;
@@ -36,16 +36,15 @@
 
 .gev-voice-tier-btn:hover {
   color: var(--text-primary);
-  border-color: rgba(0, 212, 255, 0.6);
-  background: rgba(0, 212, 255, 0.12);
+  border-color: var(--rule-strong);
+  background: var(--surface-2);
 }
 
-/* MINI engaged — amber, distinct from the cyan default so the cheaper tier
-   is legible at a glance without reading the label. */
+/* MINI engaged — selected state is inversion, like every pressed control. */
 .gev-voice-tier-btn[aria-pressed='true'] {
-  color: #ffc46b;
-  border-color: rgba(255, 196, 107, 0.55);
-  background: rgba(255, 196, 107, 0.12);
+  color: var(--ink-inverse);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
 }
 
 .gev-voice-cost-value {
@@ -59,11 +58,11 @@
 }
 
 .gev-voice-cost-value[data-level='warn'] {
-  color: #ffc46b;
+  color: var(--signal);
 }
 
 .gev-voice-cost-value[data-level='cap'] {
-  color: #ff6b6b;
+  color: var(--warn);
   font-weight: 600;
 }
 

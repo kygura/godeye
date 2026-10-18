@@ -620,12 +620,12 @@ test('markup, startup ordering and accessibility remain pinned', () => {
   assert.match(visible, /earthquakes/i);
   assert.match(visible, /fires?/i, 'the tile must promise the fires it enables');
 
-  // The card's one persuasive line is OWNER-AUTHORED and pinned verbatim,
-  // unspaced em dash included. This is copy, not prose to be improved in a
+  // The card's one line is OWNER-AUTHORED and pinned verbatim (set by
+  // docs/OPERATOR-DESIGN.md §8). This is copy, not prose to be improved in a
   // passing edit — changing it needs the owner, not a nicer-sounding rewrite.
   assert.ok(
-    html.includes('<p id="first-run-description">It feels like a forbidden cockpit'
-      + '—then you realize the sources are public and the data is real.</p>'),
+    html.includes('<p id="first-run-description">Live public data on a 3D globe.'
+      + ' Pick a starting view.</p>'),
     'the owner-authored first-run line must ship exactly as written',
   );
 
