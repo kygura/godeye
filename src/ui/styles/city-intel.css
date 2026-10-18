@@ -26,13 +26,7 @@
 #city-intel-panel .panel-glow {
   position: absolute;
   inset: -20px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(98, 181, 255, 0.2) 0%,
-    transparent 62%
-  );
-  filter: blur(20px);
-  opacity: 0.24;
+  display: none;
   pointer-events: none;
 }
 .city-intel-panel-inner {
@@ -44,11 +38,6 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   background: var(--glass-bg);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
 }
 
 /* Collapse fix (T12b/T14): controls.css's collapse rule only names
@@ -66,14 +55,15 @@
   width: auto;
   gap: 6px;
   padding: 0 14px 0 11px;
-  border-radius: 18px;
+  border-radius: 0;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
 }
 #top-center-actions #city-intel-toggle[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--ink-inverse);
 }
 
 /* ── Mode: hide every layer's chrome except City Intel + Trips ── */
@@ -99,7 +89,7 @@ body.city-intel-mode #city-intel-toggle {
   margin-bottom: 4px;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
   text-transform: uppercase;
   white-space: nowrap;
@@ -108,7 +98,7 @@ body.city-intel-mode #city-intel-toggle {
 .ci-voice-chip {
   padding: 1px 5px;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 8px;
@@ -145,13 +135,13 @@ body.city-intel-mode #city-intel-toggle {
 }
 .ci-legend-bin {
   flex: 1 0 20%;
-  border-radius: 2px;
+  border-radius: 0;
 }
 .ci-legend-bin:first-child {
-  border-radius: 2px 0 0 2px;
+  border-radius: 0;
 }
 .ci-legend-bin:last-child {
-  border-radius: 0 2px 2px 0;
+  border-radius: 0;
 }
 .ci-legend-ticks {
   display: flex;
@@ -276,7 +266,7 @@ body.city-intel-mode #city-intel-toggle {
   outline-offset: -3px;
 }
 .ci-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-1);
 }
 .ci-row.ci-row-selected {
   background: var(--accent-dim);
@@ -315,13 +305,13 @@ body.city-intel-mode #city-intel-toggle {
 .ci-row-bar {
   width: 48px;
   height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: var(--rule);
   overflow: hidden;
 }
 .ci-row-bar-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 0;
 }
 .ci-row-coverage {
   font-family: var(--font-mono);
@@ -332,7 +322,7 @@ body.city-intel-mode #city-intel-toggle {
 .ci-row-advisory {
   padding: 1px 3px;
   border: 1px solid var(--text-dim);
-  border-radius: 3px;
+  border-radius: 0;
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 8px;
@@ -402,7 +392,7 @@ body.city-intel-mode #city-intel-toggle {
   gap: 4px;
   padding: 2px 6px;
   border: 1px solid var(--glass-border);
-  border-radius: 999px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 10px;
@@ -527,7 +517,7 @@ body.city-intel-mode #city-intel-toggle {
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
   list-style: none;
   text-transform: uppercase;
 }
@@ -608,9 +598,9 @@ body.city-intel-mode #city-intel-toggle {
   margin: 10px 0 0;
 }
 .ci-actions .scene-btn[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-  color: var(--accent);
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--ink-inverse);
 }
 
 .ci-pillar {
@@ -623,7 +613,7 @@ body.city-intel-mode #city-intel-toggle {
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 2px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 .ci-pillar-leader {
@@ -680,8 +670,8 @@ button.ci-metric-value {
   display: block;
   width: 48px;
   height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: var(--rule);
   overflow: hidden;
 }
 .ci-metric-bar-fill {
@@ -699,7 +689,7 @@ button.ci-metric-value {
 }
 .ci-badge {
   padding: 0 3px;
-  border-radius: 3px;
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 7px;
   letter-spacing: 0.06em;
@@ -754,7 +744,7 @@ a.ci-notscored-value {
   align-items: flex-end;
   justify-content: center;
   height: 10px;
-  border-radius: 1px;
+  border-radius: 0;
 }
 .ci-climate-initial {
   padding-bottom: 1px;
@@ -765,7 +755,7 @@ a.ci-notscored-value {
 }
 
 /* ── Compare overlay (DESIGN §4): sibling of the rail (context.html), not a
-   descendant, so it never inherits the rail panels' backdrop-filter. ── */
+   descendant, so it never inherits the rail panels' surface. ── */
 #city-intel-compare {
   position: fixed;
   top: 96px;
@@ -774,14 +764,9 @@ a.ci-notscored-value {
   width: min(720px, 100vw - 32px);
   max-height: 70vh;
   overflow: auto;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--panel-radius);
-  background: var(--glass-bg);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  background: var(--surface-0);
   transform: translateX(-50%);
 }
 .ci-compare-inner {
@@ -800,7 +785,7 @@ a.ci-notscored-value {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .ci-compare-header .scene-btn {

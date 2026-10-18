@@ -89,7 +89,7 @@
 }
 .ci-heat-cell {
   height: 14px;
-  border-radius: 1px;
+  border-radius: 0;
   background: var(--ci-neutral);
 }
 .ci-heat-cell[data-bin='0'] {
@@ -147,8 +147,8 @@
 .ci-stay {
   padding: 6px;
   border: 1px solid transparent;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0;
+  background: var(--surface-1);
 }
 .ci-stay-head {
   display: grid;
@@ -236,8 +236,8 @@
   width: 84px;
   height: 22px;
   border: 1px solid var(--glass-border);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: var(--surface-1);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
