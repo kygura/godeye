@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="180 120 775 520" role="img" aria-labelledby="logo-title">
-  <title id="logo-title">God's Eye View</title>
+  <title id="logo-title">Godeye</title>
   <defs>
     <style>
       .cls-4 {
-        fill: #fff;
+        fill: #e8e2d4;
       }
 
       .cls-2, .cls-4 {
-        stroke: #000;
+        stroke: #0e1214;
         stroke-width: 1px;
       }
 
       .cls-1 {
-        fill: #4454727a;
-        stroke: #48b;
+        fill: rgba(14, 18, 20, 0.5);
+        stroke: #e8e2d4;
         stroke-width: 10px;
       }
 
@@ -22,11 +22,12 @@
       }
 
       .cls-2 {
-        fill: #00f6ff;
+        fill: #d9583b;
       }
 
       .cls-3 {
-        stroke: #00f6ff;
+        fill: #0e1214;
+        stroke: #d9583b;
         stroke-linecap: round;
         stroke-width: 6.99px;
       }

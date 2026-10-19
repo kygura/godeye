@@ -94,36 +94,28 @@
 }
 
 #left-panel-stack > [data-panel-id]:not(.collapsed) .panel-divider {
-  background: linear-gradient(
-    90deg,
-    rgb(0 212 255 / 28%),
-    rgba(0, 212, 255, 0.18) 58%,
-    transparent
-  );
-  box-shadow: 0 0 7px rgba(0, 212, 255, 0.22);
+  background: var(--rule);
+  box-shadow: none;
+}
+
+/* Legend captions: sans small caps; the divider is the hairline to the edge. */
+#left-panel-stack > [data-panel-id] .panel-title {
+  color: var(--vellum-2);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 #right-context-rail [data-panel-id]:not(.collapsed) .panel-divider {
-  background: linear-gradient(
-    90deg,
-    rgb(0 212 255 / 28%),
-    rgba(0, 212, 255, 0.18) 58%,
-    transparent
-  );
-  box-shadow: 0 0 7px rgba(0, 212, 255, 0.22);
+  background: var(--rule);
+  box-shadow: none;
 }
 
 #scene-panel .panel-glow {
   position: absolute;
-  inset: -18px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 212, 255, 0.16) 0%,
-    transparent 65%
-  );
-  filter: blur(16px);
-  opacity: 0.25;
-  pointer-events: none;
+  inset: -20px;
+  display: none;
 }
 
 .scene-panel-inner {
@@ -135,12 +127,9 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 24px);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-float);
 }
 
 .scene-controls {
@@ -153,9 +142,9 @@
 #scene-select {
   flex: 1;
   min-width: 0;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 7px;
+  background: var(--hover-wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
   color: var(--text-primary);
   padding: 6px 8px;
   font-family: var(--font-sans);
@@ -164,13 +153,14 @@
 }
 
 .scene-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 7px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1.2px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   padding: 6px 9px;
   cursor: pointer;
   transition:
@@ -206,34 +196,34 @@
 }
 
 .scene-shot-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
+  background: var(--hover-wash);
+  border-radius: var(--panel-radius);
 }
 
 .scene-shot-empty {
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--panel-radius);
   padding: 10px 8px;
   text-align: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
 }
 
 .scene-shot-row {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9px;
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
   padding: 7px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--hover-wash);
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast);
 }
 
 .scene-shot-row.active {
-  border-color: var(--accent);
-  background: rgba(0, 212, 255, 0.08);
+  border-color: var(--cinnabar-rule);
+  background: var(--cinnabar-wash);
 }
 
 .scene-shot-top {
@@ -246,9 +236,9 @@
 .scene-shot-label {
   min-width: 0;
   flex: 1;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
   color: var(--text-primary);
 }
 
@@ -258,15 +248,16 @@
   box-sizing: border-box;
   font: inherit;
   color: var(--text-primary);
-  background: var(--bg-panel, #101820);
-  border: 1px solid var(--accent, #00d4ff);
+  background: var(--ink-1);
+  border: 1px solid var(--cinnabar-rule);
+  border-radius: var(--btn-radius);
 }
 
 .scene-shot-meta {
   margin-top: 4px;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
 }
 
@@ -276,13 +267,13 @@
 }
 
 .scene-shot-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: transparent;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.8px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.04em;
   padding: 4px 6px;
   cursor: pointer;
   transition:
@@ -297,14 +288,14 @@
 }
 
 .scene-shot-btn.scene-shot-danger:hover {
-  color: #ff7e7e;
-  border-color: #ff7e7e;
+  color: var(--cinnabar);
+  border-color: var(--cinnabar-rule);
 }
 
 .scene-btn:hover:not(:disabled) {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: rgba(0, 212, 255, 0.14);
+  color: var(--vellum);
+  border-color: var(--rule-strong);
+  background: var(--hover-wash);
 }
 
 .scene-btn:disabled {
@@ -313,46 +304,42 @@
 }
 
 .scene-btn-danger:hover:not(:disabled) {
-  color: #ff7272;
-  border-color: #ff7272;
-  background: rgba(255, 88, 88, 0.15);
+  color: var(--cinnabar);
+  border-color: var(--cinnabar-rule);
+  background: var(--cinnabar-wash);
 }
 
 .scene-progress {
   margin-top: 8px;
   width: 100%;
   height: 18px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--panel-radius);
+  background: var(--hover-wash);
+  border: 1px solid var(--rule);
   overflow: hidden;
 }
 
 #scene-progress-fill {
   width: 0%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 212, 255, 0.2),
-    rgba(0, 212, 255, 0.75)
-  );
-  color: #d5f7ff;
+  background: var(--cinnabar-wash);
+  box-shadow: inset -1px 0 0 var(--cinnabar);
+  color: var(--vellum);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-right: 6px;
   transition: width 100ms linear;
-  text-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
 }
 
 #scene-status {
   margin-top: 8px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
@@ -367,15 +354,14 @@
   transition:
     opacity 180ms ease,
     visibility 180ms ease;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
-  letter-spacing: 2px;
-  color: #bff4ff;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(0, 212, 255, 0.36);
-  border-radius: 999px;
+  letter-spacing: 0.06em;
+  color: var(--vellum);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
   padding: 6px 14px;
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.55);
   pointer-events: none;
 }
 
@@ -427,8 +413,11 @@
 #cctv-panel.collapsed .panel-title,
 #radio-panel.collapsed .panel-title,
 #scene-panel.collapsed .panel-title {
-  font-size: 8px;
-  letter-spacing: 1.8px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-2);
 }
 
 #control-panel.collapsed .panel-inner,
@@ -452,5 +441,5 @@
 }
 
 .director-sharing-dialog::backdrop {
-  background: rgba(0, 8, 14, 0.65);
+  background: rgba(12, 16, 18, 0.65);
 }

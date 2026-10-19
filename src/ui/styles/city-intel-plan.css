@@ -1,7 +1,8 @@
 /* ── City Intel · Lifestyle Plan (PLAN view) ──────────────────────────────
    docs/cockpit/DESIGN.md §11, coordinator heatmap addendum. Tokens only from
    city-intel.css (--ci-score-0..4, --ci-neutral, --ci-adv-*) plus GEV's
-   existing --glass-*, --accent, --text-*, --font-* tokens: no new colours. */
+   the Night Chart tokens (--rule, --vellum-*, --hover-wash, --font-*):
+   no new colours. */
 
 .ci-plan {
   display: flex;
@@ -42,7 +43,7 @@
   background: none;
   color: var(--accent);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 11px;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -76,9 +77,9 @@
 .ci-heat-row-label {
   overflow: hidden;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.02em;
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-style: italic;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -89,7 +90,7 @@
 }
 .ci-heat-cell {
   height: 14px;
-  border-radius: 1px;
+  border-radius: 0;
   background: var(--ci-neutral);
 }
 .ci-heat-cell[data-bin='0'] {
@@ -117,13 +118,13 @@
 }
 /* Chosen: the months that city is actually booked for. */
 .ci-heat-cell[data-chosen='true'] {
-  outline: 2px solid var(--text-primary);
+  outline: 2px solid var(--vellum);
   outline-offset: -2px;
 }
 /* Gap columns: months the whole plan leaves open. */
 .ci-heat-cell[data-gap='true'] {
-  border-top: 1px dashed var(--glass-border);
-  border-bottom: 1px dashed var(--glass-border);
+  border-top: 1px dashed var(--rule-strong);
+  border-bottom: 1px dashed var(--rule-strong);
 }
 
 /* ── Stays ── */
@@ -141,14 +142,14 @@
   font-family: var(--font-mono);
   font-size: 9px;
   text-align: center;
-  border-top: 1px dashed var(--glass-border);
-  border-bottom: 1px dashed var(--glass-border);
+  border-top: 1px dashed var(--rule);
+  border-bottom: 1px dashed var(--rule);
 }
 .ci-stay {
   padding: 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: var(--hover-wash);
 }
 .ci-stay-head {
   display: grid;
@@ -163,9 +164,10 @@
   border: none;
   background: none;
   color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -215,9 +217,9 @@
 }
 .ci-stay-metric-label {
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .ci-stay-metric-value {
@@ -235,9 +237,9 @@
 .ci-stay-override input {
   width: 84px;
   height: 22px;
-  border: 1px solid var(--glass-border);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  background: var(--hover-wash);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -247,7 +249,7 @@
   margin: 2px 0 0 62px;
   color: var(--ci-adv-4);
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* ── Rollup ── */
@@ -263,9 +265,9 @@
 }
 .ci-rollup-label {
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .ci-rollup-value {

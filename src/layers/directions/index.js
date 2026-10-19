@@ -666,7 +666,7 @@ export function createDirectionsLayer({ services }) {
       },
       label: {
         text: letter,
-        font: 'bold 13px "JetBrains Mono", "SF Mono", monospace',
+        font: 'bold 13px "IBM Plex Mono", "SF Mono", monospace',
         fillColor: Cesium.Color.WHITE,
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 3,

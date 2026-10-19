@@ -18,10 +18,8 @@
   transform: translate(-50%, -50%);
   width: min(90vw, calc(90vh * (16 / 9)));
   aspect-ratio: 16 / 9;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 #safe-frame-overlay.ratio-9-16 #safe-frame-box {
@@ -43,23 +41,23 @@
     linear-gradient(
       to right,
       transparent 33.333%,
-      rgba(255, 255, 255, 0.2) 33.333%,
-      rgba(255, 255, 255, 0.2) 33.7%,
+      var(--rule) 33.333%,
+      var(--rule) 33.7%,
       transparent 33.7%,
       transparent 66.333%,
-      rgba(255, 255, 255, 0.2) 66.333%,
-      rgba(255, 255, 255, 0.2) 66.7%,
+      var(--rule) 66.333%,
+      var(--rule) 66.7%,
       transparent 66.7%
     ),
     linear-gradient(
       to bottom,
       transparent 33.333%,
-      rgba(255, 255, 255, 0.2) 33.333%,
-      rgba(255, 255, 255, 0.2) 33.7%,
+      var(--rule) 33.333%,
+      var(--rule) 33.7%,
       transparent 33.7%,
       transparent 66.333%,
-      rgba(255, 255, 255, 0.2) 66.333%,
-      rgba(255, 255, 255, 0.2) 66.7%,
+      var(--rule) 66.333%,
+      var(--rule) 66.7%,
       transparent 66.7%
     );
 }
@@ -71,10 +69,9 @@
   right: 36px;
   z-index: 100;
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--accent);
-  text-shadow: 0 0 12px var(--accent-glow);
+  font-size: 11px;
+  color: var(--vellum-2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   user-select: none;
   opacity: 0;
@@ -106,9 +103,10 @@
   transition:
     opacity 0.4s ease,
     visibility 0.4s ease;
-  --hud-color: rgba(0, 255, 255, 0.6);
-  --hud-glow: rgba(0, 255, 255, 0.4);
-  --hud-border: rgba(0, 255, 255, 0.15);
+  /* Map-margin annotations: vellum ink, hairline rules, no glow. */
+  --hud-color: var(--vellum-2);
+  --hud-glow: transparent;
+  --hud-border: var(--rule);
 }
 
 #intel-hud.active {
@@ -119,9 +117,10 @@
 #intel-hud * {
   font-family: var(--font-mono);
   color: var(--hud-color);
-  text-shadow: 0 0 4px var(--hud-glow);
-  text-transform: uppercase;
-  line-height: 1.6;
+  /* Legibility over imagery only. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0;
+  line-height: 1.5;
 }
 
 .hud-top-bar,
@@ -132,10 +131,10 @@
   transform: translateX(-50%);
   width: min(980px, calc(100vw - 120px));
   border: 1px solid var(--hud-border);
-  background: rgba(0, 0, 0, 0.34);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
   padding: 4px 10px;
-  font-size: 10px;
-  letter-spacing: 1.4px;
+  font-size: 11px;
   justify-content: space-between;
   align-items: center;
   pointer-events: none;
@@ -188,15 +187,45 @@
   right: 36px;
 }
 
+/* Corner ticks: the bracket glyph is hidden and the element draws a short
+   8px hairline corner in --rule-strong, like a chart's neatline corner. */
 .hud-bracket {
-  font-size: 22px;
-  line-height: 1;
-  opacity: 0.6;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  border: 0 solid var(--rule-strong);
+}
+
+.hud-top-left .hud-bracket {
+  border-top-width: 1px;
+  border-left-width: 1px;
+}
+
+.hud-top-right .hud-bracket {
+  border-top-width: 1px;
+  border-right-width: 1px;
+}
+
+.hud-bottom-left .hud-bracket {
+  align-self: flex-end;
+  margin: 0 0 4px;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+}
+
+.hud-bottom-right .hud-bracket {
+  align-self: flex-end;
+  margin: 0 0 4px;
+  border-bottom-width: 1px;
+  border-right-width: 1px;
 }
 
 .hud-content {
-  font-size: 13px;
-  letter-spacing: 2px;
+  font-size: 11px;
 }
 
 .hud-ais-vessel {
@@ -211,23 +240,36 @@
   opacity: 0.95;
 }
 
-.hud-classification {
-  font-size: 12px;
-  letter-spacing: 2.5px;
-  font-weight: 600;
-  margin-bottom: 3px;
+/* Session line: sans caption caps, the quietest ink. */
+#intel-hud .hud-classification {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vellum-3);
+  margin-bottom: 2px;
 }
 
 .hud-system {
-  font-size: 13px;
-  opacity: 0.8;
+  font-size: 11px;
 }
 
-.hud-mode {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 4px;
-  margin-top: 3px;
+/* The named value reads like a place name on the chart. */
+#intel-hud .hud-mode {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vellum);
+  line-height: 1.2;
+  margin-top: 2px;
+  /* Script sets the name in capitals; set it in sentence case like a label. */
+  text-transform: lowercase;
+}
+
+#intel-hud .hud-mode::first-letter {
+  text-transform: uppercase;
 }
 
 .hud-summary-wrap {
@@ -235,47 +277,43 @@
   max-width: 420px;
 }
 
-.hud-summary-label {
-  font-size: 9px;
-  letter-spacing: 1.8px;
-  opacity: 0.55;
+#intel-hud .hud-summary-label {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vellum-3);
 }
 
 .hud-summary {
   margin-top: 2px;
   min-height: 16px;
   font-size: 11px;
-  letter-spacing: 1.2px;
-  opacity: 0.88;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .hud-rec {
-  font-size: 13px;
-  letter-spacing: 2px;
+  font-size: 11px;
 }
 
-#hud-rec-dot {
-  color: #ff3333;
-  text-shadow: 0 0 6px rgba(255, 51, 51, 0.8);
-  font-size: 14px;
+#intel-hud #hud-rec-dot {
+  color: var(--cinnabar);
+  font-size: 9px;
   vertical-align: middle;
 }
 
 .hud-orbital {
-  font-size: 12px;
-  opacity: 0.7;
-  letter-spacing: 1.5px;
+  font-size: 11px;
 }
 
 /* Edge annotations (vertical text) */
 .hud-edge {
   position: absolute;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  opacity: 0.5;
+  font-size: 10.5px;
+  color: var(--vellum-3);
 }
 
 .hud-left-edge {
@@ -314,9 +352,9 @@
   right: auto;
   width: min(52vw, 720px);
   transform: translateX(-50%);
-  border-color: rgba(255, 255, 255, 0.24);
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.56), rgba(8, 26, 34, 0.5));
-  box-shadow: 0 0 24px rgba(0, 255, 255, 0.08);
+  border-color: var(--rule);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 #intel-hud[data-variant='tactical'] .hud-top-left,
@@ -327,19 +365,15 @@
 }
 
 #intel-hud[data-variant='operator'] .hud-bottom-bar {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.52),
-    rgba(8, 22, 18, 0.52)
-  );
+  border-color: var(--rule);
+  background: var(--surface);
 }
 
 #intel-hud[data-variant='operator'] .hud-corner {
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.36);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: var(--surface);
 }
 
 #intel-hud[data-variant='operator'] .hud-bracket {

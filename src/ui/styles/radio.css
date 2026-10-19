@@ -5,7 +5,7 @@
   min-height: 0;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(65, 220, 231, 0.16);
+  border-top: 1px solid var(--rule);
 }
 .radio-panel-inner {
   position: relative;
@@ -14,23 +14,23 @@
   flex-direction: column;
   gap: 9px;
   padding: 10px;
-  border: 1px solid rgba(65, 220, 231, 0.18);
-  border-radius: 8px;
-  background: rgba(2, 15, 20, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: transparent;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 212, 255, 0.46) rgba(255, 255, 255, 0.06);
+  scrollbar-color: var(--rule-strong) transparent;
 }
 #radio-panel .panel-header {
   margin-bottom: 0;
 }
 .radio-layer-state {
   color: var(--text-dim);
-  font: 8px/1 var(--font-mono);
-  letter-spacing: 0.12em;
+  font: 10px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .radio-layer-state.active {
-  color: #65f7ff;
+  color: var(--sage);
 }
 .radio-directory-row {
   display: grid;
@@ -41,8 +41,9 @@
 .radio-filter-label {
   grid-column: 2;
   color: var(--text-dim);
-  font: 7px/1 var(--font-mono);
-  letter-spacing: 0.12em;
+  font: 500 10.5px/1.2 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 #radio-enable-btn {
   grid-row: 1 / span 2;
@@ -51,32 +52,37 @@
 #radio-filter {
   min-width: 0;
   padding: 7px 24px 7px 8px;
-  border: 1px solid rgba(65, 220, 231, 0.28);
-  border-radius: 5px;
-  color: #c5faff;
-  background: rgba(5, 24, 31, 0.88);
-  font: 9px/1.2 var(--font-mono);
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum);
+  background: var(--ink-1);
+  font: 12px/1.2 var(--font-sans);
 }
 .radio-station-card {
   display: grid;
   gap: 4px;
   padding: 10px;
-  border: 1px solid rgba(65, 220, 231, 0.18);
-  border-radius: 7px;
-  background: rgba(2, 15, 20, 0.48);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: transparent;
   overflow-wrap: anywhere;
+  border-left: 2px solid var(--rule-strong);
+}
+/* The station on air gets the cinnabar edge. */
+.radio-panel-inner:has(#radio-play-btn.active) .radio-station-card {
+  border-left-color: var(--cinnabar);
 }
 .radio-station-card strong {
-  color: #e8feff;
-  font: 11px/1.25 var(--font-mono);
-  letter-spacing: 0.05em;
+  color: var(--vellum);
+  font: italic 400 15px/1.25 var(--font-serif);
+  letter-spacing: 0;
 }
 .radio-station-card span {
   color: var(--text-dim);
-  font: 8px/1.35 var(--font-mono);
+  font: 11px/1.4 var(--font-sans);
 }
 #radio-station-tags {
-  color: #72dce6;
+  color: var(--vellum-2);
 }
 .radio-tuner {
   display: grid;
@@ -86,14 +92,9 @@
   gap: 5px;
   padding: 8px;
   overflow: hidden;
-  border: 1px solid rgba(65, 220, 231, 0.22);
-  border-radius: 7px;
-  background: linear-gradient(
-    180deg,
-    rgba(1, 9, 13, 0.92),
-    rgba(4, 24, 30, 0.72)
-  );
-  box-shadow: inset 0 0 18px rgba(0, 212, 255, 0.045);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: var(--ink-1);
 }
 .radio-tuner[hidden] {
   display: none;
@@ -103,17 +104,18 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  color: #6daeb5;
-  font: 7px/1.2 var(--font-mono);
-  letter-spacing: 0.1em;
+  color: var(--vellum-3);
+  font: 10px/1.2 var(--font-sans);
+  letter-spacing: 0.06em;
 }
 #radio-tuner-value {
   min-width: 0;
-  color: #a8f7ff;
+  color: var(--vellum);
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 .radio-tuner-dial {
   position: relative;
@@ -123,30 +125,23 @@
   height: 51px;
   overflow: hidden;
   contain: paint;
-  border-block: 1px solid rgba(72, 225, 237, 0.3);
-  background:
-    linear-gradient(
-      180deg,
-      transparent 23px,
-      rgba(65, 220, 231, 0.8) 24px,
-      transparent 25px,
-      transparent 28px,
-      rgba(65, 220, 231, 0.6) 29px,
-      transparent 30px
-    ),
-    radial-gradient(
-      ellipse at center,
-      rgba(39, 177, 191, 0.12),
-      transparent 70%
-    );
+  border-block: 1px solid var(--rule);
+  background: linear-gradient(
+    180deg,
+    transparent 23px,
+    var(--rule-strong) 24px,
+    transparent 25px,
+    transparent 28px,
+    var(--rule) 29px,
+    transparent 30px
+  );
 }
 .radio-tuner-scale {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  color: #58cbd6;
+  color: var(--vellum-3);
   font: 9px/1 var(--font-mono);
-  text-shadow: 0 0 7px rgba(65, 220, 231, 0.5);
   pointer-events: none;
 }
 .radio-tuner-tick {
@@ -154,16 +149,16 @@
   top: 6px;
   bottom: 0;
   min-width: 1px;
-  border-left: 1px solid rgba(85, 224, 235, 0.38);
-  color: #58cbd6;
+  border-left: 1px solid var(--rule-strong);
+  color: var(--vellum-3);
   padding-left: 3px;
   white-space: nowrap;
   transform: translateX(-50%);
   transition: left 80ms linear;
 }
 .radio-tuner-tick.is-current {
-  border-left-color: rgba(168, 247, 255, 0.9);
-  color: #a8f7ff;
+  border-left-color: var(--cinnabar);
+  color: var(--cinnabar);
 }
 .radio-tuner-needle {
   position: absolute;
@@ -171,12 +166,9 @@
   top: 2px;
   bottom: 2px;
   left: calc(7px + (100% - 14px) * var(--radio-tuner-ratio, 0));
-  width: 3px;
+  width: 2px;
   border-radius: 1px;
-  background: #ff6f4f;
-  box-shadow:
-    0 0 4px #ff6f4f,
-    0 0 10px rgba(255, 77, 50, 0.65);
+  background: var(--cinnabar);
   pointer-events: none;
   transform: translateX(-50%);
   transition: left 0.18s ease-out;
@@ -228,21 +220,22 @@
   box-shadow: none;
 }
 .radio-tuner.is-static .radio-tuner-dial {
-  box-shadow: inset 0 0 14px rgba(255, 111, 79, 0.1);
+  border-color: var(--rule);
 }
 .radio-tuner.is-static #radio-tuner-station {
-  color: #ff9b7e;
+  color: var(--ochre);
 }
 .radio-tuner-readout span:first-child {
   min-width: 0;
-  color: #7fe6ef;
+  color: var(--vellum-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .radio-tuner-readout span:last-child {
   flex: 0 0 auto;
-  color: #517f84;
+  color: var(--vellum-3);
+  font-family: var(--font-mono);
 }
 .radio-transport {
   display: grid;
@@ -252,18 +245,21 @@
 .radio-transport button {
   min-height: 30px;
   padding: 6px 3px;
-  border: 1px solid rgba(65, 220, 231, 0.28);
-  border-radius: 5px;
-  color: #8feaf2;
-  background: rgba(14, 69, 78, 0.14);
-  font: 8px/1 var(--font-mono);
-  letter-spacing: 0.06em;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum-2);
+  background: transparent;
+  font: 11px/1 var(--font-sans);
+  letter-spacing: 0.04em;
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
 }
 .radio-transport button:hover:not(:disabled),
 .radio-transport button:focus-visible:not(:disabled) {
-  border-color: #65f7ff;
-  color: #fff;
+  border-color: var(--rule-strong);
+  color: var(--vellum);
   outline: none;
 }
 .radio-transport button:disabled,
@@ -272,10 +268,9 @@
   cursor: not-allowed;
 }
 #radio-play-btn.active {
-  color: #fff;
-  border-color: rgba(101, 247, 255, 0.8);
-  background: rgba(65, 220, 231, 0.18);
-  box-shadow: 0 0 12px rgba(65, 220, 231, 0.12);
+  color: var(--vellum);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 .radio-volume-row {
   display: grid;
@@ -283,19 +278,20 @@
   gap: 8px;
   align-items: center;
   color: var(--text-dim);
-  font: 7px/1 var(--font-mono);
-  letter-spacing: 0.1em;
+  font: 10px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .radio-volume-row input {
   width: 100%;
 }
 .radio-playback-state {
   min-height: 12px;
-  color: #79d7df;
-  font: 8px/1.35 var(--font-mono);
+  color: var(--vellum-2);
+  font: 11px/1.4 var(--font-sans);
 }
 .radio-playback-state.error {
-  color: #ff9d8f;
+  color: var(--cinnabar);
 }
 .radio-links {
   display: flex;
@@ -304,19 +300,20 @@
   gap: 5px 10px;
 }
 .radio-links a {
-  color: #64cbd5;
-  font: 7px/1.3 var(--font-mono);
-  letter-spacing: 0.06em;
-  text-decoration: none;
+  color: var(--vellum-3);
+  font: 10.5px/1.3 var(--font-sans);
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
 }
 .radio-links a:hover,
 .radio-links a:focus-visible {
-  color: #fff;
+  color: var(--vellum);
 }
 .radio-privacy {
   margin: 0;
-  color: rgba(190, 230, 230, 0.48);
-  font: 7px/1.4 var(--font-mono);
+  color: var(--vellum-3);
+  font: 10.5px/1.45 var(--font-sans);
 }
 #military-awareness-panel {
   width: 100%;
@@ -324,14 +321,10 @@
   overflow: auto;
   box-sizing: border-box;
   padding: 2px 1px 0;
-  color: #dceeff;
+  color: var(--vellum);
   background: transparent;
   border: 0;
-  font:
-    11px/1.35 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px/1.45 var(--font-sans);
 }
 
 #military-awareness-panel[hidden] {
@@ -339,7 +332,7 @@
 }
 .military-awareness-subject {
   margin: 0 0 7px;
-  color: #fff;
+  color: var(--vellum);
 }
 .military-awareness-controls {
   display: grid;
@@ -348,34 +341,30 @@
   margin: 0 0 8px;
 }
 .military-awareness-controls button {
-  border: 1px solid rgba(98, 181, 255, 0.34);
-  border-radius: 4px;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   padding: 4px 3px;
-  color: #a9d9ff;
-  background: rgba(42, 113, 171, 0.12);
-  font:
-    9px/1.2 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  letter-spacing: 0.07em;
+  color: var(--vellum-2);
+  background: transparent;
+  font: 10.5px/1.2 var(--font-sans);
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 .military-awareness-controls button:hover,
 .military-awareness-controls button:focus-visible {
-  color: #fff;
-  border-color: rgba(127, 200, 255, 0.85);
-  background: rgba(66, 148, 211, 0.24);
+  color: var(--vellum);
+  border-color: var(--rule-strong);
+  background: var(--hover-wash);
   outline: none;
 }
 .military-awareness-controls button:disabled {
-  color: #627181;
-  border-color: rgba(98, 181, 255, 0.12);
+  color: var(--vellum-3);
+  border-color: var(--rule);
   background: transparent;
   cursor: default;
 }
 .military-awareness-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--rule);
   padding: 7px 0;
 }
 .military-awareness-row > div {
@@ -383,14 +372,15 @@
   justify-content: space-between;
 }
 .military-awareness-row b {
-  color: #7fc8ff;
+  color: var(--vellum);
+  font-weight: 500;
 }
 .military-awareness-row.unknown b {
-  color: #8fcfff;
+  color: var(--ochre);
 }
 .military-awareness-row small,
 .military-awareness-note {
-  color: #a9b7c7;
+  color: var(--vellum-3);
 }
 .military-awareness-row ul {
   margin: 4px 0 0;
@@ -407,7 +397,7 @@
   width: 100%;
   border: 0;
   padding: 1px 0;
-  color: #dceeff;
+  color: var(--vellum-2);
   background: transparent;
   font: inherit;
   text-align: left;
@@ -419,16 +409,16 @@
 }
 .military-awareness-target:hover,
 .military-awareness-target:focus-visible {
-  color: #fff;
+  color: var(--vellum);
   outline: none;
-  text-shadow: 0 0 8px rgba(114, 202, 255, 0.85);
 }
 .military-awareness-target:focus-visible {
-  box-shadow: inset 0 -1px 0 #7fc8ff;
+  box-shadow: inset 0 -1px 0 var(--cinnabar);
 }
 .military-awareness-target span {
-  color: #7fc8ff;
+  color: var(--vellum-3);
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 .military-awareness-note {
   margin: 8px 0 0;
@@ -438,31 +428,29 @@
   display: grid;
   gap: 7px;
   padding: 12px 4px 4px;
-  border-top: 1px solid rgba(98, 181, 255, 0.16);
+  border-top: 1px solid var(--rule);
 }
 .military-awareness-standby strong {
-  color: #79c2ff;
+  color: var(--vellum-2);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 .military-awareness-standby span {
-  color: #8192a6;
-  font-size: 9px;
-  letter-spacing: 0.05em;
+  color: var(--vellum-3);
+  font-size: 11px;
+  letter-spacing: 0;
 }
 .military-awareness-standby button {
   justify-self: start;
   padding: 4px 12px;
-  border: 1px solid rgba(98, 181, 255, 0.34);
-  border-radius: 4px;
-  color: #a9d9ff;
-  background: rgba(42, 113, 171, 0.12);
-  font:
-    9px/1.2 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  letter-spacing: 0.08em;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum-2);
+  background: transparent;
+  font: 10.5px/1.2 var(--font-sans);
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
@@ -480,14 +468,10 @@
   --compass-rotation: 0deg;
   position: absolute;
   box-sizing: border-box;
-  border: 1px solid rgba(111, 196, 255, 0.2);
-  outline: 1px dashed rgba(111, 196, 255, 0.28);
+  border: 1px solid var(--rule-strong);
+  outline: 1px dashed var(--rule);
   outline-offset: -5px;
   border-radius: 50%;
-  box-shadow:
-    inset 0 0 0 5px rgba(34, 128, 196, 0.018),
-    inset 0 0 24px rgba(34, 128, 196, 0.035),
-    0 0 14px rgba(34, 128, 196, 0.05);
 }
 .military-awareness-compass-ring::before {
   content: '';
@@ -498,9 +482,8 @@
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-bottom: 8px solid rgba(127, 200, 255, 0.88);
+  border-bottom: 8px solid var(--cinnabar);
   transform: translateX(-50%);
-  filter: drop-shadow(0 0 5px rgba(87, 184, 255, 0.7));
 }
 .military-awareness-compass-ring::after {
   content: '';
@@ -509,7 +492,7 @@
   border-radius: 50%;
   background: repeating-conic-gradient(
     from 0deg,
-    rgba(125, 205, 255, 0.38) 0deg 0.7deg,
+    rgba(232, 226, 212, 0.38) 0deg 0.7deg,
     transparent 0.7deg 15deg
   );
   -webkit-mask: radial-gradient(
@@ -531,20 +514,16 @@
 .military-awareness-compass-heading {
   position: absolute;
   transform: translate(-50%, -50%);
-  color: rgba(156, 213, 255, 0.7);
-  font:
-    9px/1 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 7px rgba(53, 161, 235, 0.55);
+  color: var(--vellum-2);
+  font: 9px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .military-awareness-compass-label.cardinal-n {
-  color: rgba(255, 188, 87, 0.92);
+  color: var(--cinnabar);
 }
 .military-awareness-compass-heading {
-  color: rgba(190, 225, 249, 0.76);
+  color: var(--vellum);
   font-size: 8px;
 }
 .military-awareness-direction-marker {
@@ -561,37 +540,28 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  color: #74dbff;
-  font: 23px/1 sans-serif;
+  color: var(--cinnabar);
+  font: 23px/1 var(--font-sans);
   transform-origin: 50% 50%;
-  text-shadow:
-    0 0 5px rgba(87, 223, 255, 0.9),
-    0 0 13px rgba(87, 223, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .military-awareness-direction-label {
   position: absolute;
   left: 50%;
   top: 50%;
   padding: 3px 6px;
-  border: 1px solid rgba(116, 219, 255, 0.24);
-  border-radius: 3px;
-  color: #bceeff;
-  background: rgba(5, 12, 20, 0.68);
-  font:
-    8px/1.3 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum);
+  background: var(--surface);
+  font: 9px/1.3 var(--font-mono);
   text-align: center;
   white-space: pre;
-  text-shadow: 0 0 5px rgba(116, 219, 255, 0.38);
 }
 
 .data-toggle-row.gev-voice-focus {
-  background: rgba(92, 255, 198, 0.1);
-  box-shadow:
-    inset 0 0 0 1px rgba(92, 255, 198, 0.72),
-    0 0 18px rgba(92, 255, 198, 0.18);
+  background: var(--cinnabar-wash);
+  box-shadow: inset 0 0 0 1px var(--cinnabar-rule);
 }
 
 .data-toggle-top {
@@ -617,7 +587,7 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
 }
 
 .data-toggle-right {
@@ -629,21 +599,21 @@
 .data-count {
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.5px;
-  color: var(--text-secondary);
+  letter-spacing: 0;
+  color: var(--vellum-3);
   min-width: 30px;
   text-align: right;
 }
 
 .data-toggle-btn {
   padding: 3px 10px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1.5px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.06em;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -670,48 +640,44 @@
 .data-toggle-btn.feed-fallback,
 .data-toggle-btn.feed-unavailable {
   min-width: 82px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.04em;
 }
 
 .data-toggle-btn:hover {
   border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-wash);
 }
 
 .data-toggle-btn.active {
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--cinnabar-rule);
   background: var(--accent-dim);
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
 }
 
 .data-toggle-btn.active.feed-stale,
 .data-toggle-btn.active.feed-partial,
 .data-toggle-btn.active.feed-fallback {
-  color: #ffd27a;
-  border-color: rgba(255, 190, 82, 0.75);
-  background: rgba(255, 174, 51, 0.1);
-  box-shadow: 0 0 10px rgba(255, 174, 51, 0.12);
+  color: var(--ochre);
+  border-color: rgba(201, 163, 90, 0.55);
+  background: rgba(201, 163, 90, 0.08);
 }
 
 .data-toggle-btn.active.feed-degraded {
-  color: #ffad72;
-  border-color: rgba(255, 137, 72, 0.78);
-  background: rgba(255, 112, 48, 0.1);
-  box-shadow: 0 0 10px rgba(255, 112, 48, 0.12);
+  color: var(--ochre);
+  border-color: var(--ochre);
+  background: rgba(201, 163, 90, 0.12);
 }
 
 .data-toggle-btn.active.feed-unavailable {
-  color: #ff8585;
-  border-color: rgba(255, 92, 92, 0.78);
-  background: rgba(255, 60, 60, 0.1);
-  box-shadow: 0 0 10px rgba(255, 60, 60, 0.12);
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 
 .data-toggle-meta {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0;
   color: var(--text-dim);
   padding-left: 26px;
   margin-top: 2px;
@@ -735,13 +701,13 @@
 
 .data-toggle-chip {
   padding: 2px 7px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.2px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -754,13 +720,13 @@
 .data-toggle-chip:hover,
 .data-toggle-chip:focus-visible {
   border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-wash);
   color: var(--text-secondary);
 }
 
 .data-toggle-chip.active {
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--cinnabar-rule);
   background: var(--accent-dim);
 }
 
@@ -773,22 +739,22 @@
 
 .data-toggle-chip.chip-loading {
   color: var(--text-secondary);
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--rule-strong);
 }
 
 .data-toggle-chip.chip-error {
-  color: #ff8585;
-  border-color: rgba(255, 92, 92, 0.6);
-  background: rgba(255, 60, 60, 0.08);
+  color: var(--cinnabar);
+  border-color: var(--cinnabar-rule);
+  background: var(--cinnabar-wash);
 }
 
 .data-toggle-legend-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0;
   color: var(--text-dim);
   cursor: default;
 }
@@ -799,7 +765,7 @@
   border-radius: 50%;
   /* The swatch IS the datum — keep it exactly the point color, with only a
      hairline ring so a near-black class still reads on the panel glass. */
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px var(--rule-strong);
   flex: none;
 }
 
@@ -826,14 +792,14 @@
   gap: 6px;
   width: 100%;
   padding: 2px 4px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.4px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0;
   text-align: left;
   color: var(--text-dim);
   background: none;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -849,18 +815,19 @@
   color: var(--text-dim);
   opacity: 0.65;
   flex: none;
+  font-family: var(--font-mono);
 }
 
 .data-row-list-item:hover,
 .data-row-list-item:focus-visible {
   border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-wash);
   color: var(--text-secondary);
 }
 
 .data-row-list-item.active {
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--cinnabar-rule);
   background: var(--accent-dim);
 }
 
@@ -893,8 +860,8 @@
 
 .data-toggle-controls-info {
   flex-basis: 100%;
-  font-family: var(--font-mono);
-  font-size: 9px;
+  font-family: var(--font-sans);
+  font-size: 11px;
   color: var(--text-secondary);
   padding-top: 3px;
   overflow-wrap: anywhere;
@@ -905,13 +872,9 @@
   gap: 7px;
   margin-top: 3px;
   padding: 9px;
-  border: 1px solid rgba(255, 170, 60, 0.28);
-  border-radius: 7px;
-  background: linear-gradient(
-    180deg,
-    rgba(31, 18, 4, 0.58),
-    rgba(4, 20, 24, 0.72)
-  );
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  background: transparent;
 }
 .sdr-radio-heading,
 .sdr-radio-actions,
@@ -927,44 +890,53 @@
   justify-content: space-between;
 }
 .sdr-radio-heading strong {
-  color: #ffd38a;
-  font: 9px/1 var(--font-mono);
-  letter-spacing: 0.1em;
+  color: var(--vellum-2);
+  font: 500 10.5px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 #sdr-connection-state {
-  color: #9e865f;
-  font: 7px/1 var(--font-mono);
-  letter-spacing: 0.1em;
+  color: var(--vellum-3);
+  font: 10px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 #sdr-connection-state.active {
-  color: #74f7c4;
+  color: var(--sage);
 }
 .sdr-radio-card > p {
   margin: 0;
-  color: rgba(213, 230, 225, 0.58);
-  font: 7px/1.4 var(--font-mono);
+  color: var(--vellum-3);
+  font: 10.5px/1.45 var(--font-sans);
 }
 .sdr-radio-card button,
 .sdr-radio-card select,
 .sdr-radio-card input[type='number'] {
   min-height: 28px;
-  border: 1px solid rgba(255, 183, 82, 0.28);
-  border-radius: 5px;
-  color: #ffd79a;
-  background: rgba(38, 25, 8, 0.52);
-  font: 8px/1 var(--font-mono);
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum-2);
+  background: var(--ink-1);
+  font: 11px/1 var(--font-sans);
+}
+.sdr-radio-card input[type='number'] {
+  font-family: var(--font-mono);
 }
 .sdr-radio-card button {
   padding: 6px 8px;
   cursor: pointer;
 }
 .sdr-radio-card button:hover:not(:disabled),
-.sdr-radio-card button:focus-visible:not(:disabled),
-.sdr-radio-card button.active {
-  border-color: #ffd38a;
-  color: #fff;
+.sdr-radio-card button:focus-visible:not(:disabled) {
+  border-color: var(--rule-strong);
+  color: var(--vellum);
   outline: none;
-  background: rgba(130, 83, 18, 0.28);
+  background: var(--hover-wash);
+}
+.sdr-radio-card button.active {
+  border-color: var(--cinnabar);
+  color: var(--vellum);
+  background: var(--cinnabar-wash);
 }
 .sdr-radio-card button:disabled,
 .sdr-radio-card select:disabled {
@@ -978,9 +950,10 @@
 }
 .sdr-gain-row label,
 .sdr-frequency-row label {
-  color: #9e865f;
-  font: 7px/1 var(--font-mono);
-  letter-spacing: 0.08em;
+  color: var(--vellum-3);
+  font: 10px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .sdr-gain-row select {
   flex: 1;
@@ -991,16 +964,16 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px 8px;
-  color: #9e865f;
-  font: 7px/1.3 var(--font-mono);
-  letter-spacing: 0.08em;
+  color: var(--vellum-3);
+  font: 10px/1.3 var(--font-sans);
+  letter-spacing: 0.04em;
 }
 .sdr-adsb-stats[hidden] {
   display: none;
 }
 .sdr-adsb-stats output {
-  color: #ffd79a;
-  font: 9px/1 var(--font-mono);
+  color: var(--vellum);
+  font: 11px/1 var(--font-mono);
 }
 .sdr-frequency-row input[type='number'] {
   width: 78px;
@@ -1011,18 +984,18 @@
   margin-left: auto;
 }
 .sdr-radio-card .radio-volume-row {
-  color: #9e865f;
+  color: var(--vellum-3);
 }
 .sdr-radio-card .radio-playback-state {
-  color: #ddbe86;
+  color: var(--vellum-2);
 }
 .sdr-radio-card .radio-playback-state.error {
-  color: #ff9d8f;
+  color: var(--cinnabar);
 }
 .sdr-feed-status {
-  color: #9e865f;
-  font: 8px/1.3 var(--font-mono);
-  letter-spacing: 0.08em;
+  color: var(--vellum-3);
+  font: 10.5px/1.35 var(--font-sans);
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 .sdr-feed-status[hidden] {

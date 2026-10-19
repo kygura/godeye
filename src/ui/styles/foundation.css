@@ -23,7 +23,8 @@
   --slate: #8ea5ad;
   --hover-wash: rgba(232, 226, 212, 0.04);
   --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.38);
-  --neatline: inset 0 0 0 4px var(--surface-raised), inset 0 0 0 5px var(--rule);
+  --neatline:
+    inset 0 0 0 4px var(--surface-raised), inset 0 0 0 5px var(--rule);
   --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, serif;
 
   /* Legacy names, kept as aliases so existing rules and scripts resolve to
@@ -324,7 +325,7 @@ body.cockpit-mode #cockpit-cloud-effects.active {
   white-space: nowrap;
   pointer-events: auto;
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--vellum-3);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
@@ -485,7 +486,9 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #gev-voice-control[data-status='listening'] {
   border-color: var(--rule-strong);
-  box-shadow: inset 2px 0 0 var(--sage), var(--shadow-float);
+  box-shadow:
+    inset 2px 0 0 var(--sage),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='listening'] #gev-voice-status {
@@ -493,7 +496,9 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #gev-voice-control[data-status='executing'] {
-  box-shadow: inset 2px 0 0 var(--ochre), var(--shadow-float);
+  box-shadow:
+    inset 2px 0 0 var(--ochre),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='executing'] #gev-voice-status {
@@ -503,7 +508,9 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 #gev-voice-control[data-status='error'] {
   align-items: flex-start;
   width: min(440px, calc(100vw - 72px));
-  box-shadow: inset 2px 0 0 var(--cinnabar), var(--shadow-float);
+  box-shadow:
+    inset 2px 0 0 var(--cinnabar),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='error'] #gev-voice-status {
@@ -563,7 +570,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #title-bar .title-logo::before,
 #title-bar .title-logo::after {
-  --radio-broadcast-opacity: 0.5;
+  --radio-broadcast-opacity: 0.32;
   content: '';
   position: absolute;
   z-index: 1;
@@ -581,7 +588,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #title-bar .title-logo::after {
-  --radio-broadcast-opacity: 0.3;
+  --radio-broadcast-opacity: 0.17;
   top: -13px;
   width: 23px;
   height: 11px;
@@ -683,5 +690,11 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   line-height: 1.1;
   color: var(--vellum);
   margin-top: 4px;
+  /* Script sets the name in capitals; set it in sentence case like a label. */
+  text-transform: lowercase;
   transition: var(--transition-smooth);
+}
+
+#style-indicator .indicator-value::first-letter {
+  text-transform: uppercase;
 }
