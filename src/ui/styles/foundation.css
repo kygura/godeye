@@ -1,25 +1,50 @@
 /* ═══════════════════════════════════════════════
-   GOD'S EYE VIEW — Dark Sci-Fi UI
-   Apple meets Blade Runner
+   GODEYE — Night Chart
+   The interface is a map's margin: ink ground, vellum type, hairline rules
+   and one survey-red accent. See docs/design/DESIGN.md.
    ═══════════════════════════════════════════════ */
 
 :root {
-  --bg-dark: #0a0a0f;
-  --glass-bg: rgba(12, 12, 20, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.15);
-  --accent: #00d4ff;
-  --accent-dim: rgba(0, 212, 255, 0.15);
-  --accent-glow: rgba(0, 212, 255, 0.4);
-  --text-primary: #e8eaed;
-  --text-secondary: rgba(232, 234, 237, 0.5);
-  --text-dim: rgba(232, 234, 237, 0.3);
+  /* Night Chart palette */
+  --ink-0: #0c1012;
+  --ink-1: #12171a;
+  --surface: rgba(14, 18, 20, 0.88);
+  --surface-raised: rgba(20, 25, 28, 0.95);
+  --rule: rgba(232, 226, 212, 0.14);
+  --rule-strong: rgba(232, 226, 212, 0.32);
+  --vellum: #e8e2d4;
+  --vellum-2: rgba(232, 226, 212, 0.64);
+  --vellum-3: rgba(232, 226, 212, 0.4);
+  --cinnabar: #d9583b;
+  --cinnabar-wash: rgba(217, 88, 59, 0.09);
+  --cinnabar-rule: rgba(217, 88, 59, 0.55);
+  --ochre: #c9a35a;
+  --sage: #8fae8b;
+  --slate: #8ea5ad;
+  --hover-wash: rgba(232, 226, 212, 0.04);
+  --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.38);
+  --neatline:
+    inset 0 0 0 4px var(--surface-raised), inset 0 0 0 5px var(--rule);
+  --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+
+  /* Legacy names, kept as aliases so existing rules and scripts resolve to
+     the Night Chart palette. Glows are retired: --accent-glow is transparent. */
+  --bg-dark: var(--ink-0);
+  --glass-bg: var(--surface);
+  --glass-border: var(--rule);
+  --glass-border-hover: var(--rule-strong);
+  --accent: var(--cinnabar);
+  --accent-dim: var(--cinnabar-wash);
+  --accent-glow: transparent;
+  --text-primary: var(--vellum);
+  --text-secondary: var(--vellum-2);
+  --text-dim: var(--vellum-3);
   /* Opaque surface for browser-painted menus, which cannot use --glass-bg. */
-  --menu-bg: #12121c;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --panel-radius: 16px;
-  --btn-radius: 10px;
+  --menu-bg: var(--ink-1);
+  --font-mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --panel-radius: 2px;
+  --btn-radius: 2px;
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --left-stack-x: 52px;
@@ -233,7 +258,7 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 .celestial-ring-outline {
   position: absolute;
   box-sizing: border-box;
-  border: 0.8px solid rgba(151, 218, 232, 0.095);
+  border: 0.8px solid var(--rule);
   border-radius: 50%;
   will-change: width, height;
 }
@@ -257,17 +282,11 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 }
 
 .celestial-sun {
-  color: rgba(231, 194, 72, 0.92);
-  text-shadow:
-    0 0 7px rgba(231, 194, 72, 0.72),
-    0 0 18px rgba(231, 194, 72, 0.3);
+  color: var(--ochre);
 }
 
 .celestial-moon {
-  color: rgba(55, 211, 239, 0.84);
-  text-shadow:
-    0 0 7px rgba(55, 211, 239, 0.65),
-    0 0 17px rgba(55, 211, 239, 0.25);
+  color: var(--vellum-2);
 }
 
 #celestial-toggle:disabled {
@@ -305,10 +324,10 @@ body.cockpit-mode #cockpit-cloud-effects.active {
      row (looked like it was falling over). nowrap + a roomy max-width holds them inline. */
   white-space: nowrap;
   pointer-events: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
-  color: rgba(232, 234, 237, 0.55);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  color: var(--vellum-3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 #cesium-credits .cesium-credit-logoContainer,
 #cesium-credits .cesium-credit-textContainer,
@@ -318,7 +337,9 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 }
 #cesium-credits a,
 #cesium-credits .cesium-credit-expand-link {
-  color: rgba(232, 234, 237, 0.7);
+  color: var(--vellum-2);
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 2px;
 }
 
 /* Keep the ALPR source overflow reachable even after its brief on-map credit
@@ -406,51 +427,51 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   align-items: center;
   gap: 10px;
   min-width: 214px;
-  padding: 9px 14px;
+  padding: 8px 12px;
   color: var(--text-primary);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 0 20px rgba(0, 212, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  font-family: var(--font-mono);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-sans);
   pointer-events: auto;
 }
 
 #gev-voice-button {
   width: 72px;
-  height: 34px;
+  height: 32px;
   flex: 0 0 auto;
-  color: var(--accent);
-  background: rgba(0, 212, 255, 0.06);
-  border: 1px solid rgba(0, 212, 255, 0.28);
+  color: var(--vellum);
+  background: transparent;
+  border: 1px solid var(--rule-strong);
   border-radius: var(--btn-radius);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 #gev-voice-button:hover {
-  color: #ffffff;
-  border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.22);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 
 .gev-voice-readout {
   min-width: 0;
-  line-height: 1.2;
+  line-height: 1.25;
   text-align: right;
 }
 
 #gev-voice-status {
-  font-size: 10px;
-  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--vellum);
 }
 
 #gev-voice-detail {
@@ -458,37 +479,42 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   margin-top: 2px;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: 10.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 #gev-voice-control[data-status='listening'] {
-  border-color: rgba(92, 255, 198, 0.45);
+  border-color: var(--rule-strong);
+  box-shadow:
+    inset 2px 0 0 var(--sage),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='listening'] #gev-voice-status {
-  color: #5cffc6;
+  color: var(--sage);
 }
 
 #gev-voice-control[data-status='executing'] {
-  border-color: rgba(255, 220, 120, 0.55);
+  box-shadow:
+    inset 2px 0 0 var(--ochre),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='executing'] #gev-voice-status {
-  color: #ffdc78;
+  color: var(--ochre);
 }
 
 #gev-voice-control[data-status='error'] {
   align-items: flex-start;
   width: min(440px, calc(100vw - 72px));
-  border-color: rgba(255, 92, 110, 0.6);
-  /* Multi-line error block reads as a panel, not a capsule */
-  border-radius: var(--panel-radius);
+  box-shadow:
+    inset 2px 0 0 var(--cinnabar),
+    var(--shadow-float);
 }
 
 #gev-voice-control[data-status='error'] #gev-voice-status {
-  color: #ff5c6e;
+  color: var(--cinnabar);
 }
 
 #gev-voice-control[data-status='error'] .gev-voice-readout {
@@ -499,7 +525,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 #gev-voice-control[data-status='error'] #gev-voice-detail {
   max-width: none;
   overflow: visible;
-  color: #ffb4bd;
+  color: var(--vellum-2);
   line-height: 1.45;
   text-overflow: clip;
   white-space: pre-wrap;
@@ -507,7 +533,7 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
   user-select: text;
 }
 
-/* ── Title Bar ────────────────────────────────── */
+/* ── Title: the chart's cartouche ─────────────── */
 #title-bar {
   position: fixed;
   top: 32px;
@@ -518,48 +544,41 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 }
 
 #title-bar .title-glow {
-  position: absolute;
-  top: -20px;
-  left: -20px;
-  width: 200px;
-  height: 80px;
-  background: radial-gradient(ellipse, var(--accent-dim) 0%, transparent 70%);
-  filter: blur(20px);
-  opacity: 0.6;
+  display: none;
 }
 
 #title-bar h1 {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-mono);
+  gap: 10px;
+  font-family: var(--font-serif);
   font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 8px;
-  color: var(--text-primary);
-  text-shadow: 0 0 30px var(--accent-glow);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--vellum);
   position: relative;
 }
 
 #title-bar .title-logo {
   position: relative;
   display: block;
-  width: 52px;
+  width: 34px;
   height: auto;
-  filter: drop-shadow(0 0 12px rgba(0, 246, 255, 0.5));
+  opacity: 0.92;
 }
 
 #title-bar .title-logo::before,
 #title-bar .title-logo::after {
-  --radio-broadcast-opacity: 0.28;
+  --radio-broadcast-opacity: 0.32;
   content: '';
   position: absolute;
   z-index: 1;
   left: 50%;
-  top: -9px;
-  width: 13px;
-  height: 7px;
-  border: 1px solid var(--accent);
+  top: -8px;
+  width: 11px;
+  height: 6px;
+  border: 1px solid var(--cinnabar);
   border-bottom: 0;
   border-radius: 999px 999px 0 0;
   opacity: 0;
@@ -570,15 +589,15 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #title-bar .title-logo::after {
   --radio-broadcast-opacity: 0.17;
-  top: -15px;
-  width: 27px;
-  height: 13px;
+  top: -13px;
+  width: 23px;
+  height: 11px;
 }
 
 #title-bar.radio-broadcasting .title-logo::before,
 #title-bar.radio-broadcasting .title-logo::after {
   opacity: var(--radio-broadcast-opacity);
-  animation: title-radio-broadcast 1.8s ease-in-out infinite;
+  animation: title-radio-broadcast 2s ease-in-out infinite;
 }
 
 #title-bar.radio-broadcasting .title-logo::after {
@@ -588,12 +607,10 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 @keyframes title-radio-broadcast {
   0%,
   100% {
-    opacity: calc(var(--radio-broadcast-opacity) * 0.55);
-    transform: translateX(-50%) scale(0.94);
+    opacity: calc(var(--radio-broadcast-opacity) * 0.45);
   }
   50% {
     opacity: var(--radio-broadcast-opacity);
-    transform: translateX(-50%) scale(1);
   }
 }
 
@@ -619,26 +636,28 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #title-bar .title-accent,
 .loader-content .title-accent {
-  color: var(--accent);
-  font-weight: 300;
+  color: inherit;
+  font-style: italic;
+  font-weight: 400;
 }
 
 #title-bar .subtitle {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 5px;
-  color: var(--text-dim);
-  margin-top: 8px;
-  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  letter-spacing: 0;
+  color: var(--vellum-3);
+  margin-top: 7px;
+  margin-left: 44px;
 }
 
 #title-bar .frame-rate-readout {
   margin-top: 6px;
+  margin-left: 44px;
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;
-  color: var(--accent);
+  color: var(--vellum-3);
 }
 
 /* ── Style Indicator ──────────────────────────── */
@@ -654,21 +673,28 @@ body:has(.data-toggle-row[data-layer-id='alpr-cameras'] .data-toggle-btn.active)
 
 #style-indicator .indicator-label {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-3);
   text-transform: uppercase;
 }
 
 #style-indicator .indicator-value {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: 5px;
-  color: var(--accent);
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--vellum);
   margin-top: 4px;
-  text-shadow: 0 0 20px var(--accent-glow);
+  /* Script sets the name in capitals; set it in sentence case like a label. */
+  text-transform: lowercase;
   transition: var(--transition-smooth);
+}
+
+#style-indicator .indicator-value::first-letter {
+  text-transform: uppercase;
 }

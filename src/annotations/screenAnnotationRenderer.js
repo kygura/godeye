@@ -834,13 +834,13 @@ function injectStyles() {
      (the 260ms fade-in via computeAlpha, and the tracked-entity z-order ease). A CSS
      transition fought those per-frame writes and made the tracked-fade opacity oscillate
      (flicker). Fade-OUT keeps its own transition via .gev-anno.gev-out below. */
-  .gev-anno-ring { filter: drop-shadow(0 0 6px currentColor); }
-  .gev-anno-dot { filter: drop-shadow(0 0 5px rgba(255,255,255,0.6)); }
-  .gev-anno-area { filter: drop-shadow(0 0 5px currentColor); }
-  .gev-anno-arrow { filter: drop-shadow(0 0 4px currentColor); stroke-linecap: round; }
+  .gev-anno-ring { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+  .gev-anno-dot { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+  .gev-anno-area { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+  .gev-anno-arrow { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); stroke-linecap: round; }
   .gev-anno-leader { stroke-dasharray: 2 3; }
-  .gev-anno-card { fill: rgba(8,18,28,0.78); stroke: rgba(255,255,255,0.14); stroke-width: 1; }
-  .gev-anno-text { fill: #eaf6ff; font: 600 13px "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0.02em; }
+  .gev-anno-card { fill: rgba(14,18,20,0.88); stroke: rgba(232,226,212,0.14); stroke-width: 1; }
+  .gev-anno-text { fill: #e8e2d4; font: 500 13px "IBM Plex Sans", system-ui, sans-serif; letter-spacing: 0.01em; }
   /* draw-on: outlined shapes reveal their stroke */
   .gev-draw { stroke-dasharray: 1400; stroke-dashoffset: 1400; }
   .gev-anno.gev-in .gev-draw { transition: stroke-dashoffset 900ms ease-out; stroke-dashoffset: 0; }

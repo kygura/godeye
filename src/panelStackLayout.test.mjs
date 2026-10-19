@@ -259,7 +259,7 @@ test('expanded left panels integrate their headers with the container shell', ()
   );
   assert.match(
     css,
-    /#left-panel-stack > \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
+    /#left-panel-stack > \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?background:\s*var\(--rule\);[\s\S]*?box-shadow:\s*none;/,
   );
 });
 
@@ -276,7 +276,7 @@ test('Map Source uses five compact tiles in the bottom Visual Presets tray', () 
   );
 });
 
-test('expanded right panels highlight the title divider without changing collapsed launchers', () => {
+test('expanded right panels draw a hairline title divider without changing collapsed launchers', () => {
   const html = expandApplicationHtml(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
   const css = readStylesheet(new URL('../style.css', import.meta.url));
 
@@ -286,10 +286,10 @@ test('expanded right panels highlight the title divider without changing collaps
   );
   assert.match(
     css,
-    /#right-context-rail \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
+    /#right-context-rail \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?background:\s*var\(--rule\);[\s\S]*?box-shadow:\s*none;/,
   );
   assert.match(
     css,
-    /#param-slider-panel:not\(\.collapsed\) \.param-panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\);/,
+    /#param-slider-panel:not\(\.collapsed\) \.param-panel-divider\s*\{[\s\S]*?background:\s*var\(--rule\);/,
   );
 });

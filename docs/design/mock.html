@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Godeye — Night Chart mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-0: #0c1012;
+  --ink-1: #12171a;
+  --surface: rgba(14, 18, 20, 0.88);
+  --surface-raised: rgba(20, 25, 28, 0.95);
+  --rule: rgba(232, 226, 212, 0.14);
+  --rule-strong: rgba(232, 226, 212, 0.32);
+  --vellum: #e8e2d4;
+  --vellum-2: rgba(232, 226, 212, 0.64);
+  --vellum-3: rgba(232, 226, 212, 0.40);
+  --cinnabar: #d9583b;
+  --cinnabar-wash: rgba(217, 88, 59, 0.09);
+  --ochre: #c9a35a;
+  --sage: #8fae8b;
+  --slate: #8ea5ad;
+  --serif: 'Newsreader', Georgia, serif;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--ink-0); color: var(--vellum); font: 13px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* Fake map ground: contour lines on dark relief */
+.map { position: fixed; inset: 0; }
+.map svg { width: 100%; height: 100%; }
+
+/* Graticule ticks along the edges */
+.ticks { position: fixed; inset: 14px; pointer-events: none; border: 1px solid var(--rule); }
+.ticks i { position: absolute; background: var(--rule-strong); }
+.caption { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--vellum-3); font-weight: 500; }
+.fig { font-family: var(--mono); font-size: 11px; color: var(--vellum-2); }
+
+/* Title */
+.title { position: fixed; top: 34px; left: 40px; }
+.title h1 { font: 400 26px/1 var(--serif); letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+.title p { font: italic 400 14px/1 var(--serif); color: var(--vellum-3); margin-top: 7px; margin-left: 34px; }
+.star { width: 24px; height: 24px; }
+
+.style-ind { position: fixed; top: 34px; right: 40px; text-align: right; }
+.style-ind b { display: block; font: italic 400 22px/1.1 var(--serif); margin-top: 4px; }
+
+/* Top-center segmented actions */
+.actions { position: fixed; top: 32px; left: 50%; transform: translateX(-50%); display: flex; background: var(--surface); border: 1px solid var(--rule); border-radius: 2px; backdrop-filter: blur(8px); }
+.actions button { height: 34px; padding: 0 14px; display: flex; align-items: center; gap: 8px; color: var(--vellum-2); border-right: 1px solid var(--rule); font-size: 12.5px; }
+.actions button:last-child { border-right: 0; }
+.actions button:hover { color: var(--vellum); background: rgba(232,226,212,.04); }
+.actions button.on { color: var(--vellum); box-shadow: inset 0 -2px 0 var(--cinnabar); }
+.actions svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.3; }
+
+/* Margin annotations */
+.anno { position: fixed; display: grid; gap: 3px; }
+.anno.tl { top: 128px; left: 40px; }
+.anno.tr { top: 128px; right: 40px; text-align: right; }
+.anno.bl { bottom: 92px; left: 40px; }
+.anno.br { bottom: 92px; right: 40px; text-align: right; }
+.anno .place { font: italic 400 17px/1.2 var(--serif); color: var(--vellum); }
+.corner { position: absolute; width: 9px; height: 9px; border-color: var(--rule-strong); border-style: solid; border-width: 0; }
+.tl .corner { left: -14px; top: 2px; border-left-width: 1px; border-top-width: 1px; }
+.tr .corner { right: -14px; top: 2px; border-right-width: 1px; border-top-width: 1px; }
+.bl .corner { left: -14px; bottom: 2px; border-left-width: 1px; border-bottom-width: 1px; }
+.br .corner { right: -14px; bottom: 2px; border-right-width: 1px; border-bottom-width: 1px; }
+
+/* Panels */
+.stack { position: fixed; top: 258px; display: grid; gap: 8px; width: 216px; }
+.stack.left { left: 40px; }
+.stack.right { right: 40px; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 2px; backdrop-filter: blur(8px); }
+.panel-head { height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 12px; }
+.panel-head::after { content: ''; flex: 1; height: 1px; background: var(--rule); order: 1; }
+.panel-head .caption { order: 0; color: var(--vellum-2); }
+.panel-head .tog { order: 2; width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--rule); border-radius: 2px; color: var(--vellum-3); font: 14px/1 var(--mono); }
+.panel-head .tog:hover { border-color: var(--rule-strong); color: var(--vellum); }
+.panel-body { padding: 4px 12px 12px; display: grid; gap: 2px; }
+.row { display: flex; align-items: center; gap: 10px; height: 28px; color: var(--vellum-2); }
+.row .sw { width: 10px; height: 10px; border: 1px solid var(--rule-strong); border-radius: 1px; }
+.row.on { color: var(--vellum); }
+.row.on .sw { background: var(--cinnabar); border-color: var(--cinnabar); }
+.row .n { margin-left: auto; font: 11px var(--mono); color: var(--vellum-3); }
+
+/* Dialog with neatline */
+.dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 520px; background: var(--surface-raised); border: 1px solid var(--rule-strong); border-radius: 2px; padding: 34px 34px 24px; box-shadow: inset 0 0 0 4px var(--surface-raised), inset 0 0 0 5px var(--rule), 0 12px 32px rgba(0,0,0,.38); backdrop-filter: blur(8px); }
+.dialog h2 { font: 400 30px/1.1 var(--serif); letter-spacing: -.01em; margin: 10px 0 10px; }
+.dialog .lede { color: var(--vellum-2); font-size: 13.5px; max-width: 42ch; }
+.opts { margin-top: 22px; border-top: 1px solid var(--rule); }
+.opt { width: 100%; display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--rule); text-align: left; transition: background .15s; }
+.opt:hover, .opt.on { background: var(--cinnabar-wash); box-shadow: inset 2px 0 0 var(--cinnabar); }
+.opt .ix { font: 11px var(--mono); color: var(--vellum-3); }
+.opt.on .ix { color: var(--cinnabar); }
+.opt b { font: 400 17px/1.2 var(--serif); display: block; }
+.opt span.d { color: var(--vellum-3); font-size: 12px; }
+.opt .arr { color: var(--vellum-3); font: 14px var(--mono); }
+.opt.on .arr, .opt:hover .arr { color: var(--cinnabar); }
+.dfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; color: var(--vellum-3); font-size: 12px; }
+.chk { display: flex; gap: 8px; align-items: center; }
+.chk i { width: 12px; height: 12px; border: 1px solid var(--rule-strong); border-radius: 1px; }
+kbd { font: 10.5px var(--mono); border: 1px solid var(--rule); padding: 1px 5px; border-radius: 2px; color: var(--vellum-2); }
+
+/* Dock */
+.dock { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--rule); border-radius: 2px; backdrop-filter: blur(8px); }
+.dock > div { display: flex; align-items: center; gap: 10px; padding: 0 18px; height: 48px; color: var(--vellum-2); }
+.dock > div + div { border-left: 1px solid var(--rule); }
+.mic { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule-strong); display: grid; place-items: center; }
+.mic.live { border-color: var(--cinnabar); box-shadow: 0 0 0 3px var(--cinnabar-wash); }
+.mic svg { width: 14px; height: 14px; stroke: var(--vellum); fill: none; stroke-width: 1.4; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); animation: breathe 2s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: .35; } }
+
+/* Scale bar + attribution */
+.scale { position: fixed; left: 40px; bottom: 34px; }
+.scale .bar { display: flex; width: 160px; height: 5px; border: 1px solid var(--vellum-2); margin-bottom: 5px; }
+.scale .bar i { flex: 1; }
+.scale .bar i:nth-child(odd) { background: var(--vellum-2); }
+.scale .lbl { display: flex; justify-content: space-between; width: 168px; }
+.attr { position: fixed; right: 40px; bottom: 34px; color: var(--vellum-3); font-size: 11px; }
+.attr a { color: var(--vellum-2); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 2px; }
+.status { position: fixed; right: 40px; bottom: 56px; display: flex; gap: 8px; align-items: center; border-left: 2px solid var(--ochre); padding: 4px 10px; background: var(--surface); font-size: 12px; color: var(--vellum-2); }
+</style>
+</head>
+<body>
+
+<div class="map" aria-hidden="true">
+  <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <radialGradient id="relief" cx="58%" cy="46%" r="70%">
+        <stop offset="0" stop-color="#1f2a27" />
+        <stop offset=".55" stop-color="#151c1c" />
+        <stop offset="1" stop-color="#0c1012" />
+      </radialGradient>
+      <pattern id="grat" width="80" height="80" patternUnits="userSpaceOnUse">
+        <path d="M80 0H0V80" fill="none" stroke="rgba(232,226,212,.05)" />
+      </pattern>
+    </defs>
+    <rect width="1600" height="1000" fill="url(#relief)" />
+    <rect width="1600" height="1000" fill="url(#grat)" />
+    <g fill="none" stroke="rgba(232,226,212,.11)" stroke-width="1">
+      <path d="M520 620 C 600 470, 790 400, 930 430 S 1180 560, 1120 700 S 820 820, 680 760 S 470 720, 520 620Z" />
+      <path d="M580 610 C 650 500, 800 450, 920 475 S 1110 570, 1070 670 S 840 770, 710 725 S 545 690, 580 610Z" />
+      <path d="M640 600 C 700 530, 810 500, 905 520 S 1050 585, 1020 645 S 860 715, 745 690 S 615 660, 640 600Z" />
+      <path d="M700 595 C 745 555, 820 540, 890 555 S 985 600, 965 630 S 870 665, 785 652 S 680 630, 700 595Z" stroke="rgba(232,226,212,.16)" />
+      <path d="M760 596 C 790 575, 835 570, 875 580 S 920 605, 905 618 S 850 633, 805 625 S 745 612, 760 596Z" stroke="rgba(232,226,212,.2)" />
+      <path d="M1150 250 C 1230 210, 1360 230, 1400 300 S 1350 420, 1260 410 S 1110 330, 1150 250Z" />
+      <path d="M1190 265 C 1250 240, 1340 255, 1365 305 S 1320 385, 1260 380 S 1160 320, 1190 265Z" />
+      <path d="M200 320 C 300 260, 420 300, 430 380 S 330 500, 250 470 S 140 380, 200 320Z" />
+      <path d="M0 860 C 260 800, 420 900, 700 880 S 1200 820, 1600 900" stroke="rgba(142,165,173,.22)" />
+      <path d="M0 885 C 260 825, 420 925, 700 905 S 1200 845, 1600 925" stroke="rgba(142,165,173,.14)" />
+    </g>
+    <g fill="var(--cinnabar)">
+      <circle cx="905" cy="560" r="3.5" />
+      <circle cx="1040" cy="610" r="2.5" opacity=".7" />
+      <circle cx="760" cy="680" r="2.5" opacity=".7" />
+    </g>
+    <circle cx="905" cy="560" r="12" fill="none" stroke="var(--cinnabar)" stroke-width="1" />
+    <text x="922" y="556" fill="rgba(232,226,212,.75)" font-family="Newsreader, serif" font-style="italic" font-size="15">Austin</text>
+    <text x="680" y="905" fill="rgba(142,165,173,.55)" font-family="Newsreader, serif" font-style="italic" font-size="14" letter-spacing="3">Colorado River</text>
+  </svg>
+</div>
+
+<div class="ticks" aria-hidden="true" id="ticks"></div>
+
+<header class="title">
+  <h1>
+    <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="var(--rule-strong)"/><path d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4Z" fill="var(--vellum)"/><path d="M12 2 L13.6 10.4 L12 12Z" fill="var(--cinnabar)"/></svg>
+    Godeye
+  </h1>
+  <p>an atlas of the living Earth</p>
+</header>
+
+<nav class="actions" aria-label="Globe actions">
+  <button class="on"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>Atlas</button>
+  <button><svg viewBox="0 0 16 16"><rect x="3" y="5" width="10" height="8"/><path d="M6 5V3h4v2"/></svg>Travel</button>
+  <button aria-label="Clear layers"><svg viewBox="0 0 16 16"><path d="M2 6l6-3 6 3-6 3z"/><path d="M2 10l6 3 6-3"/></svg></button>
+  <button aria-label="Share"><svg viewBox="0 0 16 16"><path d="M6 10l4-4M5 7l-2 2a2 2 0 003 3l2-2M11 9l2-2a2 2 0 00-3-3L8 6"/></svg></button>
+  <button aria-label="Tilt"><svg viewBox="0 0 16 16"><path d="M2 11l6-7 6 7z"/></svg></button>
+  <button aria-label="North up" style="font:500 11px var(--mono)">N</button>
+  <button aria-label="Globe"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2.5 3-2.5 9 0 12M8 2c2.5 3 2.5 9 0 12"/></svg></button>
+</nav>
+
+<div class="style-ind"><span class="caption">Style</span><b>Normal</b></div>
+
+<div class="anno tl"><i class="corner"></i>
+  <span class="caption">Survey · KH11-4122</span>
+  <span class="place">Frost Bank Tower, Austin</span>
+  <span class="fig">Normal street · 0 km</span>
+</div>
+<div class="anno tr"><i class="corner"></i>
+  <span class="fig">2026-10-19 21:42:15Z</span>
+  <span class="fig">Orbit 47783 · pass desc-112</span>
+</div>
+<div class="anno bl"><i class="corner"></i>
+  <span class="fig">MGRS 14R PU 2090 4906</span>
+  <span class="fig" style="color:var(--vellum)">30°16′01.92″N 097°44′35.16″W</span>
+</div>
+<div class="anno br"><i class="corner"></i>
+  <span class="fig">GSD 0.23 m · NIIRS 7.1</span>
+  <span class="fig">Alt 627 m · Sun 29.0° el</span>
+</div>
+
+<aside class="stack left">
+  <section class="panel">
+    <div class="panel-head"><span class="caption">Data layers</span><button class="tog">−</button></div>
+    <div class="panel-body">
+      <div class="row on"><i class="sw"></i>Aircraft<span class="n">1,284</span></div>
+      <div class="row on"><i class="sw"></i>Vessels<span class="n">412</span></div>
+      <div class="row"><i class="sw"></i>Satellites<span class="n">8,031</span></div>
+      <div class="row"><i class="sw"></i>Earthquakes<span class="n">17</span></div>
+      <div class="row"><i class="sw"></i>Active fires<span class="n">—</span></div>
+    </div>
+  </section>
+  <section class="panel"><div class="panel-head"><span class="caption">Scenes</span><button class="tog">+</button></div></section>
+</aside>
+
+<aside class="stack right">
+  <section class="panel"><div class="panel-head"><span class="caption">Display</span><button class="tog">+</button></div></section>
+  <section class="panel"><div class="panel-head"><span class="caption">CCTV</span><button class="tog">+</button></div></section>
+  <section class="panel"><div class="panel-head"><span class="caption">Context</span><button class="tog">+</button></div></section>
+</aside>
+
+<div class="dialog" role="dialog" aria-labelledby="d-title">
+  <span class="caption">First launch</span>
+  <h2 id="d-title">Choose your first view</h2>
+  <p class="lede">Every source here is public and every reading is live. Pick a place to begin; you can change course at any time.</p>
+  <div class="opts">
+    <button class="opt on"><span class="ix">01</span><span><b>Live contacts</b><span class="d">Aircraft, vessels and nearby intelligence</span></span><span class="arr">→</span></button>
+    <button class="opt"><span class="ix">02</span><span><b>Space missions</b><span class="d">Launches, spacecraft and orbital context</span></span><span class="arr">→</span></button>
+    <button class="opt"><span class="ix">03</span><span><b>Environment</b><span class="d">Earthquakes and active fires, from USGS and NASA</span></span><span class="arr">→</span></button>
+    <button class="opt"><span class="ix">04</span><span><b>Lifestyle planning</b><span class="d">Rank cities and plan your year</span></span><span class="arr">→</span></button>
+    <button class="opt"><span class="ix">05</span><span><b>Explore manually</b><span class="d">Begin with a clean globe</span></span><span class="arr">→</span></button>
+  </div>
+  <div class="dfoot"><span class="chk"><i></i>Don't show this again</span><span><kbd>Esc</kbd> to dismiss</span></div>
+</div>
+
+<div class="dock">
+  <div><span class="caption" style="color:var(--vellum-2)">Location</span></div>
+  <div><span class="mic live"><svg viewBox="0 0 16 16"><rect x="6" y="2" width="4" height="8" rx="2"/><path d="M3.5 8a4.5 4.5 0 009 0M8 12.5V15"/></svg></span><span class="dot"></span><span class="fig">Voice standby</span></div>
+  <div><span class="caption" style="color:var(--vellum-2)">Visual presets</span></div>
+</div>
+
+<div class="scale"><div class="bar"><i></i><i></i><i></i><i></i></div><div class="lbl fig"><span>0</span><span>500 m</span><span>1 km</span></div></div>
+<div class="status"><span class="dot" style="background:var(--ochre)"></span>8 keys waiting</div>
+<div class="attr">Cesium ion · Esri · <a href="#">Data attribution</a></div>
+
+<script>
+  const t = document.getElementById('ticks');
+  for (let i = 1; i < 20; i++) {
+    const p = i * 5, long = i % 10 === 0 ? 10 : 5;
+    t.insertAdjacentHTML('beforeend',
+      `<i style="left:${p}%;top:0;width:1px;height:${long}px"></i>` +
+      `<i style="left:${p}%;bottom:0;width:1px;height:${long}px"></i>` +
+      `<i style="top:${p}%;left:0;height:1px;width:${long}px"></i>` +
+      `<i style="top:${p}%;right:0;height:1px;width:${long}px"></i>`);
+  }
+</script>
+</body>
+</html>

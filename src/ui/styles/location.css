@@ -9,16 +9,11 @@
   max-width: 720px;
 }
 
+/* The old glow halo is retired; the element stays, painted flat. */
 #location-bar .panel-glow {
   position: absolute;
   inset: -20px;
-  background: radial-gradient(
-    ellipse at center,
-    var(--accent-dim) 0%,
-    transparent 60%
-  );
-  filter: blur(20px);
-  opacity: 0.25;
+  background: none;
   pointer-events: none;
 }
 
@@ -28,11 +23,11 @@
   flex-direction: column;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   padding: 8px 12px;
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-float);
 }
 
 .location-toolbar {
@@ -44,10 +39,12 @@
 }
 
 .location-toolbar-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vellum-3);
 }
 
 .location-mini-status {
@@ -61,17 +58,17 @@
 }
 
 .location-mini-city {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  color: #bdefff;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vellum);
 }
 
 .location-mini-poi {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--vellum-2);
   max-width: 190px;
   white-space: nowrap;
   overflow: hidden;
@@ -93,23 +90,21 @@
 
 .location-pill {
   padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast);
+    color var(--transition-fast);
   outline: none;
   white-space: nowrap;
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--vellum-2);
 }
 
 .location-pill:focus-visible,
@@ -121,16 +116,15 @@
 }
 
 .location-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--glass-border-hover);
-  transform: translateY(-1px);
+  background: var(--hover-wash);
+  border-color: var(--rule-strong);
+  color: var(--vellum);
 }
 
 .location-pill.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+  background: var(--cinnabar-wash);
+  border-color: var(--cinnabar);
+  color: var(--vellum);
 }
 
 /* ── Expandable POI Row ──────────────────────── */
@@ -157,7 +151,7 @@
 .location-bar-divider {
   height: 0;
   border: none;
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--rule);
   margin: 0 4px;
   opacity: 0;
   transition:
@@ -181,59 +175,56 @@
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast);
+    color var(--transition-fast);
   outline: none;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .poi-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--glass-border-hover);
-  transform: translateY(-1px);
+  background: var(--hover-wash);
+  border-color: var(--rule-strong);
 }
 
 .poi-pill.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+  background: var(--cinnabar-wash);
+  border-color: var(--cinnabar);
 }
 
 .poi-pill-name {
   font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.3px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--vellum-2);
 }
 
+.poi-pill:hover .poi-pill-name,
 .poi-pill.active .poi-pill-name {
-  color: var(--accent);
+  color: var(--vellum);
 }
 
 .poi-pill-key {
   font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 5px;
-  border-radius: 3px;
+  font-size: 10px;
+  color: var(--vellum-3);
+  background: transparent;
+  border: 1px solid var(--rule);
+  padding: 1px 4px;
+  border-radius: var(--btn-radius);
   flex-shrink: 0;
 }
 
 .poi-pill.active .poi-pill-key {
-  color: var(--accent);
-  background: rgba(0, 212, 255, 0.12);
+  color: var(--cinnabar);
+  border-color: var(--cinnabar-rule);
 }
 
 /* ── Location Search ─────────────────────────── */
@@ -250,9 +241,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum-2);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -265,8 +257,9 @@
 }
 
 .search-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: var(--glass-border-hover);
+  background: var(--hover-wash);
+  border-color: var(--rule-strong);
+  color: var(--vellum);
 }
 
 #location-search {
@@ -278,7 +271,6 @@
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 13px;
-  letter-spacing: 0.3px;
   transition:
     width var(--transition-smooth),
     padding var(--transition-smooth);

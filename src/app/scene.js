@@ -93,7 +93,7 @@ export async function createApplicationScene({
     viewer.scene.globe.show = true;
   }
 
-  loaderStatus.textContent = 'Initializing systems...';
+  loaderStatus.textContent = 'Setting up layers...';
 
   const mapStackController = new MapController(viewer, {
     requestRender: governorRequestRender,

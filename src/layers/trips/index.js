@@ -140,7 +140,7 @@ export function createTripsLayer({ store, camera = null } = {}) {
         },
         label: {
           text: nodeLabelText(trip, n, i),
-          font: '12px JetBrains Mono, monospace',
+          font: '12px "IBM Plex Mono", monospace',
           fillColor: Cesium.Color.WHITE,
           outlineColor: Cesium.Color.BLACK,
           outlineWidth: 3,

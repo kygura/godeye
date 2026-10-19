@@ -12,13 +12,8 @@
 #control-panel .panel-glow {
   position: absolute;
   inset: -30px;
-  background: radial-gradient(
-    ellipse at center bottom,
-    var(--accent-dim) 0%,
-    transparent 60%
-  );
-  filter: blur(30px);
-  opacity: 0.4;
+  /* The old glow halo is retired; the element stays, painted flat. */
+  background: none;
   pointer-events: none;
 }
 
@@ -28,12 +23,9 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   padding: 16px 20px 18px;
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-float);
 }
 
 .panel-header {
@@ -56,20 +48,20 @@
 }
 
 .panel-mini-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.4px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-3);
   text-transform: uppercase;
 }
 
 .panel-mini-value {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1.8px;
-  color: var(--accent);
-  text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vellum);
 }
 
 .panel-drag-handle {
@@ -85,13 +77,14 @@
   margin-left: auto;
   margin-bottom: 2px;
   padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.4px;
-  color: var(--text-dim);
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--rule);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-3);
 }
 
 .panel-drag-handle.compact:hover {
@@ -104,10 +97,11 @@
 }
 
 .panel-title {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 3px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-2);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -115,16 +109,16 @@
 .panel-divider {
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, var(--glass-border), transparent);
+  background: var(--rule);
 }
 
 .panel-collapse-btn {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-dim);
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--vellum-3);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1;
@@ -136,9 +130,9 @@
 }
 
 .panel-collapse-btn:hover {
-  border-color: var(--glass-border-hover);
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--rule-strong);
+  color: var(--vellum);
+  background: var(--hover-wash);
 }
 
 /* ── Button Grid ──────────────────────────────── */
@@ -164,8 +158,8 @@
   padding: 14px 16px 10px;
   min-width: 78px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  border: 1px solid var(--rule);
   border-radius: var(--btn-radius);
   cursor: pointer;
   /* Keep the keyboard focus outline immediate. */
@@ -173,8 +167,7 @@
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     box-shadow var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast);
+    color var(--transition-fast);
   overflow: hidden;
   outline: none;
 }
@@ -189,40 +182,26 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    transparent 100%
-  );
+  background: var(--hover-wash);
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
 .style-btn:hover {
-  border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
+  border-color: var(--rule-strong);
 }
 
 .style-btn:hover::before {
   opacity: 1;
 }
 
-.style-btn:active {
-  transform: translateY(0);
-}
-
 .style-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-  box-shadow:
-    0 0 20px rgba(0, 212, 255, 0.15),
-    0 0 0 1px rgba(0, 212, 255, 0.1) inset;
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 
 .style-btn.active .btn-icon {
-  color: var(--accent);
-  text-shadow: 0 0 12px var(--accent-glow);
+  color: var(--cinnabar);
 }
 
 .style-btn.active .btn-label {
@@ -232,18 +211,15 @@
 .btn-icon {
   font-size: 20px;
   line-height: 1;
-  color: var(--text-secondary);
-  transition:
-    color var(--transition-fast),
-    text-shadow var(--transition-fast);
+  color: var(--vellum-2);
+  transition: color var(--transition-fast);
 }
 
 .btn-label {
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.3px;
+  font-weight: 400;
+  color: var(--vellum-2);
   transition: color var(--transition-fast);
 }
 
@@ -292,36 +268,34 @@
   width: 128px;
   height: auto;
   margin: 0 auto 24px;
-  filter: drop-shadow(0 0 24px rgba(0, 246, 255, 0.42));
   animation: logo-pulse 2s ease-in-out infinite;
 }
 
+/* Slow opacity breathe; no glow, no scale. */
 @keyframes logo-pulse {
   0%,
   100% {
     opacity: 0.72;
-    transform: scale(0.98);
   }
   50% {
     opacity: 1;
-    transform: scale(1.02);
   }
 }
 
 .loader-content h2 {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 6px;
-  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--vellum);
   margin-bottom: 12px;
 }
 
 .loader-status {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--vellum-3);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -354,11 +328,9 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   background: var(--glass-bg);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 #pp-toggles:not(.collapsed) > .pp-header-row,
@@ -383,9 +355,9 @@
   padding: 7px 12px;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--btn-radius);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -422,11 +394,9 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   background: var(--glass-bg);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: default;
 }
 
@@ -445,16 +415,18 @@
 }
 
 #pp-toggles .pp-header-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.4px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vellum-2);
 }
 
 #pp-toggles > .pp-header-row .pp-collapse-btn {
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--btn-radius);
   font-size: 12px;
   padding: 0;
 }
@@ -474,14 +446,13 @@
 }
 
 .pp-toggle-btn:hover {
-  border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--rule-strong);
+  background: var(--hover-wash);
 }
 
 .pp-toggle-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-dim);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 
 .pp-icon {
@@ -504,15 +475,15 @@
 }
 
 .pp-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--vellum-2);
   text-transform: uppercase;
 }
 
 .pp-toggle-btn.active .pp-label {
-  color: var(--accent);
+  color: var(--vellum);
 }
 
 /* ── Bloom Slider (inline with toggle) ───────── */
@@ -530,9 +501,9 @@
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-top: none;
-  border-radius: 0 0 8px 8px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  border-radius: 0 0 2px 2px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .pp-slider-row.visible {
@@ -541,7 +512,7 @@
 
 .pp-toggle-group .pp-slider-row.visible ~ .pp-toggle-btn,
 .pp-toggle-group:has(.pp-slider-row.visible) .pp-toggle-btn {
-  border-radius: 8px 8px 0 0;
+  border-radius: 2px 2px 0 0;
 }
 
 .pp-slider {
@@ -549,7 +520,7 @@
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--rule);
   border-radius: 2px;
   outline: none;
   cursor: pointer;
@@ -563,7 +534,7 @@
   height: 10px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
 }
 
@@ -573,22 +544,21 @@
   border-radius: 50%;
   background: var(--accent);
   border: none;
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
 }
 
 .pp-slider-value {
   font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.5px;
-  color: var(--accent);
+  font-size: 10px;
+  color: var(--vellum);
   min-width: 28px;
   text-align: right;
   flex-shrink: 0;
 }
 
 /* Quantitative companion sliders share Display / Sharpen's visible rail,
- * circular thumb, glow, and value treatment while retaining a taller hit area. */
+ * circular thumb and value treatment while retaining a taller hit area. */
 .gev-quantitative-slider {
   width: 100%;
   min-width: 0;
@@ -600,6 +570,7 @@
   outline: none;
   cursor: pointer;
 }
+/* Rail value is pinned by radioMarkup.test.mjs; it reads as a neutral hairline. */
 .gev-quantitative-slider::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 2px;
@@ -614,7 +585,7 @@
   -webkit-appearance: none;
   appearance: none;
   background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
 }
 .gev-quantitative-slider::-moz-range-track,
@@ -622,7 +593,7 @@
   height: 3px;
   border: 0;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--rule);
 }
 .gev-quantitative-slider::-moz-range-thumb {
   width: 10px;
@@ -630,7 +601,7 @@
   border: 0;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
 }
 .gev-quantitative-slider:focus-visible {
@@ -647,16 +618,15 @@
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.5px;
   text-align: right;
   flex-shrink: 0;
 }
 
 .pp-slider-mini-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--vellum-3);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -720,17 +690,18 @@
   gap: 6px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(123, 189, 211, 0.18);
+  border-top: 1px solid var(--rule);
 }
 
 .map-source-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: rgba(190, 221, 230, 0.62);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.35px;
+  color: var(--vellum-3);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .map-stack-chip-row {
@@ -745,15 +716,15 @@
   justify-content: center;
   gap: 4px;
   padding: 4px 7px;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.6px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  color: var(--vellum-2);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   /* Explicit property list, NOT `transition: all`: `all` animates
      `outline-width` off the `outline: none` base, and Chrome leaves that
@@ -780,14 +751,14 @@
 
 /* Order matters, and matches `.data-toggle-btn`: hover/focus, then active, then
    disabled — all at the same specificity, so the later rule wins. Hovering the
-   active chip must not wash the cyan out, and a disabled chip must not light up
+   active chip must not wash the cinnabar out, and a disabled chip must not light up
    under the cursor. Do not add `:not(...)` here: it would raise specificity and
    let hover beat `.active` again. */
 .map-stack-chip:hover,
 .map-stack-chip:focus-visible {
-  border-color: var(--glass-border-hover);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-primary);
+  border-color: var(--rule-strong);
+  background: var(--hover-wash);
+  color: var(--vellum);
 }
 
 /* The keyboard ring is an `outline`, a property NO other chip-state rule sets,
@@ -800,24 +771,24 @@
 }
 
 .map-stack-chip.active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-dim);
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.15);
+  color: var(--vellum);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
+  box-shadow: none;
 }
 
 .map-stack-chip.unavailable,
 .map-stack-chip[aria-disabled='true'] {
-  color: rgba(232, 234, 237, 0.28);
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--vellum-3);
+  border-color: var(--rule);
+  border-style: dashed;
+  background: transparent;
   cursor: not-allowed;
 }
 
 .map-stack-chip-req {
-  font-size: 7px;
-  letter-spacing: 0.3px;
-  color: rgba(232, 234, 237, 0.28);
+  font-size: 9px;
+  color: var(--vellum-3);
 }
 
 .pp-stack-status {
@@ -826,29 +797,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--sage);
   text-align: center;
   text-transform: uppercase;
 }
 
 .pp-stack-status.warn {
-  color: #ffb84d;
+  color: var(--ochre);
 }
 
 .pp-select {
   flex: 1;
   min-width: 0;
   height: 24px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.6px;
+  background: var(--hover-wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum);
+  font-family: var(--font-sans);
+  font-size: 11px;
   padding: 2px 6px;
   outline: none;
 }
@@ -865,13 +835,12 @@
   flex: 1 1 110px;
   min-width: 0;
   height: 24px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.6px;
+  background: var(--hover-wash);
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  color: var(--vellum);
+  font-family: var(--font-sans);
+  font-size: 11px;
   padding: 2px 6px;
   outline: none;
 }
@@ -884,15 +853,14 @@
 .draw-clear-btn {
   flex: 0 0 auto;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
 }
 .draw-hint {
   flex-basis: 100%;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.6px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  color: var(--vellum-3);
   line-height: 1.4;
 }
 body.gev-drawing #cesiumContainer canvas {
@@ -906,35 +874,37 @@ body.gev-drawing #cesiumContainer canvas {
 .pp-mode-seg {
   display: flex;
   flex: 1;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
   overflow: hidden;
 }
 .pp-mode-btn {
   flex: 1;
   height: 22px;
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
   border: none;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.6px;
+  color: var(--vellum-3);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
+    box-shadow var(--transition-fast),
     color var(--transition-fast);
 }
 .pp-mode-btn + .pp-mode-btn {
-  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 1px solid var(--rule);
 }
 .pp-mode-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
+  background: var(--hover-wash);
+  color: var(--vellum);
 }
 .pp-mode-btn.active {
-  background: var(--accent);
-  color: #000;
+  background: var(--cinnabar-wash);
+  color: var(--vellum);
+  box-shadow: inset 0 -2px 0 var(--cinnabar);
 }
 
 /* These controls also move into Cockpit Display; keep focus on the control
@@ -947,7 +917,7 @@ body.gev-drawing #cesiumContainer canvas {
 }
 
 .pp-mode-btn:focus-visible {
-  box-shadow: inset 0 0 0 4px #061014;
+  box-shadow: inset 0 0 0 4px var(--ink-0);
 }
 
 .pp-slider:focus-visible,
@@ -966,13 +936,15 @@ body.gev-drawing #cesiumContainer canvas {
   right: 50%;
   transform: translateX(50%);
   z-index: 300;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(8, 10, 14, 0.88);
-  color: #d9f7ff;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1.8px;
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--rule-strong);
+  background: var(--surface-raised);
+  color: var(--vellum);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   padding: 8px 14px;
   cursor: pointer;
   display: none;
@@ -1008,37 +980,27 @@ body.ui-clean-view #scene-runtime.active {
 }
 
 /* ── Detection Toggle States ─────────────────── */
+/* Detection is a live sensor: sage, not the cinnabar selection accent. */
 #detection-toggle.active {
-  border-color: rgba(0, 255, 80, 0.6);
-  background: rgba(0, 255, 80, 0.1);
-  box-shadow: 0 0 12px rgba(0, 255, 80, 0.15);
+  border-color: var(--sage);
+  background: color-mix(in srgb, var(--sage) 10%, transparent);
+  box-shadow: none;
 }
 
 #detection-toggle.active .pp-label {
-  color: rgba(0, 255, 80, 0.9);
+  color: var(--vellum);
 }
 
 #detection-toggle.active .pp-icon {
-  color: rgba(0, 255, 80, 0.9);
-  text-shadow: 0 0 6px rgba(0, 255, 80, 0.5);
+  color: var(--sage);
 }
 
+/* The heavier modes read as a doubled rule, not a pulsing glow. */
 #detection-toggle.panoptic,
 #detection-toggle.god {
-  border-color: rgba(0, 255, 80, 0.8);
-  background: rgba(0, 255, 80, 0.18);
-  box-shadow: 0 0 16px rgba(0, 255, 80, 0.25);
-  animation: detection-pulse 2s ease-in-out infinite;
-}
-
-@keyframes detection-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 12px rgba(0, 255, 80, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 22px rgba(0, 255, 80, 0.35);
-  }
+  border-color: var(--sage);
+  background: color-mix(in srgb, var(--sage) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--sage);
 }
 
 /* ── Parameter Slider Panel ──────────────────── */
@@ -1058,11 +1020,11 @@ body.ui-clean-view #scene-runtime.active {
   -ms-overflow-style: none;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  border-radius: var(--panel-radius);
   padding: 14px 16px;
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-float);
   opacity: 0;
   visibility: hidden;
   transform: translateY(6px);
@@ -1100,10 +1062,11 @@ body.ui-clean-view #scene-runtime.active {
 }
 
 .param-panel-title {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 2.5px;
-  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--vellum-2);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -1111,16 +1074,11 @@ body.ui-clean-view #scene-runtime.active {
 .param-panel-divider {
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, var(--glass-border), transparent);
+  background: var(--rule);
 }
 
 #param-slider-panel:not(.collapsed) .param-panel-divider {
-  background: linear-gradient(
-    90deg,
-    rgb(0 212 255 / 28%),
-    rgba(0, 212, 255, 0.18) 58%,
-    transparent
-  );
+  background: var(--rule);
 }
 
 .param-slider-row {
@@ -1135,10 +1093,9 @@ body.ui-clean-view #scene-runtime.active {
 }
 
 .param-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--vellum-2);
   min-width: 72px;
   flex-shrink: 0;
 }
@@ -1149,7 +1106,7 @@ body.ui-clean-view #scene-runtime.active {
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--rule);
   border-radius: 2px;
   outline: none;
   cursor: pointer;
@@ -1162,13 +1119,13 @@ body.ui-clean-view #scene-runtime.active {
   height: 12px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
   transition: box-shadow var(--transition-fast);
 }
 
 .param-slider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 12px var(--accent-glow);
+  box-shadow: 0 0 0 3px var(--cinnabar-wash);
 }
 
 .param-slider::-moz-range-thumb {
@@ -1177,15 +1134,14 @@ body.ui-clean-view #scene-runtime.active {
   border-radius: 50%;
   background: var(--accent);
   border: none;
-  box-shadow: 0 0 6px var(--accent-glow);
+  box-shadow: none;
   cursor: pointer;
 }
 
 .param-value {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.5px;
-  color: var(--accent);
+  color: var(--vellum);
   min-width: 32px;
   text-align: right;
   flex-shrink: 0;

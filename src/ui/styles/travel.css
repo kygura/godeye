@@ -1,16 +1,21 @@
 /* ── Travel Mode ──────────────────────────────── */
 body.travel-mode {
-  --travel-surface: rgba(18, 21, 27, 0.9);
-  --travel-surface-raised: rgba(255, 255, 255, 0.04);
-  --travel-border: rgba(255, 255, 255, 0.1);
-  --travel-text: #e9edf2;
-  --travel-text-muted: #a9b2be;
-  --travel-accent: #8fb8ff;
-  --travel-status-low: #6fcf97;
-  --travel-status-moderate: #e8c15a;
-  --travel-status-elevated: #f39c4d;
-  --travel-status-high: #f26d6d;
-  --travel-status-none: #a9b2be;
+  --travel-surface: var(--surface);
+  --travel-surface-raised: var(--hover-wash);
+  --travel-border: var(--rule);
+  --travel-text: var(--vellum);
+  --travel-text-muted: var(--vellum-2);
+  --travel-accent: var(--cinnabar);
+  /* Risk scale: sage (low) through ochre to cinnabar (high). */
+  --travel-status-low: var(--sage);
+  --travel-status-moderate: var(--ochre);
+  --travel-status-elevated: color-mix(
+    in srgb,
+    var(--ochre) 45%,
+    var(--cinnabar)
+  );
+  --travel-status-high: var(--cinnabar);
+  --travel-status-none: var(--vellum-2);
 }
 
 /* DESIGN §6: the briefing keeps its calm civilian look, but in Cyber it
@@ -26,7 +31,7 @@ body.travel-mode {
   width: auto;
   gap: 6px;
   padding: 0 14px 0 11px;
-  border-radius: 18px;
+  border-radius: var(--btn-radius);
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
@@ -37,9 +42,9 @@ body.travel-mode {
 }
 
 #top-center-actions #travel-toggle[aria-pressed='true'] {
-  border-color: var(--travel-accent);
+  border-color: var(--cinnabar-rule);
   color: var(--travel-text);
-  background: var(--travel-surface);
+  background: var(--cinnabar-wash);
 }
 
 body.travel-mode #title-bar,
@@ -95,12 +100,12 @@ body.travel-mode #gev-voice-control {
   background: var(--travel-surface);
   border: 1px solid var(--travel-border);
   border-radius: var(--panel-radius);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--travel-text);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
@@ -123,11 +128,11 @@ body.travel-mode #gev-voice-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--travel-text-muted);
+  color: var(--vellum-3);
 }
 
 .travel-visually-hidden {
@@ -147,11 +152,15 @@ body.travel-mode #gev-voice-control {
   gap: 4px;
   min-height: 32px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--btn-radius);
   background: none;
   color: var(--travel-text-muted);
   font: inherit;
   cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .travel-icon-btn {
@@ -161,8 +170,8 @@ body.travel-mode #gev-voice-control {
 .travel-text-btn {
   padding: 0 10px;
   border-color: var(--travel-border);
-  color: var(--travel-accent);
-  font-size: 13px;
+  color: var(--travel-text);
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -170,6 +179,10 @@ body.travel-mode #gev-voice-control {
 .travel-text-btn:hover {
   background: var(--travel-surface-raised);
   color: var(--travel-text);
+}
+
+.travel-text-btn:hover {
+  border-color: var(--rule-strong);
 }
 
 .travel-text-btn:disabled {
@@ -183,7 +196,7 @@ body.travel-mode #gev-voice-control {
   gap: 6px;
   padding: 2px 2px 2px 12px;
   border: 1px solid var(--travel-border);
-  border-radius: 10px;
+  border-radius: var(--btn-radius);
   background: var(--travel-surface-raised);
 }
 
@@ -195,17 +208,20 @@ body.travel-mode #gev-voice-control {
   background: none;
   color: var(--travel-text);
   font: inherit;
-  font-size: 16px;
-  font-weight: 500;
+  /* The destination is a place name: set it like one, in serif italic. */
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 400;
 }
 
 .travel-dest input::placeholder {
-  color: var(--travel-text-muted);
+  color: var(--vellum-3);
   font-weight: 400;
 }
 
 .travel-dest:focus-within {
-  border-color: var(--travel-accent);
+  border-color: var(--cinnabar-rule);
 }
 
 #travel-panel:not([data-ready]) .travel-risk,
@@ -220,7 +236,7 @@ body.travel-mode #gev-voice-control {
   gap: 8px;
   margin-top: 6px;
   color: var(--travel-text-muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .travel-sections {
@@ -243,7 +259,7 @@ body.travel-mode #gev-voice-control {
   width: 100%;
   padding: 10px 4px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--btn-radius);
   background: none;
   color: var(--travel-text);
   font: inherit;
@@ -268,7 +284,7 @@ body.travel-mode #gev-voice-control {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .travel-row-label .material-symbols-outlined {
@@ -278,7 +294,7 @@ body.travel-mode #gev-voice-control {
 .travel-row-summary {
   grid-column: 2 / 4;
   color: var(--travel-text-muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .travel-risk {
@@ -293,12 +309,14 @@ body.travel-mode #gev-voice-control {
   align-items: center;
   gap: 4px;
   padding: 2px 8px 2px 6px;
-  border: 1px solid color-mix(in srgb, var(--travel-status) 45%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--travel-status) 14%, transparent);
+  /* Flat chip: hairline box, 2px left rule in the risk colour. */
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--travel-status);
+  border-radius: var(--btn-radius);
+  background: none;
   color: var(--travel-status);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -324,7 +342,7 @@ body.travel-mode #gev-voice-control {
 }
 
 .travel-risk .travel-badge {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .travel-detail {
@@ -353,8 +371,11 @@ body.travel-mode #gev-voice-control {
 
 .travel-group {
   margin-top: 4px;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--vellum-3);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .travel-items {
@@ -400,13 +421,17 @@ body.travel-mode #gev-voice-control {
   color: var(--travel-text-muted);
 }
 
+.travel-facts dd {
+  font-variant-numeric: tabular-nums;
+}
+
 .travel-flight-form input {
   font-size: 14px;
 }
 
 .travel-footnote {
-  color: var(--travel-text-muted);
-  font-size: 12px;
+  color: var(--vellum-3);
+  font-size: 11px;
 }
 
 @media (max-width: 640px) {
